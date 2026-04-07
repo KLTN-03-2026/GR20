@@ -1,0 +1,14 @@
+# Thư mục chứa thư viện (Không push lên Git vì ai kéo về tự chạy 'npm install' là có)
+node_modules/
+
+# File chứa biến môi trường và mật khẩu (Tuyệt đối không push)
+.env
+
+# Các file log lỗi nếu có
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Các thư mục rác của hệ điều hành
+.DS_Store
+Thumbs.db
