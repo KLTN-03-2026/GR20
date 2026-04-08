@@ -1,8 +1,13 @@
 const repo = require("./building.repository");
 const mapper = require("./building.mapper");
+const {
+  parseCreateBuilding,
+  parseUpdateBuilding,
+} = require("./building.request");
 
 const createBuilding = async (reqBody) => {
-  const entity = mapper.toEntity(reqBody);
+  const parsed = parseCreateBuilding(reqBody);
+  const entity = mapper.toEntity(parsed);
   const result = await repo.createBuilding(entity);
 
   return {
@@ -37,7 +42,8 @@ const getBuildingById = async (id) => {
 
 // UPDATE
 const updateBuilding = async (id, reqBody) => {
-  const entity = mapper.toEntity(reqBody);
+  const parsed = parseUpdateBuilding(reqBody);
+  const entity = mapper.toEntity(parsed);
 
   const updated = await repo.updateBuilding(id, entity);
 
