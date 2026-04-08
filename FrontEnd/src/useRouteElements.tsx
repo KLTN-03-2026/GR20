@@ -24,14 +24,16 @@ export default function useRouteElements() {
   //bảng chất thằng này là theo kiểu trên xuống dưới nên dể lỗi ko mong muốn
   const routeElements = useRoutes([
     {
-      index: true, //nhận diện đây thz chính xếp ở đâu cx được
-      path: '/abc', // đường dẫn gốc
-      element: <div className='bg-slate-400 rounded-sm'>Hello</div>
-      // danh sách sản phẩm
+      index: true,
+      element: <Navigate to='/buildings' replace />
     },
     {
-      path: 'api/buildings',
+      path: '/buildings',
       element: <Buildings />
+    },
+    {
+      path: '/api/buildings',
+      element: <Navigate to='/buildings' replace />
     }
   ])
   return routeElements
