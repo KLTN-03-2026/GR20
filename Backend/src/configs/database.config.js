@@ -1,7 +1,8 @@
 require("dotenv").config();
 const { Pool } = require("pg");
+const { drizzle } = require("drizzle-orm/node-postgres"); // ✅ 1. Import Drizzle
 
-// ✅ Dùng connection string (chuẩn production)
+// Dùng connection string (chuẩn production)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -9,7 +10,10 @@ const pool = new Pool({
   },
 });
 
-// ✅ Hàm connect DB
+// ✅ 2. Khởi tạo Drizzle bọc lên trên pool cũ
+const db = drizzle(pool);
+
+// Hàm connect DB (Giữ nguyên)
 async function connectDB() {
   try {
     const res = await pool.query("SELECT NOW()");
@@ -19,4 +23,5 @@ async function connectDB() {
   }
 }
 
-module.exports = { pool, connectDB };
+// ✅ 3. Thêm biến `db` vào danh sách export
+module.exports = { pool, connectDB, db };
