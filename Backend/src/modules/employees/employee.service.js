@@ -11,7 +11,7 @@ const addEmployee = async (data) => {
       password: hashedPassword,
       email: data.email,
       fullName: data.fullName,
-      roleId: 3, // Ép cứng quyền Nhân viên
+      roleId: data.roleId,
       isActive: true,
     };
 
@@ -34,13 +34,9 @@ const getEmployeeById = async (id) => {
   return employee;
 };
 
-// --- MỚI: Sửa thông tin ---
 const updateEmployee = async (id, updateData) => {
   try {
-    // 1. Kiểm tra xem nhân viên có tồn tại không
     await getEmployeeById(id);
-
-    // 2. Tiến hành update
     return await employeeRepo.updateEmployee(id, updateData);
   } catch (error) {
     if (error.code === "23505")
@@ -49,15 +45,9 @@ const updateEmployee = async (id, updateData) => {
   }
 };
 
-// --- MỚI: Khóa/Mở tài khoản ---
 const toggleStatus = async (id) => {
-  // 1. Lấy thông tin hiện tại
   const employee = await getEmployeeById(id);
-
-  // 2. Đảo ngược trạng thái (Đang true -> false, Đang false -> true)
   const newStatus = !employee.isActive;
-
-  // 3. Cập nhật vào DB
   return await employeeRepo.updateStatus(id, newStatus);
 };
 
