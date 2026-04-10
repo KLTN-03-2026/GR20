@@ -2,7 +2,7 @@ import { Navigate, Outlet, useRoutes } from 'react-router-dom'
 import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 import Buildings from './pages/building management/Buildings'
-
+import EmployeeManagement from './pages/employees/EmployeeManagement'
 //tạo cái component để kiểm tra người dùng login chưa
 
 function ProtecdRouter() {
@@ -34,6 +34,10 @@ export default function useRouteElements() {
     {
       path: '/api/buildings',
       element: <Navigate to='/buildings' replace />
+    },
+    {
+      path: '/employees',
+      element: <EmployeeManagement />
     }
   ])
   return routeElements
