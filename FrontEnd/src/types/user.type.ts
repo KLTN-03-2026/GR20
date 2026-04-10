@@ -1,16 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
-type Role = 'User' | 'Adim'
+type Role = 'ADMIN' | 'Quản lý' | 'Người Dùng'
 
 export interface User {
-  _id: string
-  roles: Role[]
+  id: string
+  fullName: string
   email: string
-  name?: string
-  date_of_birth?: string
-  avatar?: string
-  address?: string
-  phone?: string
+  avatarUrl: null
+  isActive: boolean
+  roles: string[]
   createdAt: string
-  updatedAt: string
 }
