@@ -2,6 +2,8 @@ import { Navigate, Outlet, useRoutes } from 'react-router-dom'
 import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 import Buildings from './pages/building management/Buildings'
+import Getresidentlist from './pages/building management/residentmanagement/Getresidentlist'
+import Addresident from './pages/building management/residentmanagement/Addresident'
 
 //tạo cái component để kiểm tra người dùng login chưa
 
@@ -32,6 +34,14 @@ export default function useRouteElements() {
     {
       path: 'api/buildings',
       element: <Buildings />
+    },
+    {
+      path: 'api/Getresidentlist',
+      element: <Getresidentlist />
+    },
+    {
+      path: 'api/Addresident',
+      element: <Addresident />
     }
   ])
   return routeElements
