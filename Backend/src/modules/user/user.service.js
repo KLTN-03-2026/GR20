@@ -36,4 +36,21 @@ const getAllUsers = async (query) => {
   };
 };
 
-module.exports = { getUserById,createUser,getAllUsers };
+const updateUser = async (id, reqBody) => {
+  const entity = mapper.toUpdateEntity(reqBody);
+  const updated = await repo.updateUser(id, entity);
+
+  if (!updated) throw new Error("Update failed");
+
+  return mapper.toResponse(updated);
+};
+
+const deleteUser = async (id) => {
+  const deleted = await repo.deleteUser(id);
+
+  if (!deleted) throw new Error("User not found");
+
+  return { id: deleted.id };
+};
+
+module.exports = { getUserById,createUser,getAllUsers,updateUser,deleteUser };

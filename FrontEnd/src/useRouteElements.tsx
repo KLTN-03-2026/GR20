@@ -3,6 +3,8 @@ import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 import Buildings from './pages/building management/Buildings'
 import Profile from './pages/profile_Management/Profile'
+import ScanQr from './pages/QRCODE_USER/Scanqr'
+import TestAllQrApi from './apis/QRCODE/testallQR'
 
 //tạo cái component để kiểm tra người dùng login chưa
 
@@ -37,6 +39,15 @@ export default function useRouteElements() {
     {
       path: 'api/profile',
       element: <Profile />
+    },
+    {
+      path: 'api/qrcode',
+      element: <ScanQr />
+    },
+    {
+      // ✅ Route cho scan QR
+      path: 'scan/:qrCode', // ← Quan trọng: phải match với URL từ QR
+      element: <ScanQr />
     }
   ])
   return routeElements

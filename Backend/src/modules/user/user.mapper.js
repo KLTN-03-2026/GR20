@@ -37,4 +37,16 @@ const toListResponse = (row) => {
   };
 };
 
-module.exports = { toEntity, toResponse,toListResponse };
+const toUpdateEntity = (req) => {
+  return {
+    email: req.email,
+    full_name: req.fullName,
+    phone: req.phone,
+    gender: req.gender,
+    date_of_birth: req.dateOfBirth,
+    avatar_url: req.avatarUrl,
+    // role_id: req.roleId,
+  };
+};
+
+module.exports = { toEntity, toResponse,toListResponse, toUpdateEntity };

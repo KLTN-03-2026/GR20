@@ -55,4 +55,36 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-module.exports = { getUserById,createUser,getAllUsers };
+const updateUser = async (req, res) => {
+  try {
+    const data = await service.updateUser(req.params.id, req.body);
+
+    res.json({
+      operationType: "Success",
+      message: "Update user successfully",
+      code: "OK",
+      data,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const data = await service.deleteUser(req.params.id);
+
+    res.json({
+      operationType: "Success",
+      message: "Delete user successfully",
+      code: "OK",
+      data,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    res.status(404).json({ message: err.message });
+  }
+};
+
+module.exports = { getUserById,createUser,getAllUsers,updateUser,deleteUser };

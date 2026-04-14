@@ -1,0 +1,274 @@
+const service = require("./user.service");
+
+const getUserById = async (req, res) => {
+  try {
+    const data = await service.getUserById(req.params.id);
+
+    res.json({
+      operationType: "Success",
+      message: "Get user detail successfully",
+      code: "OK",
+      data,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    res.status(404).json({
+      message: err.message,
+    });
+  }
+};
+
+const createUser = async (req, res) => {
+  try {
+    const data = await service.createUser(req.body);
+
+    res.status(201).json({
+      operationType: "Success",
+      message: "Create user successfully",
+      code: "CREATED",
+      data,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+const getAllUsers = async (req, res) => {
+  try {
+    const result = await service.getAllUsers(req.query);
+
+    res.json({
+      operationType: "Success",
+      message: "Get user list successfully",
+      code: "OK",
+      data:result.data,
+      pagination:result.pagination,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+module.exports = { getUserById,createUser,getAllUsers };
+
+const toResponse = (row) => {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    email: row.email,
+    phone: row.phone,
+    avatarUrl: row.avatar_url,
+    dateOfBirth: row.date_of_birth,
+    gender: row.gender,
+    isActive: row.is_active,
+    roles: row.role ? [row.role] : [],  // lấy từ join
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
+const toEntity = (req) => {
+  return {
+    username: req.username,
+    password: req.password,
+    email: req.email,
+    full_name: req.fullName,
+    gender: req.gender,
+    role_id: req.roleId,
+  };
+};
+
+const toListResponse = (row) => {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    email: row.email,
+    avatarUrl: row.avatar_url,
+    isActive: row.is_active,
+    roles: row.role ? [row.role] : [],
+    createdAt: row.created_at,
+  };
+};
+
+module.exports = { toEntity, toResponse,toListResponse };
+
+// user.model.js
+function userModel(data) {
+  return {
+    id: data.id,
+    username: data.username,
+    password: data.password,
+    email: data.email,
+    phone: data.phone,
+    fullName: data.full_name,
+    dateOfBirth: data.date_of_birth,
+    gender: data.gender,
+    idCard: data.id_card,
+    avatarUrl: data.avatar_url,
+    roleId: data.role_id,
+    isActive: data.is_active,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+module.exports = userModel;// user.model.js
+function userModel(data) {
+  return {
+    id: data.id,
+    username: data.username,
+    password: data.password,
+    email: data.email,
+    phone: data.phone,
+    fullName: data.full_name,
+    dateOfBirth: data.date_of_birth,
+    gender: data.gender,
+    idCard: data.id_card,
+    avatarUrl: data.avatar_url,
+    roleId: data.role_id,
+    isActive: data.is_active,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+module.exports = userModel;// user.model.js
+function userModel(data) {
+  return {
+    id: data.id,
+    username: data.username,
+    password: data.password,
+    email: data.email,
+    phone: data.phone,
+    fullName: data.full_name,
+    dateOfBirth: data.date_of_birth,
+    gender: data.gender,
+    idCard: data.id_card,
+    avatarUrl: data.avatar_url,
+    roleId: data.role_id,
+    isActive: data.is_active,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+module.exports = userModel;
+
+const { pool } = require("../../configs/database.config");
+
+const createUser = async (user) => {
+  const query = `
+    INSERT INTO users (username, password, email, full_name, gender, role_id, is_active, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())
+    RETURNING id
+  `;
+
+  const values = [
+    user.username,
+    user.password,
+    user.email,
+    user.full_name,
+    user.gender,
+    user.role_id,
+  ];
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+};
+
+const getUserById = async (id) => {
+  const query = `
+    SELECT 
+      u.*,
+      r.name AS role
+    FROM users u
+    LEFT JOIN roles r ON r.id = u.role_id
+    WHERE u.id = $1
+  `;
+
+  const result = await pool.query(query, [id]);
+  return result.rows[0];
+};
+
+const getAllUsers = async ({ page = 0, size = 10 }) => {
+  const offset = page * size;
+
+  const dataQuery = `
+    SELECT 
+      u.*,
+      r.name AS role
+    FROM users u
+    LEFT JOIN roles r ON r.id = u.role_id
+    ORDER BY u.id ASC
+    LIMIT $1 OFFSET $2
+  `;
+
+  const countQuery = `SELECT COUNT(*) FROM users`;
+
+  const data = await pool.query(dataQuery, [size, offset]);
+  const count = await pool.query(countQuery);
+
+  return {
+    rows: data.rows,
+    total: parseInt(count.rows[0].count),
+  };
+};
+
+module.exports = { getUserById, createUser,getAllUsers  };
+
+
+const express = require("express")
+const router = express.Router();
+const controller = require("./user.controller");
+
+router.get("/:id", controller.getUserById);
+router.post("/", controller.createUser);
+router.get("/", controller.getAllUsers);
+
+module.exports = router;
+
+const repo = require("./user.repository");
+const mapper = require("./user.mapper");
+
+const getUserById = async (id) => {
+  const data = await repo.getUserById(id);
+
+  if (!data) {
+    throw new Error("User not found");
+  }
+
+  return mapper.toResponse(data);
+};
+
+const createUser = async (reqBody) => {
+  const entity = mapper.toEntity(reqBody);
+  const result = await repo.createUser(entity);
+
+  return { id: result.id };
+};
+
+const getAllUsers = async (query) => {
+  // const { page = 0, size = 10 } = query;
+  const page = parseInt(query.page) || 0
+  const size = parseInt(query.size) || 10
+
+  const result = await repo.getAllUsers({ page, size });
+
+  return {
+    data: result.rows.map(mapper.toListResponse),
+    pagination:{
+      page: page,
+      pageSize: size,
+      totalElements: result.total,
+      totalPages: Math.ceil(result.total / size),
+    }  
+  };
+};
+
+module.exports = { getUserById,createUser,getAllUsers };
