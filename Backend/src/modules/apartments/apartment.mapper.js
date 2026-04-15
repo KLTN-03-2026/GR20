@@ -10,7 +10,7 @@ const toEntity = (req) => {
     bedrooms: req.bedrooms,
     bathrooms: req.bathrooms,
     balcony_direction: req.balconyDirection,
-    status: req.status || "ACTIVE",
+    status: req.status || "AVAILABLE",
   };
 };
 

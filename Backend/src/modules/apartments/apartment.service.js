@@ -33,6 +33,34 @@ const getAllApartments = async (query) => {
   };
 };
 
+const getApartmentsByBuilding = async (buildingId, query) => {
+  const { page = 0, size = 10 } = query;
+  const result = await repo.getApartmentsByBuilding({ buildingId, page, size });
+
+  return {
+    data: result.rows.map(mapper.toResponse),
+    size: result.rows.length,
+    totalElements: result.total,
+    totalPages: Math.ceil(result.total / size),
+    page: Number(page),
+    pageSize: Number(size),
+  };
+};
+
+const getApartmentsByFloor = async (floorId, query) => {
+  const { page = 0, size = 10 } = query;
+  const result = await repo.getApartmentsByFloor({ floorId, page, size });
+
+  return {
+    data: result.rows.map(mapper.toResponse),
+    size: result.rows.length,
+    totalElements: result.total,
+    totalPages: Math.ceil(result.total / size),
+    page: Number(page),
+    pageSize: Number(size),
+  };
+};
+
 // GET BY ID
 const getApartmentById = async (id) => {
   const data = await repo.getApartmentById(id);
@@ -72,6 +100,8 @@ const deleteApartment = async (id) => {
 module.exports = {
   createApartment,
   getAllApartments,
+  getApartmentsByBuilding,
+  getApartmentsByFloor,
   getApartmentById,
   updateApartment,
   deleteApartment,

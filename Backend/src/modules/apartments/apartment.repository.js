@@ -69,6 +69,54 @@ const getAllApartments = async ({ page = 0, size = 10 }) => {
   };
 };
 
+const getApartmentsByBuilding = async ({ buildingId, page = 0, size = 10 }) => {
+  const offset = page * size;
+
+  const dataQuery = `
+    SELECT * FROM apartments
+    WHERE building_id = $1
+    ORDER BY id ASC
+    LIMIT $2 OFFSET $3
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) FROM apartments
+    WHERE building_id = $1
+  `;
+
+  const data = await pool.query(dataQuery, [buildingId, size, offset]);
+  const count = await pool.query(countQuery, [buildingId]);
+
+  return {
+    rows: data.rows,
+    total: parseInt(count.rows[0].count),
+  };
+};
+
+const getApartmentsByFloor = async ({ floorId, page = 0, size = 10 }) => {
+  const offset = page * size;
+
+  const dataQuery = `
+    SELECT * FROM apartments
+    WHERE floor_id = $1
+    ORDER BY id ASC
+    LIMIT $2 OFFSET $3
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) FROM apartments
+    WHERE floor_id = $1
+  `;
+
+  const data = await pool.query(dataQuery, [floorId, size, offset]);
+  const count = await pool.query(countQuery, [floorId]);
+
+  return {
+    rows: data.rows,
+    total: parseInt(count.rows[0].count),
+  };
+};
+
 // GET BY ID
 const getApartmentById = async (id) => {
   const query = `SELECT * FROM apartments WHERE id = $1`;
@@ -171,6 +219,8 @@ const deleteApartment = async (id) => {
 module.exports = {
   createApartment,
   getAllApartments,
+  getApartmentsByBuilding,
+  getApartmentsByFloor,
   getApartmentById,
   updateApartment,
   deleteApartment,

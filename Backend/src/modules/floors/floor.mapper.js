@@ -3,8 +3,8 @@ const Floor = require("./floor.model");
 // ================= ENTITY (REQUEST → DB) =================
 const toEntity = (req) => {
   return {
-    building_id: req.buildingId,
-    floor_number: req.floorNumber,
+    building_id: req.buildingId ?? req.building_id,
+    floor_number: req.floorNumber ?? req.floor_number,
     name: req.name || null,
   };
 };

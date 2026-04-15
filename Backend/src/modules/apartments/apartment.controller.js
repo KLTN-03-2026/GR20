@@ -41,7 +41,48 @@ const createApartment = async (req, res) => {
 // GET ALL
 const getAllApartments = async (req, res) => {
   try {
-    const result = await service.getAllApartments(req.query);
+    const floorId = req.params.floorId;
+    const result = floorId
+      ? await service.getApartmentsByFloor(Number(floorId), req.query)
+      : await service.getAllApartments(req.query);
+
+    res.json({
+      operationType: "Success",
+      message: "success",
+      code: "OK",
+      ...result,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+};
+
+const getByBuilding = async (req, res) => {
+  try {
+    const result = await service.getApartmentsByBuilding(
+      Number(req.params.buildingId),
+      req.query
+    );
+
+    res.json({
+      operationType: "Success",
+      message: "success",
+      code: "OK",
+      ...result,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+};
+
+const getByFloor = async (req, res) => {
+  try {
+    const result = await service.getApartmentsByFloor(
+      Number(req.params.floorId),
+      req.query
+    );
 
     res.json({
       operationType: "Success",
@@ -109,6 +150,8 @@ const deleteApartment = async (req, res) => {
 module.exports = {
   createApartment,
   getAllApartments,
+  getByBuilding,
+  getByFloor,
   getApartmentById,
   updateApartment,
   deleteApartment,
