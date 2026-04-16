@@ -8,6 +8,7 @@ import TestAllQrApi from './apis/QRCODE/testallQR'
 import Login from './pages/Login'
 import HomePage from './pages/HomePage'
 import DashboardLayoutUser from './layout/DashboardLayoutUser'
+import EmployeeManagement from './pages/employees/EmployeeManagement'
 
 //tạo cái component để kiểm tra người dùng login chưa
 
@@ -62,6 +63,10 @@ export default function useRouteElements() {
     {
       path: 'login', //
       element: <Login />
+    },
+    {
+      path: '/employees',
+      element: <EmployeeManagement />
     }
   ])
   return routeElements
