@@ -1,4 +1,7 @@
 const { pool } = require("../../configs/database.config");
+const { AppError } = require("../../common/app-error");
+
+const isUniqueViolation = (err) => err && err.code === "23505";
 
 const createBuilding = async (building) => {
   const query = `
@@ -17,8 +20,19 @@ const createBuilding = async (building) => {
     building.status,
   ];
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new AppError(
+        409,
+        "A building with this code already exists",
+        { constraint: err.constraint }
+      );
+    }
+    throw err;
+  }
 };
 
 const getAllBuildings = async ({ page = 0, size = 10 }) => {
@@ -101,8 +115,19 @@ const updateBuilding = async (id, building) => {
     RETURNING *
   `;
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new AppError(
+        409,
+        "A building with this code already exists",
+        { constraint: err.constraint }
+      );
+    }
+    throw err;
+  }
 };
 
 // DELETE

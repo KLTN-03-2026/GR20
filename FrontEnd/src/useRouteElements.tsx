@@ -5,6 +5,9 @@ import Buildings from './pages/building management/Buildings'
 import Profile from './pages/profile_Management/Profile'
 import ScanQr from './pages/QRCODE_USER/Scanqr'
 import TestAllQrApi from './apis/QRCODE/testallQR'
+import Login from './pages/Login'
+import HomePage from './pages/HomePage'
+import DashboardLayoutUser from './layout/DashboardLayoutUser'
 
 //tạo cái component để kiểm tra người dùng login chưa
 
@@ -27,18 +30,25 @@ export default function useRouteElements() {
   //bảng chất thằng này là theo kiểu trên xuống dưới nên dể lỗi ko mong muốn
   const routeElements = useRoutes([
     {
-      index: true, //nhận diện đây thz chính xếp ở đâu cx được
-      path: '/abc', // đường dẫn gốc
-      element: <div className='bg-slate-400 rounded-sm'>Hello</div>
-      // danh sách sản phẩm
+      index: true,
+      path: '/',
+      element: (
+        <DashboardLayoutUser>
+          <HomePage />
+        </DashboardLayoutUser>
+      )
     },
     {
-      path: 'api/buildings',
+      path: '/buildings',
       element: <Buildings />
     },
     {
-      path: 'api/profile',
-      element: <Profile />
+      path: '/profile',
+      element: (
+        <DashboardLayoutUser>
+          <Profile />
+        </DashboardLayoutUser>
+      )
     },
     {
       path: 'api/qrcode',
@@ -46,8 +56,12 @@ export default function useRouteElements() {
     },
     {
       // ✅ Route cho scan QR
-      path: 'scan/:qrCode', // ← Quan trọng: phải match với URL từ QR
+      path: 'scan/:qrCode', //
       element: <ScanQr />
+    },
+    {
+      path: 'login', //
+      element: <Login />
     }
   ])
   return routeElements

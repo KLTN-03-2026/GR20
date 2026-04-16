@@ -2,11 +2,14 @@ import type { Buildings } from 'src/types/buildings.type'
 
 interface Props {
   building: Buildings
+  onEdit?: (building: Buildings) => void
+  onDelete?: (building: Buildings) => void
+  onReopen?: (building: Buildings) => void
 }
 
-export default function ItemBuilding({ building }: Props) {
+export default function ItemBuilding({ building, onEdit, onDelete, onReopen }: Props) {
   return (
-    <tr key={building.id} className='hover:bg-gray-50/50 transition-colors group'>
+    <tr className='hover:bg-gray-50/50 transition-colors group'>
       {/* Name */}
       <td className='px-6 py-5'>
         <div className='flex items-center gap-3'>
@@ -49,12 +52,30 @@ export default function ItemBuilding({ building }: Props) {
       {/* Actions */}
       <td className='px-6 py-5 text-right'>
         <div className='flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
-          <button className='p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'>
+          <button
+            type='button'
+            onClick={() => onEdit && onEdit(building)}
+            className='p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
+          >
             <span className='material-symbols-outlined text-[20px]'>edit</span>
           </button>
-          <button className='p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all'>
-            <span className='material-symbols-outlined text-[20px]'>delete</span>
-          </button>
+          {building.status === 'CLOSED' ? (
+            <button
+              type='button'
+              onClick={() => onReopen && onReopen(building)}
+              className='p-2 text-gray-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition-all'
+            >
+              <span className='material-symbols-outlined text-[20px]'>restart_alt</span>
+            </button>
+          ) : (
+            <button
+              type='button'
+              onClick={() => onDelete && onDelete(building)}
+              className='p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all'
+            >
+              <span className='material-symbols-outlined text-[20px]'>delete</span>
+            </button>
+          )}
         </div>
       </td>
     </tr>

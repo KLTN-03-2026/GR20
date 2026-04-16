@@ -18,10 +18,25 @@ const createGuestQr = async (req, res) => {
   }
 };
 
+// ─── DANH SÁCH QR KHÁCH (Có lọc, phân trang, sắp xếp) ───────────────────────────────────
 const getGuestQrsByHost = async (req, res) => {
   try {
-    const data = await service.getGuestQrsByHost(req.params.userId);
-    res.json({ operationType: "Success", message: "Get guest QR list successfully", code: "OK", data, timestamp: new Date() });
+    const { userId } = req.params;
+    const { limit, offset, onlyValid } = req.query;
+    
+    const data = await service.getGuestQrsByHost(userId, {
+      limit,
+      offset,
+      onlyValid
+    });
+    
+    res.json({ 
+      operationType: "Success", 
+      message: "Get guest QR list successfully", 
+      code: "OK", 
+      data, 
+      timestamp: new Date() 
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -36,10 +51,22 @@ const getGuestQrById = async (req, res) => {
   }
 };
 
+// Trong qr.controller.js
 const scanQr = async (req, res) => {
   try {
-    const data = await service.scanQr(req.params.qrCode);
-    res.json({ operationType: "Success", message: "QR hợp lệ", code: "OK", data, timestamp: new Date() });
+    const { direction, gate, building_id } = req.query;
+    const data = await service.scanQr(req.params.qrCode, {
+      direction,
+      gate,
+      building_id: building_id ? parseInt(building_id) : null
+    });
+    res.json({ 
+      operationType: "Success", 
+      message: "QR hợp lệ", 
+      code: "OK", 
+      data, 
+      timestamp: new Date() 
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

@@ -13,8 +13,6 @@ export default function ScanQr() {
     retry: false
   })
 
-  console.log(data)
-
   const qrDetail = data?.data.data
 
   const formatDate = (isoString: string) => {

@@ -12,7 +12,7 @@ export default function TestAllQrApi() {
 
     try {
       // 1. Test scan QR
-      results.scan = await qrApi.scanQr('GUEST_30a98f1d-2df5-4429-a746-7889e157dcb3')
+      // results.scan = await qrApi.scanQr('GUEST_30a98f1d-2df5-4429-a746-7889e157dcb3')
 
       // 2. Test get list by host
       results.list = await qrApi.getGuestQrsByHost(1)
@@ -27,7 +27,6 @@ export default function TestAllQrApi() {
 
       setResult(results)
     } catch (error) {
-      console.error(error)
       setResult({ error })
     } finally {
       setLoading(false)

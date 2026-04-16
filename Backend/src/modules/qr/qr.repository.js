@@ -47,9 +47,34 @@ const createGuestQr = async ({ visitor, guestQr }) => {
   }
 };
 
-// ─── DANH SÁCH QR KHÁCH ───────────────────────────────────
-const getGuestQrsByHost = async (hostUserId) => {
-  const query = `
+// ─── DANH SÁCH QR KHÁCH (Lấy tất cả trừ REVOKED) ───────────────────────────────────
+const getGuestQrsByHost = async (hostUserId, options = {}) => {
+  const {
+    limit = 10,
+    offset = 0,
+    onlyValid = false  // false: lấy hết (kể cả expired), true: chỉ lấy còn hiệu lực
+  } = options;
+
+  let conditions = [`gq.host_user_id = $1`];
+  let params = [hostUserId];
+  let paramIndex = 2;
+
+  // ✅ Chỉ lọc REVOKED - không hiển thị QR đã bị thu hồi
+  conditions.push(`gq.status != 'REVOKED'`);
+
+  // Nếu onlyValid = true thì chỉ lấy QR còn hiệu lực (chưa hết hạn)
+  if (onlyValid) {
+    conditions.push(`gq.valid_from <= NOW()`);
+    conditions.push(`gq.valid_to >= NOW()`);
+    conditions.push(`gq.status = 'ACTIVE'`);
+  }
+
+  const whereClause = conditions.length > 0 
+    ? `WHERE ${conditions.join(' AND ')}` 
+    : '';
+
+  // Query lấy dữ liệu với phân trang
+  const dataQuery = `
     SELECT 
       gq.*,
       v.name AS visitor_name,
@@ -61,11 +86,27 @@ const getGuestQrsByHost = async (hostUserId) => {
     LEFT JOIN visitors v ON v.id = gq.visitor_id
     LEFT JOIN apartments a ON a.id = gq.apartment_id
     LEFT JOIN users u ON u.id = gq.host_user_id
-    WHERE gq.host_user_id = $1
+    ${whereClause}
     ORDER BY gq.created_at DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
-  const result = await pool.query(query, [hostUserId]);
-  return result.rows;
+
+  const dataResult = await pool.query(dataQuery, [...params, limit, offset]);
+
+  // Query lấy tổng số
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM guest_qr_codes gq
+    ${whereClause}
+  `;
+  const countResult = await pool.query(countQuery, params);
+
+  return {
+    total: parseInt(countResult.rows[0].total),
+    limit: parseInt(limit),
+    offset: parseInt(offset),
+    data: dataResult.rows
+  };
 };
 
 // ─── CHI TIẾT QR KHÁCH ────────────────────────────────────
@@ -147,12 +188,71 @@ const updateGuestQr = async (id, data) => {
 
 // ─── XÓA QR KHÁCH ─────────────────────────────────────────
 const deleteGuestQr = async (id) => {
-  const query = `UPDATE guest_qr_codes SET status = 'INACTIVE' WHERE id = $1 RETURNING id`;
+  // const query = `UPDATE guest_qr_codes SET status = 'INACTIVE' WHERE id = $1 RETURNING id`;
+  // const result = await pool.query(query, [id]);
+  // return result.rows[0];
+
+     const query = `UPDATE guest_qr_codes SET status = 'REVOKED' WHERE id = $1 RETURNING id`;
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
 
 // ─── LỊCH SỬ QR KHÁCH ─────────────────────────────────────
+// const getGuestQrHistory = async (hostUserId) => {
+//   const query = `
+//     SELECT 
+//       gq.*,
+//       v.name AS visitor_name,
+//       v.phone AS visitor_phone,
+//       a.apartment_code,
+//       u.full_name AS host_name,
+//       al.scan_time,
+//       al.direction,
+//       al.gate,
+//       al.result
+//     FROM guest_qr_codes gq
+//     LEFT JOIN visitors v ON v.id = gq.visitor_id
+//     LEFT JOIN apartments a ON a.id = gq.apartment_id
+//     LEFT JOIN users u ON u.id = gq.host_user_id
+//     LEFT JOIN access_logs al ON al.qr_code_id = gq.id
+//     WHERE gq.host_user_id = $1
+//     ORDER BY gq.created_at DESC
+//   `;
+//   const result = await pool.query(query, [hostUserId]);
+//   return result.rows;
+// };
+
+// ─── TẠO LOG KHI QUÉT QR ─────────────────────────────────────────
+const createAccessLog = async (logData) => {
+  const query = `
+    INSERT INTO access_logs (qr_code_id, user_id, building_id, direction, gate, scan_time, result)
+    VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+    RETURNING *
+  `;
+  const result = await pool.query(query, [
+    logData.qr_code_id,
+    logData.user_id || null,
+    logData.building_id || null,
+    logData.direction || 'IN',
+    logData.gate || null,
+    logData.result || 'SUCCESS'
+  ]);
+  return result.rows[0];
+};
+
+// ─── CẬP NHẬT SỐ LẦN ĐÃ DÙNG ─────────────────────────────────────────
+const incrementUsedEntries = async (id) => {
+  const query = `
+    UPDATE guest_qr_codes 
+    SET used_entries = used_entries + 1 
+    WHERE id = $1 
+    RETURNING *
+  `;
+  const result = await pool.query(query, [id]);
+  return result.rows[0];
+};
+
+// ─── LẤY LỊCH SỬ QUÉT QR ─────────────────────────────────────────
 const getGuestQrHistory = async (hostUserId) => {
   const query = `
     SELECT 
@@ -171,7 +271,7 @@ const getGuestQrHistory = async (hostUserId) => {
     LEFT JOIN users u ON u.id = gq.host_user_id
     LEFT JOIN access_logs al ON al.qr_code_id = gq.id
     WHERE gq.host_user_id = $1
-    ORDER BY gq.created_at DESC
+    ORDER BY al.scan_time DESC
   `;
   const result = await pool.query(query, [hostUserId]);
   return result.rows;
@@ -186,4 +286,6 @@ module.exports = {
   updateGuestQr,
   deleteGuestQr,
   getGuestQrHistory,
+    createAccessLog,        // ← Thêm
+  incrementUsedEntries
 };

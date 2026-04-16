@@ -119,5 +119,103 @@ const deleteUser = async (id) => {
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
+const getUserByUsername = async (username) => {
+  const query = `
+    SELECT 
+      u.*,
+      r.name AS role
+    FROM users u
+    LEFT JOIN roles r ON r.id = u.role_id
+    WHERE u.username = $1 AND u.is_active = true
+  `;
 
-module.exports = { getUserById, createUser,getAllUsers,updateUser,deleteUser  };
+  const result = await pool.query(query, [username]);
+  return result.rows[0];
+};
+
+const updateUserByUsername = async (username, user) => {
+  const fields = [];
+  const values = [];
+  let index = 1;
+
+  if (user.email !== undefined) {
+    fields.push(`email = $${index++}`);
+    values.push(user.email);
+  }
+  if (user.full_name !== undefined) {
+    fields.push(`full_name = $${index++}`);
+    values.push(user.full_name);
+  }
+  if (user.phone !== undefined) {
+    fields.push(`phone = $${index++}`);
+    values.push(user.phone);
+  }
+  if (user.gender !== undefined) {
+    fields.push(`gender = $${index++}`);
+    values.push(user.gender);
+  }
+  if (user.date_of_birth !== undefined) {
+    fields.push(`date_of_birth = $${index++}`);
+    values.push(user.date_of_birth);
+  }
+  if (user.avatar_url !== undefined) {
+    fields.push(`avatar_url = $${index++}`);
+    values.push(user.avatar_url);
+  }
+
+  if (fields.length === 0) throw new Error("No fields to update");
+
+  fields.push(`updated_at = NOW()`);
+  values.push(username);
+
+  const query = `
+    UPDATE users
+    SET ${fields.join(", ")}
+    WHERE username = $${index} AND is_active = true
+    RETURNING *
+  `;
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+};
+
+// const updatePassword = async (username, hashedPassword) => {
+//   const query = `
+//     UPDATE users
+//     SET password = $1, updated_at = NOW()
+//     WHERE username = $2 AND is_active = true
+//     RETURNING id
+//   `;
+
+//   const result = await pool.query(query, [hashedPassword, username]);
+//   return result.rows[0];
+// };
+
+const updatePassword = async (username, newPassword) => {
+  const query = `
+    UPDATE users
+    SET password = $1, updated_at = NOW()
+    WHERE username = $2 AND is_active = true
+    RETURNING id
+  `;
+
+  // ✅ Lưu trực tiếp, không hash
+  const result = await pool.query(query, [newPassword, username]);
+  return result.rows[0];
+};
+
+const updateAvatarUrl = async (username, avatarUrl) => {
+  const query = `
+    UPDATE users
+    SET avatar_url = $1, updated_at = NOW()
+    WHERE username = $2 AND is_active = true
+    RETURNING id
+  `;
+
+  const result = await pool.query(query, [avatarUrl, username]);
+  return result.rows[0];
+};
+
+
+
+module.exports = { getUserById, createUser,getAllUsers,updateUser,deleteUser,getUserByUsername,updateUserByUsername,updatePassword,updateAvatarUrl  };
