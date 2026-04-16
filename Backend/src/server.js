@@ -14,12 +14,15 @@ BigInt.prototype.toJSON = function () {
 const PORT = process.env.PORT || 8000;
 
 const startServer = async () => {
-  // Gọi hàm kết nối
-  await connectDB();
+  try {
+    await connectDB();
 
-  app.listen(PORT, () => {
-    // Server started
-  });
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend đang chạy tại: http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Lỗi khi khởi động server:", error);
+  }
 };
 
 startServer();
