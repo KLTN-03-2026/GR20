@@ -12,26 +12,18 @@ const createFloor = async (floor) => {
     RETURNING id
   `;
 
-  const values = [
-    floor.building_id,
-    floor.floor_number,
-    floor.name,
-  ];
+  const values = [floor.building_id, floor.floor_number, floor.name];
 
   try {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
     if (isForeignKeyViolation(err)) {
-      throw new AppError(
-        400,
-        "Invalid building_id (building does not exist)"
-      );
+      throw new AppError(400, "Invalid building_id (building does not exist)");
     }
     throw err;
   }
 };
-
 
 // ================= GET ALL (PAGINATION) =================
 const getAllFloors = async ({ page = 0, size = 10 }) => {
@@ -39,14 +31,14 @@ const getAllFloors = async ({ page = 0, size = 10 }) => {
 
   const dataQuery = `
     SELECT * FROM floors
-    WHERE deleted_at IS NULL
+    WHERE is_deleted = TRUE
     ORDER BY id ASC
     LIMIT $1 OFFSET $2
   `;
 
   const countQuery = `
     SELECT COUNT(*) FROM floors
-    WHERE deleted_at IS NULL
+    WHERE is_deleted = TRUE
   `;
 
   const data = await pool.query(dataQuery, [size, offset]);
@@ -58,18 +50,16 @@ const getAllFloors = async ({ page = 0, size = 10 }) => {
   };
 };
 
-
 // ================= GET BY ID =================
 const getFloorById = async (id) => {
   const query = `
     SELECT * FROM floors
-    WHERE id = $1 AND deleted_at IS NULL
+    WHERE id = $1 AND is_deleted = TRUE
   `;
 
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
-
 
 // ================= UPDATE =================
 const updateFloor = async (id, floor) => {
@@ -101,7 +91,7 @@ const updateFloor = async (id, floor) => {
   const query = `
     UPDATE floors
     SET ${fields.join(", ")}
-    WHERE id = $${index} AND deleted_at IS NULL
+    WHERE id = $${index} AND is_deleted = TRUE
     RETURNING *
   `;
 
@@ -110,34 +100,29 @@ const updateFloor = async (id, floor) => {
     return result.rows[0];
   } catch (err) {
     if (isForeignKeyViolation(err)) {
-      throw new AppError(
-        400,
-        "Invalid building_id (building does not exist)"
-      );
+      throw new AppError(400, "Invalid building_id (building does not exist)");
     }
     throw err;
   }
 };
 
-
 // ================= SOFT DELETE =================
-const deleteFloor = async (id) => {
+const softDeleteFloor = async (id) => {
   const query = `
     UPDATE floors
-    SET deleted_at = NOW()
-    WHERE id = $1 AND deleted_at IS NULL
-    RETURNING id
+    SET is_deleted = FALSE
+    WHERE id = $1 AND is_deleted = TRUE
+    RETURNING id, is_deleted
   `;
 
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
 
-
 module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
   updateFloor,
-  deleteFloor,
+  softDeleteFloor,
 };

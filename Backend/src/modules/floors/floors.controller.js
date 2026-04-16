@@ -2,7 +2,6 @@ const { ZodError } = require("zod");
 const { AppError } = require("../../common/app-error");
 const service = require("./floor.service");
 
-
 // ================= ERROR HANDLER =================
 const sendError = (res, err) => {
   if (err instanceof ZodError) {
@@ -24,7 +23,6 @@ const sendError = (res, err) => {
   return res.status(500).json({ message: err.message });
 };
 
-
 // ================= CREATE =================
 const createFloor = async (req, res) => {
   try {
@@ -43,7 +41,6 @@ const createFloor = async (req, res) => {
   }
 };
 
-
 // ================= GET ALL =================
 const getAllFloors = async (req, res) => {
   try {
@@ -61,7 +58,6 @@ const getAllFloors = async (req, res) => {
   }
 };
 
-
 // ================= GET BY ID =================
 const getFloorById = async (req, res) => {
   try {
@@ -75,10 +71,9 @@ const getFloorById = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    sendError(res, err); 
+    sendError(res, err);
   }
 };
-
 
 // ================= UPDATE =================
 const updateFloor = async (req, res) => {
@@ -97,15 +92,14 @@ const updateFloor = async (req, res) => {
   }
 };
 
-
 // ================= DELETE (SOFT) =================
-const deleteFloor = async (req, res) => {
+const softDeleteFloor = async (req, res) => {
   try {
-    const data = await service.deleteFloor(req.params.id);
+    const data = await service.softDeleteFloor(req.params.id);
 
     res.json({
       operationType: "Success",
-      message: "Delete floor successfully",
+      message: "Soft delete floor successfully",
       code: "OK",
       data,
       timestamp: new Date(),
@@ -115,11 +109,10 @@ const deleteFloor = async (req, res) => {
   }
 };
 
-
 module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
   updateFloor,
-  deleteFloor,
+  softDeleteFloor,
 };

@@ -17,8 +17,8 @@ router.get("/:id", controller.getFloorById);
 // UPDATE
 router.put("/:id", controller.updateFloor);
 
-// DELETE (SOFT)
-router.delete("/:id", controller.deleteFloor);
+// TOGGLE STATUS (ACTIVE / INACTIVE)
+router.patch("/:id/delete", controller.softDeleteFloor);
 
 // /floors/:floorId/apartments
 router.use("/:floorId/apartments", apartmentRouter);
