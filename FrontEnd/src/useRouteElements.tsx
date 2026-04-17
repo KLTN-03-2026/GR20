@@ -2,7 +2,13 @@ import { Navigate, Outlet, useRoutes } from 'react-router-dom'
 import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 import Buildings from './pages/building management/Buildings'
-import EmployeeManagement from './pages/employees/EmployeeManagement'
+import Profile from './pages/profile_Management/Profile'
+import ScanQr from './pages/QRCODE_USER/Scanqr'
+import TestAllQrApi from './apis/QRCODE/testallQR'
+import Login from './pages/Login'
+import HomePage from './pages/HomePage'
+import DashboardLayoutUser from './layout/DashboardLayoutUser'
+
 //tạo cái component để kiểm tra người dùng login chưa
 
 function ProtecdRouter() {
@@ -25,19 +31,37 @@ export default function useRouteElements() {
   const routeElements = useRoutes([
     {
       index: true,
-      element: <Navigate to='/buildings' replace />
+      path: '/',
+      element: (
+        <DashboardLayoutUser>
+          <HomePage />
+        </DashboardLayoutUser>
+      )
     },
     {
       path: '/buildings',
       element: <Buildings />
     },
     {
-      path: '/api/buildings',
-      element: <Navigate to='/buildings' replace />
+      path: '/profile',
+      element: (
+        <DashboardLayoutUser>
+          <Profile />
+        </DashboardLayoutUser>
+      )
     },
     {
-      path: '/employees',
-      element: <EmployeeManagement />
+      path: 'api/qrcode',
+      element: <ScanQr />
+    },
+    {
+      // ✅ Route cho scan QR
+      path: 'scan/:qrCode', //
+      element: <ScanQr />
+    },
+    {
+      path: 'login', //
+      element: <Login />
     }
   ])
   return routeElements

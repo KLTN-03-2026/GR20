@@ -125,15 +125,69 @@ export const schema = yup.object({
 })
 
 export const userSchema = yup.object({
-  name: yup.string().max(160, 'độ dài tối đa 160 kí tự').required(),
+  fullName: yup.string().max(100, 'độ dài tối đa 100 kí tự').required(),
   phone: yup.string().max(10, 'độ dài tối đa 10 kí tự').required(),
-  address: yup.string().max(160, 'độ dài tối đa 160 kí tự').required(),
+  address: yup.string().max(200, 'độ dài tối đa 200 kí tự').required(),
   avatar: yup.string().max(1000, 'độ dài tối đa 1000 kí tự').required(),
   date_of_birth: yup.date().max(new Date(), 'hãy chọn ngày trong quá khứ').required(),
   password: schema.fields['password'],
   new_password: schema.fields['password'],
   confirm_password: handleConfirmPassword('new_password')
 })
+
+// utils/rules.ts
+
+export const updateProfileSchema = yup.object().shape({
+  fullName: yup.string().max(100, 'Độ dài tối đa 100 kí tự').optional(),
+
+  email: yup.string().email('Email không hợp lệ').optional(),
+
+  phone: yup
+    .string()
+    .matches(/^[0-9]+$/, 'Số điện thoại chỉ được chứa số')
+    .min(10, 'Số điện thoại phải có ít nhất 10 số')
+    .max(11, 'Số điện thoại tối đa 11 số')
+    .optional(),
+
+  gender: yup
+    .string()
+    .oneOf(['MALE', 'FEMALE', 'OTHER'] as const)
+    .optional(),
+
+  dateOfBirth: yup.string().optional(),
+
+  avatarUrl: yup.string().optional()
+})
+
+// Explicit type definition for form data
+export interface UpdateProfileFormData {
+  fullName?: string
+  email?: string
+  phone?: string
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
+  dateOfBirth?: string
+  avatarUrl?: string
+}
+
+export const changePasswordSchema = yup.object().shape({
+  currentPassword: yup.string().optional(),
+  newPassword: yup
+    .string()
+    .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
+    .matches(/[A-Z]/, 'Mật khẩu phải có ít nhất 1 chữ hoa')
+    .matches(/[0-9]/, 'Mật khẩu phải có ít nhất 1 số')
+    .optional(),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('newPassword')], 'Mật khẩu xác nhận không khớp')
+    .optional()
+})
+
+export interface ChangePasswordFormData {
+  currentPassword?: string
+  newPassword?: string
+  confirmPassword?: string
+}
 
 export type UserSchemaType = yup.InferType<typeof userSchema>
 

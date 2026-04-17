@@ -18,7 +18,7 @@ const startServer = async () => {
   await connectDB();
 
   app.listen(PORT, () => {
-    console.log(`[⚡] Server đang chạy tại: http://localhost:${PORT}`);
+    // Server started
   });
 };
 

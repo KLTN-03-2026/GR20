@@ -29,6 +29,7 @@
     "interactions": "^0.0.1",
     "jimp": "^1.6.0",
     "lodash": "^4.17.21",
+    "material-symbols": "^0.44.1",
     "qrcode": "^1.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

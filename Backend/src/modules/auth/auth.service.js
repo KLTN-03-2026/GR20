@@ -20,6 +20,8 @@ const toFrontendUserShape = (row) => {
     phone: row.phone ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    avatarUrl: row.avatar_url || null,
+    dateOfBirth: row.date_of_birth   || null
   };
 };
 
@@ -34,9 +36,13 @@ const login = async (reqBody) => {
     throw new AppError(403, "Account is inactive");
   }
 
-  const ok = await bcrypt.compare(password, userRow.password);
-  if (!ok) {
-    throw new AppError(401, "Invalid username or password");
+  // const ok = await bcrypt.compare(password, userRow.password);
+  // if (!ok) {
+  //   throw new AppError(401, "Invalid username or password");
+  // }
+
+  if (password !== userRow.password) {
+  throw new AppError(401, "Invalid username or password");
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -64,6 +70,9 @@ const login = async (reqBody) => {
     user: toFrontendUserShape(userRow),
   };
 };
+
+
+
 
 module.exports = { login };
 
