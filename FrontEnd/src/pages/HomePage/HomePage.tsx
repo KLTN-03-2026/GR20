@@ -1,6 +1,4 @@
-import React from 'react'
 import 'material-symbols'
-import { Link } from 'react-router-dom'
 import SidebarUser from 'src/components/SidebarUser'
 
 export default function HomePage() {
