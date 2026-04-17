@@ -4,9 +4,11 @@ const router = express.Router();
 // 1. Import route của chức năng vào
 const buildingRoute = require("../modules/buildings/buildings.route");
 const residentRoute = require("../modules/residents/resident.route");
+const maintenanceRoute = require("../modules/maintenances/maintenance.route");
 
 // 2. Gắn tiền tố cho nó
 router.use("/buildings", buildingRoute);
 router.use("/residents", residentRoute);
+router.use("/maintenances", maintenanceRoute);
 
 module.exports = router;

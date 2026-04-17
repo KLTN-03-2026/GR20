@@ -1,3 +1,5 @@
+console.log("🔥 ĐANG CHẠY FILE SERVICE NÀY");
+
 const repo = require("./building.repository");
 const mapper = require("./building.mapper");
 
