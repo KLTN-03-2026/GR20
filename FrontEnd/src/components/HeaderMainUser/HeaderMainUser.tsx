@@ -1,12 +1,14 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
+import { AppContext } from 'src/contexts/app.context'
 
 export default function HeaderMainUser() {
+  const { user } = useContext(AppContext)
   return (
     <header className='w-full top-0 sticky z-40 bg-surface/80 backdrop-blur-md'>
       <div className='flex justify-between items-center w-full px-6 py-4 max-w-screen-2xl mx-auto'>
         <div className='flex flex-col'>
-          <h2 className='text-xl font-bold font-manrope tracking-tight text-primary'>Chào mừng, Nguyễn Văn A</h2>
+          <h2 className='text-xl font-bold font-manrope tracking-tight text-primary'>Chào mừng, {user.name}</h2>
           <p className='text-xs text-on-surface-variant font-medium'>Căn hộ PB23-1505 • Diamond Precinct</p>
         </div>
         <div className='flex items-center space-x-4'>

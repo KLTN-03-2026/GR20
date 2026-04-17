@@ -4,10 +4,15 @@ import { useContext } from 'react'
 import Buildings from './pages/building management/Buildings'
 import Profile from './pages/profile_Management/Profile'
 import ScanQr from './pages/QRCODE_USER/Scanqr'
-import TestAllQrApi from './apis/QRCODE/testallQR'
 import Login from './pages/Login'
 import HomePage from './pages/HomePage'
 import DashboardLayoutUser from './layout/DashboardLayoutUser'
+import QrcodeManagement from './pages/QRCODE_USER/QrcodeManagement'
+import ViewQRcodeDetails from './pages/QRCODE_USER/ViewQRcodeDetails'
+import ResultQrcode from './pages/QRCODE_USER/ResultQrcode'
+import HomePageProtect from './pages/protect/HomePage/HomePage'
+import DashboardLayoutProtect from './layout/DashboardLayoutProtect'
+import HistoryQrcode from './pages/QRCODE_USER/HistoryQrcode'
 
 //tạo cái component để kiểm tra người dùng login chưa
 
@@ -51,17 +56,56 @@ export default function useRouteElements() {
       )
     },
     {
-      path: 'api/qrcode',
-      element: <ScanQr />
-    },
-    {
-      // ✅ Route cho scan QR
-      path: 'scan/:qrCode', //
-      element: <ScanQr />
-    },
-    {
       path: 'login', //
       element: <Login />
+    },
+    {
+      path: 'qrcode', //
+      element: (
+        <DashboardLayoutUser>
+          <QrcodeManagement />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: 'qrcodeDetail/:id',
+      element: (
+        <DashboardLayoutProtect>
+          <ViewQRcodeDetails />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: 'result/:qrCode',
+      element: (
+        <DashboardLayoutProtect>
+          <ResultQrcode />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: 'scanqr',
+      element: (
+        <DashboardLayoutProtect>
+          <ScanQr />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: 'homepageprotect',
+      element: (
+        <DashboardLayoutProtect>
+          <HomePageProtect />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: 'history/qrcode',
+      element: (
+        <DashboardLayoutProtect>
+          <HistoryQrcode />
+        </DashboardLayoutProtect>
+      )
     }
   ])
   return routeElements

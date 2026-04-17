@@ -10,6 +10,8 @@ const getPersonalQr = async (userId) => {
 // ─── TẠO KHÁCH + QR KHÁCH ─────────────────────────────────
 const createGuestQr = async ({ visitor, guestQr }) => {
   const client = await pool.connect();
+  console.log('📝 visitor:', visitor);
+  console.log('📝 guestQr:', guestQr);
   try {
     await client.query("BEGIN");
 
@@ -223,15 +225,34 @@ const deleteGuestQr = async (id) => {
 // };
 
 // ─── TẠO LOG KHI QUÉT QR ─────────────────────────────────────────
+// const createAccessLog = async (logData) => {
+//   const query = `
+//     INSERT INTO access_logs (qr_code_id, user_id, building_id, direction, gate, scan_time, result)
+//     VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+//     RETURNING *
+//   `;
+//   const result = await pool.query(query, [
+//     logData.qr_code_id,
+//     logData.user_id || null,
+//     logData.building_id || null,
+//     logData.direction || 'IN',
+//     logData.gate || null,
+//     logData.result || 'SUCCESS'
+//   ]);
+//   return result.rows[0];
+// };
+
+// qr.repository.js
 const createAccessLog = async (logData) => {
   const query = `
-    INSERT INTO access_logs (qr_code_id, user_id, building_id, direction, gate, scan_time, result)
-    VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+    INSERT INTO access_logs (qr_code_id, user_id, scanned_by, building_id, direction, gate, scan_time, result)
+    VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     RETURNING *
   `;
   const result = await pool.query(query, [
     logData.qr_code_id,
     logData.user_id || null,
+    logData.scanned_by || null,  // 👈 Thêm scanned_by
     logData.building_id || null,
     logData.direction || 'IN',
     logData.gate || null,
@@ -277,6 +298,22 @@ const getGuestQrHistory = async (hostUserId) => {
   return result.rows;
 };
 
+const getApartmentByUserId = async (userId) => {
+  const query = `
+    SELECT a.* 
+    FROM apartments a
+    WHERE a.owner_user_id = $1
+    UNION
+    SELECT a.* 
+    FROM apartments a
+    INNER JOIN resident_profiles rp ON rp.apartment_id = a.id
+    WHERE rp.user_id = $1 AND rp.status = 'ACTIVE'
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [userId]);
+  return result.rows[0];
+};
+
 module.exports = {
   getPersonalQr,
   createGuestQr,
@@ -287,5 +324,6 @@ module.exports = {
   deleteGuestQr,
   getGuestQrHistory,
     createAccessLog,        // ← Thêm
-  incrementUsedEntries
+  incrementUsedEntries,
+  getApartmentByUserId
 };
