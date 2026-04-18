@@ -9,6 +9,9 @@ import Login from './pages/Login'
 import HomePage from './pages/HomePage'
 import DashboardLayoutUser from './layout/DashboardLayoutUser'
 import EmployeeManagement from './pages/employees/EmployeeManagement'
+import Getresidentlist from './pages/residentmanagement/Getresidentlist'
+import Addresident from './pages/residentmanagement/Addresident'
+import ResidentDetail from './pages/residentmanagement/Residentdetail'
 
 //tạo cái component để kiểm tra người dùng login chưa
 
@@ -67,6 +70,18 @@ export default function useRouteElements() {
     {
       path: '/employees',
       element: <EmployeeManagement />
+    },
+    {
+      path: '/residents',
+      element: <Getresidentlist />
+    },
+    {
+      path: '/residents/add',
+      element: <Addresident />
+    },
+    {
+      path: '/residents/:id',
+      element: <ResidentDetail />
     }
   ])
   return routeElements

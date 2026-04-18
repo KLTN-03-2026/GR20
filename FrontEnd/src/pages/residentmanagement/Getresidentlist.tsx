@@ -106,7 +106,7 @@
 //   );
 // }
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { residentApi } from 'src/apis/resident_api/residents.api'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
 import { toast } from 'react-toastify'
@@ -118,7 +118,8 @@ export default function Getresidentlist() {
   const queryClient = useQueryClient()
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
-  const [isOpenModal, setIsOpenModal] = useState(false)
+  const [page, setPage] = useState<number>(0)
+  const pageSize = 10
   const [selectedResident, setSelectedResident] = useState<Resident | null>(null)
   const navigate = useNavigate()
 
@@ -131,10 +132,10 @@ export default function Getresidentlist() {
   const buildings = buildingsData?.data.data || []
 
   // Lấy danh sách cư dân
-  const { data: residentsData, isLoading, refetch } = useQuery({
-    queryKey: ['residents', selectedBuilding, selectedStatus],
+  const { data: residentsData, isLoading } = useQuery({
+    queryKey: ['residents', selectedBuilding, selectedStatus, page, pageSize],
     queryFn: () => {
-      const params: any = { page: 0, size: 10 }
+      const params: any = { page, size: pageSize }
       if (selectedBuilding) params.buildingId = selectedBuilding
       if (selectedStatus) params.status = selectedStatus
       return residentApi.getAllResidents(params)
@@ -143,6 +144,7 @@ export default function Getresidentlist() {
 
   const residents = residentsData?.data.data || []
   const totalElements = residentsData?.data.totalElements || 0
+  const totalPages = residentsData?.data.totalPages || 0
 
   // Xóa cư dân
   const deleteMutation = useMutation({
@@ -288,6 +290,7 @@ export default function Getresidentlist() {
                 onClick={() => {
                   setSelectedBuilding('')
                   setSelectedStatus('')
+                  setPage(0)
                 }}
                 className="px-4 py-2.5 text-gray-600 hover:text-gray-800 transition-colors"
               >
@@ -358,15 +361,15 @@ export default function Getresidentlist() {
                             className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Xóa"
                           >
-                            <span className="material-symbols-outlined text-sm">xóa</span>
+                            <span className="material-symbols-outlined text-sm">delete</span>
                           </button>
                           <button
-  onClick={() => navigate(`/residents/${resident.id}`)}
-  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-  title="Xem chi tiết"
->
-  <span className="material-symbols-outlined text-sm">xem chi tiết</span>
-</button>
+                            onClick={() => navigate(`/residents/${resident.id}`)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Xem chi tiết"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -383,13 +386,21 @@ export default function Getresidentlist() {
                 Hiển thị {residents.length} / {totalElements} cư dân
               </span>
               <div className="flex gap-2">
-                <button className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors">
+                <button
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+                  disabled={page <= 0}
+                  className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Trước
                 </button>
                 <button className="px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg">
-                  1
+                  {page + 1}
                 </button>
-                <button className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors">
+                <button
+                  onClick={() => setPage((prev) => (prev + 1 < totalPages ? prev + 1 : prev))}
+                  disabled={totalPages === 0 || page + 1 >= totalPages}
+                  className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   Sau
                 </button>
               </div>
