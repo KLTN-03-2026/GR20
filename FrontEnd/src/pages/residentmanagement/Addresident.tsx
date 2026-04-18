@@ -23,10 +23,19 @@ export default function Addresident() {
 
   const buildings = buildingsData?.data.data || []
 
+  // Lấy danh sách căn hộ theo user để chọn nhanh
+  const { data: userApartmentsData, isFetching: isFetchingUserApartments } = useQuery({
+    queryKey: ['resident-user-apartments', formData.userId],
+    queryFn: () => residentApi.getUserApartments(formData.userId),
+    enabled: !!formData.userId
+  })
+
+  const userApartments = userApartmentsData?.data.data || []
+
   // Mutation để thêm cư dân
   const createMutation = useMutation({
     mutationFn: (data: any) => residentApi.createResident(data),
-    onSuccess: (response) => {
+    onSuccess: () => {
       toast.success('Thêm cư dân thành công')
       navigate('/residents')
     },
@@ -135,6 +144,28 @@ export default function Addresident() {
                     <p className="text-xs text-gray-400 mt-1">
                       ID của căn hộ muốn thêm cư dân
                     </p>
+                    {isFetchingUserApartments && (
+                      <p className="text-xs text-blue-500 mt-1">Đang tải căn hộ theo User ID...</p>
+                    )}
+                    {userApartments.length > 0 && (
+                      <div className="mt-3">
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Chọn nhanh căn hộ của user
+                        </label>
+                        <select
+                          value={formData.apartmentId}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, apartmentId: e.target.value }))}
+                          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Chọn căn hộ</option>
+                          {userApartments.map((apartment) => (
+                            <option key={apartment.apartmentId} value={apartment.apartmentId}>
+                              {apartment.apartmentNumber} - {apartment.buildingName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Relationship */}
@@ -227,6 +258,9 @@ export default function Addresident() {
                   </p>
                   <p className="text-gray-600">
                     <span className="font-semibold">Ngày tạo:</span> Tự động
+                  </p>
+                  <p className="text-gray-600">
+                    <span className="font-semibold">Số tòa hiện có:</span> {buildings.length}
                   </p>
                 </div>
               </div>
