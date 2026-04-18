@@ -10,6 +10,8 @@ const getPersonalQr = async (userId) => {
 // ─── TẠO KHÁCH + QR KHÁCH ─────────────────────────────────
 const createGuestQr = async ({ visitor, guestQr }) => {
   const client = await pool.connect();
+  console.log('📝 visitor:', visitor);
+  console.log('📝 guestQr:', guestQr);
   try {
     await client.query("BEGIN");
 
@@ -197,41 +199,18 @@ const deleteGuestQr = async (id) => {
   return result.rows[0];
 };
 
-// ─── LỊCH SỬ QR KHÁCH ─────────────────────────────────────
-// const getGuestQrHistory = async (hostUserId) => {
-//   const query = `
-//     SELECT 
-//       gq.*,
-//       v.name AS visitor_name,
-//       v.phone AS visitor_phone,
-//       a.apartment_code,
-//       u.full_name AS host_name,
-//       al.scan_time,
-//       al.direction,
-//       al.gate,
-//       al.result
-//     FROM guest_qr_codes gq
-//     LEFT JOIN visitors v ON v.id = gq.visitor_id
-//     LEFT JOIN apartments a ON a.id = gq.apartment_id
-//     LEFT JOIN users u ON u.id = gq.host_user_id
-//     LEFT JOIN access_logs al ON al.qr_code_id = gq.id
-//     WHERE gq.host_user_id = $1
-//     ORDER BY gq.created_at DESC
-//   `;
-//   const result = await pool.query(query, [hostUserId]);
-//   return result.rows;
-// };
 
-// ─── TẠO LOG KHI QUÉT QR ─────────────────────────────────────────
 const createAccessLog = async (logData) => {
   const query = `
-    INSERT INTO access_logs (qr_code_id, user_id, building_id, direction, gate, scan_time, result)
-    VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+    INSERT INTO access_logs (qr_code_id, personal_qr_code_id, user_id, scanned_by, building_id, direction, gate, scan_time, result)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
     RETURNING *
   `;
   const result = await pool.query(query, [
-    logData.qr_code_id,
+    logData.qr_code_id || null,
+    logData.personal_qr_code_id || null,
     logData.user_id || null,
+    logData.scanned_by || null,
     logData.building_id || null,
     logData.direction || 'IN',
     logData.gate || null,
@@ -277,6 +256,26 @@ const getGuestQrHistory = async (hostUserId) => {
   return result.rows;
 };
 
+const getApartmentByUserId = async (userId) => {
+  const query = `
+    SELECT a.* 
+    FROM apartments a
+    WHERE a.owner_user_id = $1
+    UNION
+    SELECT a.* 
+    FROM apartments a
+    INNER JOIN resident_profiles rp ON rp.apartment_id = a.id
+    WHERE rp.user_id = $1 AND rp.status = 'ACTIVE'
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [userId]);
+  return result.rows[0];
+};
+const getUserById = async (userId) => {
+  const query = `SELECT id, username, full_name, email, role_id FROM users WHERE id = $1`;
+  const result = await pool.query(query, [userId]);
+  return result.rows[0];
+};
 module.exports = {
   getPersonalQr,
   createGuestQr,
@@ -287,5 +286,7 @@ module.exports = {
   deleteGuestQr,
   getGuestQrHistory,
     createAccessLog,        // ← Thêm
-  incrementUsedEntries
+  incrementUsedEntries,
+  getApartmentByUserId,
+  getUserById
 };

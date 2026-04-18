@@ -5,7 +5,7 @@ export default function HomePage() {
   return (
     <div className='bg-surface text-on-surface min-h-screen flex'>
       {/* Side Navigation Bar */}
-      <SidebarUser />
+      {/* <SidebarUser /> */}
 
       {/* Main Content Area */}
       {/* <main className='flex-1 lg:ml-64 w-full pb-24 lg:pb-8'> */}
