@@ -12,6 +12,9 @@ import DashboardLayoutUser from './layout/DashboardLayoutUser'
 import DashboardLayoutProtect from './layout/DashboardLayoutProtect'
 
 import EmployeeManagement from './pages/employees/EmployeeManagement'
+import Getresidentlist from './pages/residentmanagement/Getresidentlist'
+import Addresident from './pages/residentmanagement/Addresident'
+import ResidentDetail from './pages/residentmanagement/Residentdetail'
 
 // QR code
 import QrcodeManagement from './pages/QRCODE_USER/QrcodeManagement'
@@ -110,6 +113,18 @@ export default function useRouteElements() {
           <HistoryQrcode />
         </DashboardLayoutProtect>
       )
+    },
+    {
+      path: '/residents',
+      element: <Getresidentlist />
+    },
+    {
+      path: '/residents/add',
+      element: <Addresident />
+    },
+    {
+      path: '/residents/:id',
+      element: <ResidentDetail />
     }
   ])
 
