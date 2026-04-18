@@ -6,6 +6,7 @@ const cron = require('node-cron');
 // const { pool } = require("../../configs/database.config");
 const { pool } = require("../../configs/database.config.js");
 
+
 cron.schedule('0 0 * * *', async () => {
   try {
     const result = await pool.query(`
@@ -38,112 +39,20 @@ const getPersonalQr = async (userId) => {
 };
 
 
-// Thêm hàm này vào file qr.service.js (đặt sau hàm deleteGuestQr)
 
-// const scanQr = async (qrCode, scanData = {}) => {
-//   const data = await repo.scanQr(qrCode);
-//   if (!data) throw new Error("QR code không hợp lệ hoặc đã bị vô hiệu");
-  
-//   const now = new Date();
-//   let result = "SUCCESS";
-//   let errorMessage = null;
-  
-//   // Kiểm tra thời hạn
-//   if (data.valid_from && new Date(data.valid_from) > now) {
-//     result = "DENIED";
-//     errorMessage = "QR code chưa có hiệu lực";
-//   }
-//   else if (data.valid_to && new Date(data.valid_to) < now) {
-//     result = "DENIED";
-//     errorMessage = "QR code đã hết hạn";
-//   }
-//   else if (data.max_entries && data.used_entries >= data.max_entries) {
-//     result = "DENIED";
-//     errorMessage = "QR code đã được sử dụng hết số lần cho phép";
-//   }
-  
-//   // Ghi log vào access_logs
-//   await repo.createAccessLog({
-//     qr_code_id: data.id,
-//     user_id: data.host_user_id,
-//     building_id: scanData.building_id || null,
-//     direction: scanData.direction || "IN",
-//     gate: scanData.gate || null,
-//     result: result
-//   });
-  
-//   // Nếu có lỗi thì throw
-//   if (errorMessage) {
-//     throw new Error(errorMessage);
-//   }
-  
-//   // Cập nhật số lần đã sử dụng
-//   if (data.max_entries > 0) {
-//     await repo.incrementUsedEntries(data.id);
-//   }
-  
-//   // Tạo QR image
-//   const qrImage = await QRCode.toDataURL(data.qr_code);
-  
-//   return { ...mapper.toGuestQrResponse(data), qrImage };
-// };
-// const scanQr = async (qrCode, scanData = {}) => {
-//   const data = await repo.scanQr(qrCode);
-//   if (!data) throw new Error("QR code không hợp lệ hoặc đã bị vô hiệu");
-  
-//   const now = new Date();
-//   let result = "SUCCESS";
-//   let errorMessage = null;
-  
-//   // Kiểm tra thời hạn
-//   if (data.valid_from && new Date(data.valid_from) > now) {
-//     result = "DENIED";
-//     errorMessage = "QR code chưa có hiệu lực";
-//   }
-//   else if (data.valid_to && new Date(data.valid_to) < now) {
-//     result = "DENIED";
-//     errorMessage = "QR code đã hết hạn";
-//   }
-//   else if (data.max_entries && data.used_entries >= data.max_entries) {
-//     result = "DENIED";
-//     errorMessage = "QR code đã được sử dụng hết số lần cho phép";
-//   }
-  
-//   // Ghi log vào access_logs (nếu có bảng)
-//   if (repo.createAccessLog) {
-//     await repo.createAccessLog({
-//       qr_code_id: data.id,
-//       user_id: data.host_user_id,
-//       building_id: scanData.building_id || null,
-//       direction: scanData.direction || "IN",
-//       gate: scanData.gate || null,
-//       result: result
-//     });
-//   }
-  
-//   // ✅ Nếu thành công, tăng used_entries lên 1
-//   if (result === "SUCCESS") {
-//     await repo.incrementUsedEntries(data.id);
-//     // Lấy lại data mới sau khi cập nhật
-//     const updatedData = await repo.getGuestQrById(data.id);
-//     data.used_entries = updatedData.used_entries;
-//     data.remaining_entries = data.max_entries - updatedData.used_entries;
-//   }
-  
-//   // Nếu có lỗi thì throw
-//   if (errorMessage) {
-//     throw new Error(errorMessage);
-//   }
-  
-//   // Tạo QR image
-//   const qrImage = await QRCode.toDataURL(data.qr_code);
-  
-//   const response = mapper.toGuestQrResponse(data);
-//   return { ...response, qrImage };
-// };------
-// qr.service.js
 const scanQr = async (qrCode, scanData = {}) => {
-  const data = await repo.scanQr(qrCode);
+  // Thử tìm trong guest_qr_codes trước
+  let data = await repo.scanQr(qrCode);
+  let qrType = 'guest';
+  let qrCodeId = data?.id;
+  
+  // Nếu không tìm thấy, tìm trong qr_codes (personal)
+  if (!data) {
+    data = await getPersonalQrByCode(qrCode);
+    qrType = 'personal';
+    qrCodeId = data?.id;
+  }
+  
   if (!data) throw new Error("QR code không hợp lệ hoặc đã bị vô hiệu");
   
   const now = new Date();
@@ -151,31 +60,40 @@ const scanQr = async (qrCode, scanData = {}) => {
   let errorMessage = null;
   
   // Kiểm tra thời hạn
-  if (data.valid_from && new Date(data.valid_from) > now) {
+  const validTo = data.valid_to || data.expires_at;
+  const validFrom = data.valid_from;
+  
+  if (validFrom && new Date(validFrom) > now) {
     result = "DENIED";
     errorMessage = "QR code chưa có hiệu lực";
   }
-  else if (data.valid_to && new Date(data.valid_to) < now) {
+  else if (validTo && new Date(validTo) < now) {
     result = "DENIED";
     errorMessage = "QR code đã hết hạn";
   }
-  else if (data.max_entries && data.used_entries >= data.max_entries) {
+  else if (data.status !== 'ACTIVE') {
+    result = "DENIED";
+    errorMessage = "QR code đã bị vô hiệu hóa";
+  }
+  else if (qrType === 'guest' && data.max_entries && data.used_entries >= data.max_entries) {
     result = "DENIED";
     errorMessage = "QR code đã được sử dụng hết số lần cho phép";
   }
   
-  // Ghi log với scanned_by
+  // Ghi log
   await repo.createAccessLog({
-    qr_code_id: data.id,
-    user_id: data.host_user_id,
-    scanned_by: scanData.scannedBy,  // 👈 Người quét
+    qr_code_id: qrType === 'guest' ? qrCodeId : null,
+    personal_qr_code_id: qrType === 'personal' ? qrCodeId : null,
+    user_id: qrType === 'guest' ? data.host_user_id : data.user_id,
+    scanned_by: scanData.scannedBy,
     building_id: scanData.building_id || null,
     direction: scanData.direction || "IN",
     gate: scanData.gate || null,
-    result: result
+    result: result,
+    qr_type: qrType
   });
   
-  if (result === "SUCCESS") {
+  if (result === "SUCCESS" && qrType === 'guest') {
     await repo.incrementUsedEntries(data.id);
     const updatedData = await repo.getGuestQrById(data.id);
     data.used_entries = updatedData.used_entries;
@@ -186,105 +104,37 @@ const scanQr = async (qrCode, scanData = {}) => {
     throw new Error(errorMessage);
   }
   
-  const qrImage = await QRCode.toDataURL(data.qr_code);
-  const response = mapper.toGuestQrResponse(data);
-  return { ...response, qrImage };
+  const qrImage = await QRCode.toDataURL(qrCode);
+  
+  const response = {
+    id: data.id,
+    qrCode: data.qr_code,
+    status: data.status,
+    qrType: qrType,
+    qrImage: qrImage
+  };
+  
+  if (qrType === 'guest') {
+    response.hostName = data.host_name;
+    response.visitorName = data.visitor_name;
+    response.visitorPhone = data.visitor_phone;
+    response.apartmentCode = data.apartment_code;
+    response.usedEntries = data.used_entries;
+    response.maxEntries = data.max_entries;
+    response.remainingEntries = data.max_entries - data.used_entries;
+    response.validFrom = data.valid_from;
+    response.validTo = data.valid_to;
+  } else {
+    response.userName = data.user_name;
+    response.userPhone = data.user_phone;
+    response.userEmail = data.user_email;
+    response.apartmentCode = data.apartment_code;
+    response.expiresAt = data.expires_at;
+  }
+  
+  return response;
 };
 
-//   const data = await repo.scanQr(qrCode);
-//   if (!data) throw new Error("QR code không hợp lệ hoặc đã bị vô hiệu");
-  
-//   // Kiểm tra thời hạn
-//   const now = new Date();
-//   if (data.valid_from && new Date(data.valid_from) > now) {
-//     throw new Error("QR code chưa có hiệu lực");
-//   }
-//   if (data.valid_to && new Date(data.valid_to) < now) {
-//     throw new Error("QR code đã hết hạn");
-//   }
-  
-//   // Kiểm tra số lần sử dụng
-//   if (data.max_entries && data.used_entries >= data.max_entries) {
-//     throw new Error("QR code đã được sử dụng hết số lần cho phép");
-//   }
-  
-//   // ✅ THÊM DÒNG NÀY: Tạo QR image từ qrCode
-//   const qrImage = await QRCode.toDataURL(data.qr_code);
-  
-//   // ✅ TRẢ VỀ có qrImage
-//   return { ...mapper.toGuestQrResponse(data), qrImage };
-// };
-
-// const scanQr = async (qrCode) => {
-//   // Tìm QR code trong database
-//   const data = await repo.scanQr(qrCode);
-  
-//   if (!data) {
-//     throw new Error("QR code không tồn tại hoặc đã bị vô hiệu");
-//   }
-  
-//   // Kiểm tra trạng thái
-//   if (data.status !== 'ACTIVE') {
-//     throw new Error("QR code đã bị vô hiệu hóa");
-//   }
-  
-//   // Kiểm tra thời gian hiệu lực
-//   const now = new Date();
-//   const validFrom = new Date(data.valid_from);
-//   const validTo = new Date(data.valid_to);
-  
-//   if (validFrom > now) {
-//     throw new Error(`QR code chưa có hiệu lực. Bắt đầu từ: ${validFrom.toLocaleString()}`);
-//   }
-  
-//   if (validTo < now) {
-//     throw new Error(`QR code đã hết hạn. Hết hạn lúc: ${validTo.toLocaleString()}`);
-//   }
-  
-//   // Kiểm tra số lần sử dụng
-//   if (data.max_entries && data.used_entries >= data.max_entries) {
-//     throw new Error(`QR code đã được sử dụng hết ${data.max_entries}/${data.max_entries} lần`);
-//   }
-  
-//   // (Tùy chọn) Cập nhật số lần đã sử dụng
-//   // await repo.incrementUsedEntries(data.id);
-  
-//   return mapper.toGuestQrResponse(data);
-// };
-
-// ─── QR KHÁCH ─────────────────────────────────────────────
-
-// const createGuestQr = async (reqBody) => {
-//   const entity = mapper.toGuestQrEntity(reqBody);
-
-//   // Tạo mã QR unique
-//   const qrString = `GUEST_${uuidv4()}`;
-//   entity.qr_code = qrString;
-
-//   const result = await repo.createGuestQr(entity);
-
-//   // Generate ảnh QR
-//   const qrImage = await QRCode.toDataURL(qrString);
-
-//   return { ...mapper.toGuestQrResponse(result), qrImage };
-// };
-
-// const createGuestQr = async (reqBody) => {
-//   const entity = mapper.toGuestQrEntity(reqBody);
-
-//   const code = `GUEST_${uuidv4()}`;
-//   const qrString = `http://localhost:8000/api/qr/scan/${code}`;
-//   entity.guestQr.qr_code = code;
-
-//   const result = await repo.createGuestQr(entity);
-
-//   // ← Sau khi tạo xong, query lại để có đủ thông tin join
-//   const fullData = await repo.getGuestQrById(result.guestQr.id);
-
-//   const qrImage = await QRCode.toDataURL(qrString);
-
-//   return { ...mapper.toGuestQrResponse(fullData), qrImage };
-// };
 
 const createGuestQr = async (reqBody) => {
   // ✅ Đảm bảo hostUserId được truyền đúng
@@ -311,24 +161,7 @@ const createGuestQr = async (reqBody) => {
   return { ...mapper.toGuestQrResponse(fullData), qrImage };
 };
 
-// const createGuestQr = async (reqBody) => {
-//   const entity = mapper.toGuestQrEntity(reqBody);
 
-//   // Tạo mã code unique
-//   const code = `GUEST_${uuidv4()}`;
-  
-//   // QR chứa URL → quét ra mở trình duyệt
-//   const qrString = `https://homelink.ai/scan/${code}`;
-  
-//   entity.guestQr.qr_code = code; // lưu code vào DB
-  
-//   const result = await repo.createGuestQr(entity);
-
-//   // Generate ảnh QR chứa URL
-//   const qrImage = await QRCode.toDataURL(qrString);
-
-//   return { ...mapper.toGuestQrResponse(result.guestQr), qrImage };
-// };
 
 const getGuestQrById = async (id) => {
   const data = await repo.getGuestQrById(id);
@@ -358,46 +191,7 @@ const getGuestQrsByHost = async (hostUserId, queryParams = {}) => {
   };
 };
 
-// const getGuestQrsByHost = async (hostUserId, queryParams = {}) => {
-//   const { limit, offset, status, onlyValid } = queryParams;
-  
-//   const result = await repo.getGuestQrsByHost(hostUserId, {
-//     limit: limit ? parseInt(limit) : 10,
-//     offset: offset ? parseInt(offset) : 0,
-//     status: status || 'ACTIVE',
-//     onlyValid: onlyValid !== 'false'
-//   });
-  
-//   // Map dữ liệu
-//   const mappedData = result.data.map(mapper.toGuestQrResponse);
-  
-//   // Trả về đúng structure
-//   return {
-//     total: result.total,
-//     limit: result.limit,
-//     offset: result.offset,
-//     data: mappedData
-//   };
-// };
 
-// const getGuestQrsByHost = async (hostUserId) => {
-//   const data = await repo.getGuestQrsByHost(hostUserId);
-//   return data.map(mapper.toGuestQrResponse);
-// };
-
-// const updateGuestQr = async (id, reqBody) => {
-//   const entity = {
-//     valid_from: reqBody.validFrom,
-//     valid_to: reqBody.validTo,
-//     max_entries: reqBody.maxEntries,
-//     status: reqBody.status,
-//   };
-
-//   const updated = await repo.updateGuestQr(id, entity);
-//   if (!updated) throw new Error("Update failed");
-
-//   return mapper.toGuestQrResponse(updated);
-// };
 const updateGuestQr = async (id, updateData) => {
   const client = await pool.connect();
   
@@ -504,26 +298,160 @@ const getGuestQrHistory = async (hostUserId) => {
   }));
 };
 
+// qr.service.js - Sửa lại hàm getScanHistoryByGuard
 const getScanHistoryByGuard = async (guardUserId) => {
-  const query = `
+  // Query cho guest QR
+  const guestQuery = `
     SELECT 
-      al.*,
+      al.id,
+      al.scan_time,
+      al.direction,
+      al.gate,
+      al.result,
+      al.scanned_by,
+      'guest' as qr_type,
       gq.qr_code,
       gq.valid_from,
       gq.valid_to,
       v.name AS visitor_name,
       v.phone AS visitor_phone,
       a.apartment_code,
-      u.full_name AS host_name
+      u.full_name AS creator_name
     FROM access_logs al
-    LEFT JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
+    INNER JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
     LEFT JOIN visitors v ON v.id = gq.visitor_id
     LEFT JOIN apartments a ON a.id = gq.apartment_id
     LEFT JOIN users u ON u.id = gq.host_user_id
-    WHERE al.scanned_by = $1
-    ORDER BY al.scan_time DESC
+    WHERE al.scanned_by = $1 AND al.qr_code_id IS NOT NULL
   `;
-  const result = await pool.query(query, [guardUserId]);
+  
+  // Query cho personal QR
+  const personalQuery = `
+    SELECT 
+      al.id,
+      al.scan_time,
+      al.direction,
+      al.gate,
+      al.result,
+      al.scanned_by,
+      'personal' as qr_type,
+      pq.qr_code,
+      pq.expires_at as valid_to,
+      NULL as valid_from,
+      u.full_name AS visitor_name,
+      u.phone AS visitor_phone,
+      a.apartment_code,
+      'Admin' as creator_name
+    FROM access_logs al
+    INNER JOIN qr_codes pq ON pq.id = al.personal_qr_code_id
+    LEFT JOIN users u ON u.id = pq.user_id
+    LEFT JOIN apartments a ON a.id = pq.apartment_id
+    WHERE al.scanned_by = $1 AND al.personal_qr_code_id IS NOT NULL
+  `;
+  
+  const [guestResult, personalResult] = await Promise.all([
+    pool.query(guestQuery, [guardUserId]),
+    pool.query(personalQuery, [guardUserId])
+  ]);
+  
+  // Gộp và sắp xếp theo thời gian giảm dần
+  const allLogs = [...guestResult.rows, ...personalResult.rows];
+  allLogs.sort((a, b) => new Date(b.scan_time) - new Date(a.scan_time));
+  
+  return allLogs;
+};
+
+// const getScanHistoryByGuard = async (guardUserId) => {
+//   const query = `
+//     SELECT 
+//       al.*,
+//       gq.qr_code,
+//       gq.valid_from,
+//       gq.valid_to,
+//       v.name AS visitor_name,
+//       v.phone AS visitor_phone,
+//       a.apartment_code,
+//       u.full_name AS host_name
+//     FROM access_logs al
+//     LEFT JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
+//     LEFT JOIN visitors v ON v.id = gq.visitor_id
+//     LEFT JOIN apartments a ON a.id = gq.apartment_id
+//     LEFT JOIN users u ON u.id = gq.host_user_id
+//     WHERE al.scanned_by = $1
+//     ORDER BY al.scan_time DESC
+//   `;
+//   const result = await pool.query(query, [guardUserId]);
+//   return result.rows;
+// };
+// qr.service.js
+const createPersonalQr = async (data) => {
+  const query = `
+    INSERT INTO qr_codes (user_id, apartment_id, qr_code, expires_at, status)
+    VALUES ($1, $2, $3, $4, 'ACTIVE')
+    RETURNING *
+  `;
+  const result = await pool.query(query, [
+    data.userId,
+    data.apartmentId,
+    data.qrCode,
+    data.expiresAt
+  ]);
+  return result.rows[0];
+};
+
+const getPersonalQrByUserId = async (userId) => {
+  const query = `
+    SELECT * FROM qr_codes 
+    WHERE user_id = $1 AND status = 'ACTIVE'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [userId]);
+  return result.rows[0];
+};
+
+const getPersonalQrByCode = async (qrCode) => {
+  const query = `
+    SELECT 
+      qc.*,
+      u.full_name AS user_name,
+      u.phone AS user_phone,
+      u.email AS user_email,
+      a.apartment_code,
+      a.id AS apartment_id
+    FROM qr_codes qc
+    LEFT JOIN users u ON u.id = qc.user_id
+    LEFT JOIN apartments a ON a.id = qc.apartment_id
+    WHERE qc.qr_code = $1 AND qc.status = 'ACTIVE'
+  `;
+  const result = await pool.query(query, [qrCode]);
+  return result.rows[0];
+};
+const revokePersonalQr = async (id) => {
+  const query = `
+    UPDATE qr_codes 
+    SET status = 'REVOKED' 
+    WHERE id = $1 
+    RETURNING *
+  `;
+  const result = await pool.query(query, [id]);
+  return result.rows[0];
+};
+// qr.service.js - Thêm hàm này
+const getAllPersonalQrs = async () => {
+  const query = `
+    SELECT 
+      qc.*,
+      u.full_name AS user_name,
+      u.email AS user_email,
+      u.phone AS user_phone,
+      a.apartment_code
+    FROM qr_codes qc
+    LEFT JOIN users u ON u.id = qc.user_id
+    LEFT JOIN apartments a ON a.id = qc.apartment_id
+    ORDER BY qc.created_at DESC
+  `;
+  const result = await pool.query(query);
   return result.rows;
 };
 
@@ -537,5 +465,10 @@ module.exports = {
   getApartmentByUserId,
   getGuestQrHistory,
   getScanHistoryByGuard,
-  scanQr
+  scanQr,
+  createPersonalQr,
+  revokePersonalQr,
+  getPersonalQrByUserId,
+  getAllPersonalQrs,
+  getPersonalQrByCode
 };

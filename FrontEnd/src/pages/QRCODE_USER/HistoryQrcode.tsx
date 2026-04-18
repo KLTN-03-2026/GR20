@@ -212,7 +212,7 @@ export default function HistoryQrcode() {
                               {item.apartment_code}
                             </span>
                           </td>
-                          <td className='px-6 py-4 text-sm text-on-surface-variant'>{item.host_name}</td>
+                          <td className='px-6 py-4 text-sm text-on-surface-variant'>{item.creator_name}</td>
                           <td className='px-6 py-4 text-sm text-on-surface-variant'>
                             {formatDateTime(item.scan_time)}
                           </td>

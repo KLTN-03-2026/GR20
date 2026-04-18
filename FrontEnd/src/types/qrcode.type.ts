@@ -8,23 +8,50 @@ export interface Visitor {
 
 export interface historyQrcode {
   id: string
-  user_id: string
-  building_id: string
-  qr_code_id: string
-  direction: string
-  // gate: any
   scan_time: string
+  direction: string
+  gate: string | null
   result: string
   scanned_by: string
+  qr_type: string
   qr_code: string
-  valid_from: string
   valid_to: string
+  valid_from: string | null
   visitor_name: string
   visitor_phone: string
   apartment_code: string
-  host_name: string
+  creator_name: string
 }
 
+export interface ResultQrcode {
+  id: string
+  qrCode: string
+  status: string
+  qrType: 'personal' | 'guest'
+  qrImage: string
+  hostName: string
+  visitorName: string
+  visitorPhone: string
+  apartmentCode: string
+  usedEntries: number
+  maxEntries: number
+  remainingEntries: number
+  validFrom: string
+  validTo: string
+}
+export interface ResultQrcode1 {
+  id: string
+  qrCode: string
+  status: string
+  qrType: 'personal' | 'guest'
+  qrImage: string
+  userName: string
+  userPhone: string
+  userEmail: string
+  apartmentCode: string
+  expiresAt: string
+}
+export type QrScanResult = ResultQrcode | ResultQrcode1
 export interface Qrcodes {
   id: string
   hostUserId: string

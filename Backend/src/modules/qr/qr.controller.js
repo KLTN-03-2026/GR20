@@ -1,4 +1,7 @@
 const service = require("./qr.service");
+const QRCode = require("qrcode");
+const { v4: uuidv4 } = require("uuid");
+const repo = require("./qr.repository");
 
 const getPersonalQr = async (req, res) => {
   try {
@@ -118,28 +121,7 @@ const getGuestQrById = async (req, res) => {
   }
 };
 
-// Trong qr.controller.js
-// const scanQr = async (req, res) => {
-//   try {
-//     const { direction, gate, building_id } = req.query;
-//     const data = await service.scanQr(req.params.qrCode, {
-//       direction,
-//       gate,
-//       building_id: building_id ? parseInt(building_id) : null
-//     });
-//     res.json({ 
-//       operationType: "Success", 
-//       message: "QR hợp lệ", 
-//       code: "OK", 
-//       data, 
-//       timestamp: new Date() 
-//     });
-//   } catch (err) {
-//     res.status(400).json({ message: err.message });
-//   }
-// };
 
-// qr.controller.js
 const scanQr = async (req, res) => {
   try {
     const { direction, gate, building_id } = req.query;
@@ -231,19 +213,7 @@ const deleteGuestQr = async (req, res) => {
   }
 };
 
-// const getGuestQrHistory = async (req, res) => {
-//   try {
-//     // const data = await service.getGuestQrHistory(req.params.userId);
-//     const userId = req.user.sub;  // 👈 Lấy từ token
-//     const data = await service.getGuestQrHistory(userId);
-//     res.json({ operationType: "Success", message: "Get QR history successfully", code: "OK", data, timestamp: new Date() });
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 
-// qr.controller.js
-// qr.controller.js
 const getGuestQrHistory = async (req, res) => {
   try {
     const userId = req.user?.sub || req.user?.id;
@@ -276,6 +246,131 @@ const getGuestQrHistory = async (req, res) => {
   }
 };
 
+const createPersonalQr = async (req, res) => {
+  try {
+    // Chỉ ADMIN mới được tạo
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can create personal QR' });
+    }
+    
+    const { userId, apartmentId, expiresAt } = req.body;
+    
+    // Kiểm tra user tồn tại - Cần có hàm getUserById trong repo
+    // Tạm thời bỏ qua hoặc tạo hàm này
+    // const user = await repo.getUserById(userId);
+    // if (!user) {
+    //   return res.status(404).json({ message: 'User not found' });
+    // }
+    
+    // Tạo mã QR duy nhất
+    const qrCodeValue = `PERSONAL_${uuidv4()}`;
+    
+    const data = await service.createPersonalQr({
+      userId,
+      apartmentId,
+      qrCode: qrCodeValue,
+      expiresAt: expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      createdBy: req.user.id
+    });
+    
+    res.status(201).json({
+      operationType: "Success",
+      message: "Personal QR created successfully",
+      code: "CREATED",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+// qr.controller.js
+const getMyPersonalQr = async (req, res) => {
+  try {
+    const userId = req.user.sub || req.user.id;
+    
+    const data = await service.getPersonalQrByUserId(userId);
+    
+    if (!data) {
+      return res.status(404).json({ message: 'Personal QR not found. Please contact admin.' });
+    }
+    
+    // Tạo ảnh QR từ mã
+    const qrImage = await QRCode.toDataURL(data.qr_code);
+    
+    res.json({
+      operationType: "Success",
+      message: "Get personal QR successfully",
+      code: "OK",
+      data: { ...data, qrImage },
+      timestamp: new Date()
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getAllPersonalQrs = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+    }
+    
+    const data = await service.getAllPersonalQrs();  // ← GỌI SERVICE
+    
+    res.json({
+      operationType: "Success",
+      message: "Get all personal QRs successfully",
+      code: "OK",
+      data: data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const revokePersonalQr = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can revoke personal QR' });
+    }
+    
+    const { id } = req.params;
+    
+    const data = await service.revokePersonalQr(id);
+    
+    res.json({
+      operationType: "Success",
+      message: "Personal QR revoked successfully",
+      code: "OK",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getPersonalQrByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // TODO: Implement get personal QR by user id
+    res.json({
+      operationType: "Success",
+      message: "Get personal QR by user id successfully",
+      data: { userId },
+      timestamp: new Date()
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 module.exports = {
   getPersonalQr,
   createGuestQr,
@@ -285,4 +380,9 @@ module.exports = {
   updateGuestQr,
   deleteGuestQr,
   getGuestQrHistory,
+  createPersonalQr,
+  getMyPersonalQr,
+  revokePersonalQr,
+  getPersonalQrByUserId ,
+  getAllPersonalQrs
 };
