@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
 import type { Qrcodes } from 'src/types/qrcode.type'
+import { toast } from 'react-toastify'
 
 export default function ViewQRcodeDetails() {
   const navigate = useNavigate()
@@ -40,10 +41,52 @@ export default function ViewQRcodeDetails() {
     return (qr.usedEntries / qr.maxEntries) * 100
   }
 
-  const handleShare = () => {
-    // TODO: Implement share functionality
-    navigator.clipboard.writeText(qrDetail?.qrCode || '')
-    alert('Đã sao chép mã QR')
+  // const handleShare = () => {
+  //   // TODO: Implement share functionality
+  //   navigator.clipboard.writeText(qrDetail?.qrCode || '')
+  //   alert('Đã sao chép mã QR')
+  // }
+
+  const handleDownloadQR = () => {
+    if (!qrDetail?.qrImage) {
+      toast.error('Không có ảnh QR để tải')
+      return
+    }
+
+    const link = document.createElement('a')
+    link.href = qrDetail.qrImage
+    link.download = `QR_${qrDetail.qrCode.slice(-12)}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Đã tải mã QR thành công')
+  }
+
+  const handleShare = async () => {
+    if (!qrDetail?.qrImage) {
+      toast.error('Không có ảnh QR để chia sẻ')
+      return
+    }
+
+    try {
+      // Chuyển đổi base64 thành blob
+      const response = await fetch(qrDetail.qrImage)
+      const blob = await response.blob()
+      const file = new File([blob], `QR_${qrDetail.qrCode}.png`, { type: 'image/png' })
+
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Mã QR Cư dân Homelink',
+          text: 'Đây là mã QR truy cập căn hộ của tôi',
+          files: [file]
+        })
+        toast.success('Đã mở cửa sổ chia sẻ')
+      } else {
+        toast.info('Trình duyệt không hỗ trợ chia sẻ, bạn có thể tải ảnh về')
+      }
+    } catch (error) {
+      console.error('Share error:', error)
+    }
   }
 
   const handleDownload = () => {
@@ -86,7 +129,7 @@ export default function ViewQRcodeDetails() {
               {/* Ticket Header */}
               <div className='bg-primary p-8 text-on-primary text-center relative'>
                 <div className='absolute -bottom-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-surface-container-lowest rounded-full'></div>
-                <h2 className='label-md uppercase tracking-[0.2em] opacity-80 mb-1'>Entry Pass</h2>
+                <h2 className='label-md uppercase tracking-[0.2em] opacity-80 mb-1'>Thẻ ra vào</h2>
                 <p className='text-2xl font-extrabold tracking-tight'>{qrDetail.visitor.name}</p>
               </div>
 
@@ -107,8 +150,8 @@ export default function ViewQRcodeDetails() {
                   </div>
                 </div>
                 <div className='text-center space-y-1'>
-                  <p className='text-on-surface-variant text-sm font-medium'>Scan at Building A Gate</p>
-                  <p className='text-primary font-bold tracking-widest'>{qrDetail.qrCode.slice(-8)}</p>
+                  {/* <p className='text-on-surface-variant text-sm font-medium'>Scan at Building A Gate</p> */}
+                  <p className='text-primary font-bold tracking-widest'>{qrDetail.qrCode}</p>
                 </div>
 
                 {/* Status Badge */}
@@ -151,7 +194,7 @@ export default function ViewQRcodeDetails() {
                 Chia sẻ
               </button>
               <button
-                onClick={handleDownload}
+                onClick={handleDownloadQR}
                 className='w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center text-primary hover:bg-surface-container-low transition-all active:scale-95'
               >
                 <span className='material-symbols-outlined'>download</span>

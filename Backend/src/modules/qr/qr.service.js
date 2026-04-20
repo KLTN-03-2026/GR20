@@ -455,6 +455,123 @@ const getAllPersonalQrs = async () => {
   return result.rows;
 };
 
+// Lấy tất cả lịch sử ra vào của cư dân (ADMIN)
+const getAllResidentAccessHistory = async () => {
+  return await repo.getAllResidentAccessHistory();
+};
+
+const getResidentAccessHistory = async (userId) => {
+  return await repo.getResidentAccessHistory(userId);
+};
+
+// qr.service.js
+const getPersonalQrById = async (id) => {
+  const query = `
+    SELECT 
+      qc.*,
+      u.full_name AS user_name,
+      u.email AS user_email,
+      u.phone AS user_phone,
+      a.apartment_code
+    FROM qr_codes qc
+    LEFT JOIN users u ON u.id = qc.user_id
+    LEFT JOIN apartments a ON a.id = qc.apartment_id
+    WHERE qc.id = $1
+  `;
+  const result = await pool.query(query, [id]);
+  return result.rows[0];
+};
+
+const updatePersonalQr = async (id, updateData) => {
+  const fields = [];
+  const values = [];
+  let idx = 1;
+  
+  if (updateData.status !== undefined) {
+    fields.push(`status = $${idx++}`);
+    values.push(updateData.status);
+  }
+  if (updateData.expiresAt !== undefined) {
+    fields.push(`expires_at = $${idx++}`);
+    values.push(updateData.expiresAt);
+  }
+  if (updateData.apartmentId !== undefined) {
+    fields.push(`apartment_id = $${idx++}`);
+    values.push(updateData.apartmentId);
+  }
+  
+  if (fields.length === 0) {
+    throw new Error("No fields to update");
+  }
+  
+  values.push(id);
+  const query = `
+    UPDATE qr_codes 
+    SET ${fields.join(", ")} 
+    WHERE id = $${idx}
+    RETURNING *
+  `;
+  const result = await pool.query(query, values);
+  return result.rows[0];
+};
+
+// qr.service.js
+// const getAllResidentsWithQRStatus = async () => {
+//   const query = `
+//     SELECT 
+//       u.id AS user_id,
+//       u.full_name AS user_name,
+//       u.email AS user_email,
+//       u.phone AS user_phone,
+//       a.id AS apartment_id,
+//       a.apartment_code,
+//       qc.id AS qr_id,
+//       qc.qr_code,
+//       qc.status AS qr_status,
+//       qc.expires_at,
+//       qc.created_at,
+//       CASE 
+//         WHEN qc.id IS NOT NULL THEN 'HAS_QR'
+//         ELSE 'NO_QR'
+//       END AS qr_exists
+//     FROM users u
+//     LEFT JOIN apartments a ON a.owner_user_id = u.id
+//     LEFT JOIN qr_codes qc ON qc.user_id = u.id
+//     WHERE u.role_id IN (SELECT id FROM roles WHERE name IN ('RESIDENT', 'USER'))
+//        OR u.role_id IS NULL
+//     ORDER BY qr_exists DESC, u.created_at DESC
+//   `;
+//   const result = await pool.query(query);
+//   return result.rows;
+// };
+// qr.service.js
+const getAllResidentsWithQRStatus = async () => {
+  const query = `
+    SELECT 
+      u.id AS user_id,
+      u.full_name AS user_name,
+      u.email AS user_email,
+      u.phone AS user_phone,
+      a.id AS apartment_id,
+      a.apartment_code,
+      qc.id AS qr_id,
+      qc.qr_code,
+      qc.status AS qr_status,
+      qc.expires_at,
+      qc.created_at,
+      CASE 
+        WHEN qc.id IS NOT NULL THEN 'HAS_QR'
+        ELSE 'NO_QR'
+      END AS qr_exists
+    FROM users u
+    LEFT JOIN apartments a ON a.owner_user_id = u.id
+    LEFT JOIN qr_codes qc ON qc.user_id = u.id
+    WHERE u.role_id = 5  -- role_id = 5 là "Người Dùng" (cư dân)
+    ORDER BY qr_exists DESC, u.created_at DESC
+  `;
+  const result = await pool.query(query);
+  return result.rows;
+};
 module.exports = {
   getPersonalQr,
   createGuestQr,
@@ -470,5 +587,10 @@ module.exports = {
   revokePersonalQr,
   getPersonalQrByUserId,
   getAllPersonalQrs,
-  getPersonalQrByCode
+  getPersonalQrByCode,
+  getAllResidentAccessHistory,
+  getResidentAccessHistory,
+  updatePersonalQr,
+  getPersonalQrById,
+  getAllResidentsWithQRStatus 
 };

@@ -6,6 +6,75 @@ export interface Visitor {
   idCard: string
 }
 
+export interface QrcodeMe {
+  id: string
+  user_id: string
+  apartment_id: string
+  qr_code: string
+  expires_at: string
+  status: 'ACTIVE' | 'EXPIRED' | 'REVOKED'
+  created_at: string
+  qrImage: string
+}
+
+export interface deleteQrcodeId {
+  id: string
+  user_id: string
+  apartment_id: string
+  qr_code: string
+  expires_at: string
+  status: string
+  created_at: string
+}
+
+export interface historyQrcodeAdmin1 {
+  id: string
+  scan_time: string
+  direction: string
+  gate: string
+  result: string
+  building_id: string
+  scanned_by: string
+  building_name: string
+  scanned_by_name: string
+  qr_code: string
+  user_id: string
+  resident_name: string
+  resident_phone: string
+  resident_email: string
+  apartment_code: string
+}
+
+export interface historyQrcodeAdmin {
+  user_id: string
+  user_name: string
+  user_email: string
+  user_phone: string
+  apartment_id: string
+  apartment_code: string
+  qr_id: string
+  qr_code: string
+  qr_status: 'ACTIVE' | 'EXPIRED' | 'REVOKED'
+  expires_at: string
+  created_at: string
+  qr_exists: string
+}
+
+const a = {
+  user_id: '1',
+  user_name: 'Nguyễn Hoàn Bão',
+  user_email: 'hoanbao@gmail.com',
+  user_phone: '0378686654',
+  apartment_id: '2',
+  apartment_code: 'AS-201',
+  qr_id: null,
+  qr_code: null,
+  qr_status: null,
+  expires_at: null,
+  created_at: null,
+  qr_exists: 'NO_QR'
+}
+
 export interface historyQrcode {
   id: string
   scan_time: string

@@ -276,6 +276,69 @@ const getUserById = async (userId) => {
   const result = await pool.query(query, [userId]);
   return result.rows[0];
 };
+
+// Lấy tất cả lịch sử ra vào của tất cả cư dân (cho ADMIN)
+const getAllResidentAccessHistory = async () => {
+  const query = `
+    SELECT 
+      al.id,
+      al.scan_time,
+      al.direction,
+      al.gate,
+      al.result,
+      al.building_id,
+      al.scanned_by,
+      b.name AS building_name,
+      guard.full_name AS scanned_by_name,
+      qc.qr_code,
+      qc.user_id,
+      u.full_name AS resident_name,
+      u.phone AS resident_phone,
+      u.email AS resident_email,
+      a.apartment_code
+    FROM access_logs al
+    INNER JOIN qr_codes qc ON qc.id = al.personal_qr_code_id
+    INNER JOIN users u ON u.id = qc.user_id
+    LEFT JOIN buildings b ON b.id = al.building_id
+    LEFT JOIN users guard ON guard.id = al.scanned_by
+    LEFT JOIN apartments a ON a.id = qc.apartment_id
+    WHERE qc.user_id IS NOT NULL
+    ORDER BY al.scan_time DESC
+  `;
+  const result = await pool.query(query);
+  return result.rows;
+};
+
+// Lấy lịch sử ra vào của cư dân theo user_id (personal QR)
+const getResidentAccessHistory = async (userId) => {
+  const query = `
+    SELECT 
+      al.id,
+      al.scan_time,
+      al.direction,
+      al.gate,
+      al.result,
+      al.building_id,
+      al.scanned_by,
+      b.name AS building_name,
+      guard.full_name AS scanned_by_name,
+      qc.qr_code,
+      qc.user_id,
+      u.full_name AS resident_name,
+      u.phone AS resident_phone,
+      a.apartment_code
+    FROM access_logs al
+    INNER JOIN qr_codes qc ON qc.id = al.personal_qr_code_id
+    INNER JOIN users u ON u.id = qc.user_id
+    LEFT JOIN buildings b ON b.id = al.building_id
+    LEFT JOIN users guard ON guard.id = al.scanned_by
+    LEFT JOIN apartments a ON a.id = qc.apartment_id
+    WHERE qc.user_id = $1
+    ORDER BY al.scan_time DESC
+  `;
+  const result = await pool.query(query, [userId]);
+  return result.rows;
+};
 module.exports = {
   getPersonalQr,
   createGuestQr,
@@ -288,5 +351,7 @@ module.exports = {
     createAccessLog,        // ← Thêm
   incrementUsedEntries,
   getApartmentByUserId,
-  getUserById
+  getUserById,
+  getAllResidentAccessHistory,
+  getResidentAccessHistory
 };
