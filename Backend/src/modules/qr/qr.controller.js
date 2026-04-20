@@ -311,19 +311,21 @@ const getMyPersonalQr = async (req, res) => {
   }
 };
 
+// qr.controller.js
 const getAllPersonalQrs = async (req, res) => {
   try {
     if (req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Forbidden: Only admin can access' });
     }
     
-    const data = await service.getAllPersonalQrs();  // ← GỌI SERVICE
+    // Trả về danh sách tất cả cư dân kèm thông tin QR (nếu có)
+    const data = await service.getAllResidentsWithQRStatus();
     
     res.json({
       operationType: "Success",
-      message: "Get all personal QRs successfully",
+      message: "Get residents list with QR status successfully",
       code: "OK",
-      data: data,
+      data,
       timestamp: new Date()
     });
   } catch (err) {
@@ -331,6 +333,26 @@ const getAllPersonalQrs = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// const getAllPersonalQrs = async (req, res) => {
+//   try {
+//     if (req.user.role !== 'ADMIN') {
+//       return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+//     }
+    
+//     const data = await service.getAllPersonalQrs();  // ← GỌI SERVICE
+    
+//     res.json({
+//       operationType: "Success",
+//       message: "Get all personal QRs successfully",
+//       code: "OK",
+//       data: data,
+//       timestamp: new Date()
+//     });
+//   } catch (err) {
+//     console.error('Error:', err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 
 const revokePersonalQr = async (req, res) => {
   try {
@@ -371,6 +393,102 @@ const getPersonalQrByUserId = async (req, res) => {
 };
 
 
+// Lấy lịch sử ra vào của cư dân theo user_id (ADMIN)
+const getResidentAccessHistory = async (req, res) => {
+  try {
+    // Kiểm tra role ADMIN
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ 
+        message: 'Forbidden: Only admin can access this resource' 
+      });
+    }
+    
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+    
+    const data = await service.getResidentAccessHistory(userId);
+    
+    res.json({
+      operationType: "Success",
+      message: "Get resident access history successfully",
+      code: "OK",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Lấy tất cả lịch sử ra vào của tất cả cư dân (ADMIN)
+const getAllResidentAccessHistory = async (req, res) => {
+  try {
+    // Kiểm tra role ADMIN
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ 
+        message: 'Forbidden: Only admin can access this resource' 
+      });
+    }
+    
+    const data = await service.getAllResidentAccessHistory();
+    
+    res.json({
+      operationType: "Success",
+      message: "Get all resident access history successfully",
+      code: "OK",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// qr.controller.js
+const updatePersonalQr = async (req, res) => {
+  try {
+    // Kiểm tra role ADMIN
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ 
+        message: 'Forbidden: Only admin can update personal QR' 
+      });
+    }
+    
+    const { id } = req.params;
+    const { status, expiresAt, apartmentId } = req.body;
+    
+    // Kiểm tra QR tồn tại
+    const existingQr = await service.getPersonalQrById(id);
+    if (!existingQr) {
+      return res.status(404).json({ message: 'Personal QR not found' });
+    }
+    
+    const data = await service.updatePersonalQr(id, {
+      status,
+      expiresAt,
+      apartmentId
+    });
+    
+    res.json({
+      operationType: "Success",
+      message: "Update personal QR successfully",
+      code: "OK",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
 module.exports = {
   getPersonalQr,
   createGuestQr,
@@ -384,5 +502,8 @@ module.exports = {
   getMyPersonalQr,
   revokePersonalQr,
   getPersonalQrByUserId ,
-  getAllPersonalQrs
+  getAllPersonalQrs,
+  getResidentAccessHistory,
+  getAllResidentAccessHistory,
+  updatePersonalQr
 };

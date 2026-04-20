@@ -7,7 +7,8 @@ import type {
   BodyCreateQrcode,
   historyQrcode,
   ResultQrcode,
-  ResultQrcode1
+  ResultQrcode1,
+  QrcodeMe
 } from 'src/types/qrcode.type'
 
 export const QRCodeApi = {
@@ -40,5 +41,8 @@ export const QRCodeApi = {
   },
   getGuestQrHistory() {
     return http.get<SuccessResponseApi<historyQrcode[]>>('api/qr/guest/history')
+  },
+  getQrcodeMe() {
+    return http.get<SuccessResponseApi<QrcodeMe>>('api/qr/personal/me')
   }
 }

@@ -22,6 +22,9 @@ import ViewQRcodeDetails from './pages/QRCODE_USER/ViewQRcodeDetails'
 import ResultQrcode from './pages/QRCODE_USER/ResultQrcode'
 import HomePageProtect from './pages/protect/HomePage/HomePage'
 import HistoryQrcode from './pages/QRCODE_USER/HistoryQrcode'
+import ViewQrcodeMe from './pages/QRCODE_USER/ViewQrcodeMe'
+import QrcodeManagementAdmin from './pages/QrcodeAdmin/QrcodeManagementAdmin'
+import ViewAllHistoryQrcode from './pages/QrcodeAdmin/ViewAllHistoryQrcode'
 
 // kiểm tra login
 function ProtecdRouter() {
@@ -71,6 +74,14 @@ export default function useRouteElements() {
       element: (
         <DashboardLayoutUser>
           <QrcodeManagement />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: 'viewQrcodeMe',
+      element: (
+        <DashboardLayoutUser>
+          <ViewQrcodeMe />
         </DashboardLayoutUser>
       )
     },
@@ -125,6 +136,14 @@ export default function useRouteElements() {
     {
       path: '/residents/:id',
       element: <ResidentDetail />
+    },
+    {
+      path: 'qrcodeAdmin',
+      element: <QrcodeManagementAdmin />
+    },
+    {
+      path: 'historyQrcodeAdmin',
+      element: <ViewAllHistoryQrcode />
     }
   ])
 
