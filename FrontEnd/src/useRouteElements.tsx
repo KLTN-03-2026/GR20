@@ -27,6 +27,16 @@ import QrcodeManagementAdmin from './pages/QrcodeAdmin/QrcodeManagementAdmin'
 import ViewAllHistoryQrcode from './pages/QrcodeAdmin/ViewAllHistoryQrcode'
 
 // kiểm tra login
+function ProtectedAdminRoute({ children }: { children?: React.ReactNode }) {
+  const { isAuthenticated, user } = useContext(AppContext)
+  const hasPermission = user?.roles?.includes('ADMIN') || user?.roles?.includes('Quản lý')
+
+  if (!isAuthenticated) return <Navigate to='/login' />
+  if (!hasPermission) return <Navigate to='/' />
+
+  return children || <Outlet />
+}
+
 function ProtecdRouter() {
   const { isAuthenticated } = useContext(AppContext)
   return isAuthenticated ? <Outlet /> : <Navigate to='/login' />
@@ -65,7 +75,13 @@ export default function useRouteElements() {
     },
     {
       path: '/employees',
-      element: <EmployeeManagement />
+      element: (
+        <ProtectedAdminRoute>
+          <DashboardLayoutProtect>
+            <EmployeeManagement />
+          </DashboardLayoutProtect>
+        </ProtectedAdminRoute>
+      )
     },
 
     // ===== QR CODE =====
