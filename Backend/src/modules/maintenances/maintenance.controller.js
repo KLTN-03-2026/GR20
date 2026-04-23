@@ -1,160 +1,216 @@
 const service = require("./maintenance.service");
-console.log("🔥 maintenance controller NEW");
+
+// ==================== CƯ DÂN ====================
+
+// Cư dân tạo yêu cầu mới
+// const createMaintenanceRequest = async (req, res) => {
+//   try {
+//     const userId = req.user?.sub;
+//     if (!userId) {
+//       return res.status(401).json({ message: "Unauthorized: User not found" });
+//     }
+
+//     const { title, description, priority, apartmentId } = req.body;
+    
+//     if (!title || !description) {
+//       return res.status(400).json({ message: "Title and description are required" });
+//     }
+
+//     const requestData = {
+//       title,
+//       description,
+//       priority: priority || 'MEDIUM',
+//       apartment_id: apartmentId,
+//       reported_by: parseInt(userId)
+//     };
+
+//     const data = await service.createMaintenanceRequest(requestData);
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Tạo yêu cầu bảo trì thành công",
+//       data,
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 const createMaintenanceRequest = async (req, res) => {
   try {
-    const data = await service.createMaintenanceRequest(req.body);
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
+
+    const { title, description, priority } = req.body;
+    
+    if (!title || !description) {
+      return res.status(400).json({ message: "Title and description are required" });
+    }
+
+    const requestData = {
+      title,
+      description,
+      priority: priority || 'MEDIUM',
+    };
+
+    // Gọi service với userId, service sẽ tự lấy apartment_id từ database
+    const data = await service.createMaintenanceRequest(requestData, parseInt(userId));
 
     res.status(201).json({
-      operationType: "Success",
-      message: "Create maintenance request successfully",
-      code: "CREATED",
+      success: true,
+      message: "Tạo yêu cầu bảo trì thành công",
       data,
-      size: 1,
-      timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 };
 
-const getAllMaintenanceRequests = async (req, res) => {
+// Cư dân xem danh sách yêu cầu của mình
+const getMyMaintenanceRequests = async (req, res) => {
   try {
-    const result = await service.getAllMaintenanceRequests(req.query);
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const result = await service.getMyMaintenanceRequests(req.query, parseInt(userId));
 
     res.json({
-      operationType: "Success",
-      message: "success",
-      code: "OK",
+      success: true,
       ...result,
-      timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 };
 
+// Cư dân xem chi tiết yêu cầu của mình
 const getMaintenanceRequestById = async (req, res) => {
   try {
-    const data = await service.getMaintenanceRequestById(req.params.id);
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const data = await service.getMaintenanceRequestById(req.params.id, parseInt(userId));
 
     res.json({
-      operationType: "Success",
-      message: "Get maintenance request detail successfully",
-      code: "OK",
+      success: true,
       data,
-      timestamp: new Date(),
     });
   } catch (err) {
-    res.status(404).json({
-      message: err.message,
-    });
+    res.status(404).json({ message: err.message });
   }
 };
 
+// Cư dân cập nhật yêu cầu (chỉ khi đang mở)
 const updateMaintenanceRequest = async (req, res) => {
   try {
-    const data = await service.updateMaintenanceRequest(req.params.id, req.body);
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { title, description, priority } = req.body;
+    const data = await service.updateMaintenanceRequest(
+      req.params.id, 
+      parseInt(userId), 
+      { title, description, priority }
+    );
 
     res.json({
-      operationType: "Success",
-      message: "Update maintenance request successfully",
-      code: "OK",
+      success: true,
+      message: "Cập nhật yêu cầu thành công",
       data,
-      timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(400).json({ message: err.message });
   }
 };
 
+// Cư dân xóa yêu cầu (chỉ khi đang mở)
 const deleteMaintenanceRequest = async (req, res) => {
   try {
-    const data = await service.deleteMaintenanceRequest(req.params.id);
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    await service.deleteMaintenanceRequest(req.params.id, parseInt(userId));
 
     res.json({
-      operationType: "Success",
-      message: "Delete maintenance request successfully",
-      code: "OK",
-      data,
-      timestamp: new Date(),
+      success: true,
+      message: "Xóa yêu cầu thành công",
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(400).json({ message: err.message });
   }
 };
 
-const updateStatus = async (req, res) => {
+// ==================== NHÂN VIÊN ====================
+
+// Nhân viên cập nhật trạng thái yêu cầu
+const updateStatusByStaff = async (req, res) => {
   try {
-    const { status } = req.body;
-    const data = await service.updateStatus(req.params.id, status);
+    const userRole = req.user?.role;
+    if (userRole !== 'Nhân viên' && userRole !== 'Quản lý' && userRole !== 'Admin') {
+      return res.status(403).json({ message: "Forbidden: Only staff can update status" });
+    }
+
+    const { status, note } = req.body;
+    const validStatuses = ['OPEN', 'IN_PROGRESS', 'DONE', 'CANCELLED'];
+    
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const data = await service.updateStatusByStaff(req.params.id, status, note);
 
     res.json({
-      operationType: "Success",
-      message: "Update status successfully",
-      code: "OK",
+      success: true,
+      message: "Cập nhật trạng thái thành công",
       data,
-      timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 };
 
+// Nhân viên phân công kỹ thuật viên
 const assignTechnician = async (req, res) => {
   try {
+    const userRole = req.user?.role;
+    if (userRole !== 'Nhân viên' && userRole !== 'Quản lý' && userRole !== 'Admin') {
+      return res.status(403).json({ message: "Forbidden: Only staff can assign technician" });
+    }
+
     const { technicianId, technicianName } = req.body;
+    if (!technicianId || !technicianName) {
+      return res.status(400).json({ message: "Technician ID and name are required" });
+    }
+
     const data = await service.assignTechnician(req.params.id, technicianId, technicianName);
 
     res.json({
-      operationType: "Success",
-      message: "Assign technician successfully",
-      code: "OK",
+      success: true,
+      message: "Phân công kỹ thuật viên thành công",
       data,
-      timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
-  }
-};
-
-const getStatistics = async (req, res) => {
-  try {
-    const { buildingId } = req.query;
-    const data = await service.getStatistics(buildingId);
-
-    res.json({
-      operationType: "Success",
-      message: "Get statistics successfully",
-      code: "OK",
-      data,
-      timestamp: new Date(),
-    });
-  } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 };
 
 module.exports = {
+  // Cư dân
   createMaintenanceRequest,
-  getAllMaintenanceRequests,
+  getMyMaintenanceRequests,
   getMaintenanceRequestById,
   updateMaintenanceRequest,
   deleteMaintenanceRequest,
-  updateStatus,
+  // Nhân viên
+  updateStatusByStaff,
   assignTechnician,
-  getStatistics,
 };

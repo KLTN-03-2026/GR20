@@ -1,100 +1,75 @@
 const { pool } = require("../../configs/database.config");
 
+// Cư dân tạo yêu cầu mới
 const createMaintenanceRequest = async (request) => {
   const query = `
     INSERT INTO maintenance_requests (
-      request_code, title, description, priority, status, 
-      building_id, apartment_id, unit, reported_by, reporter_name, 
-      reporter_phone, reported_at, scheduled_date, completed_at, 
-      technician_id, technician_name, estimated_cost, actual_cost, notes
+      title, description, priority, status, 
+      apartment_id, user_id, reported_by, reported_at
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-    RETURNING id
+    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+    RETURNING *
   `;
 
   const values = [
-    request.request_code,
     request.title,
     request.description,
-    request.priority,
-    request.status,
-    request.building_id,
+    request.priority || 'MEDIUM',
+    'OPEN',
     request.apartment_id,
-    request.unit,
-    request.reported_by,
-    request.reporter_name,
-    request.reporter_phone,
-    request.reported_at,
-    request.scheduled_date,
-    request.completed_at,
-    request.technician_id,
-    request.technician_name,
-    request.estimated_cost,
-    request.actual_cost,
-    request.notes,
+    request.user_id,
+    request.reported_by
   ];
 
   const result = await pool.query(query, values);
   return result.rows[0];
 };
 
-const getAllMaintenanceRequests = async ({ 
+// Lấy danh sách yêu cầu của riêng cư dân
+const getMyMaintenanceRequests = async ({ 
   page = 0, 
   size = 10, 
   status = null, 
   priority = null,
-  buildingId = null,
-  search = null 
+  userId = null
 }) => {
   const offset = page * size;
-  let conditions = [];
-  let values = [];
-  let index = 1;
+  
+  let query = `
+    SELECT * FROM maintenance_requests 
+    WHERE reported_by = $1
+  `;
+  let values = [userId];
+  let paramCount = 2;
 
   if (status && status !== 'all') {
-    conditions.push(`status = $${index++}`);
+    query += ` AND status = $${paramCount++}`;
     values.push(status);
   }
 
   if (priority && priority !== 'all') {
-    conditions.push(`priority = $${index++}`);
+    query += ` AND priority = $${paramCount++}`;
     values.push(priority);
   }
 
-  if (buildingId) {
-    conditions.push(`building_id = $${index++}`);
-    values.push(buildingId);
+  query += ` ORDER BY created_at DESC LIMIT $${paramCount++} OFFSET $${paramCount++}`;
+  values.push(size, offset);
+
+  let countQuery = `SELECT COUNT(*) FROM maintenance_requests WHERE reported_by = $1`;
+  let countValues = [userId];
+  let countParamCount = 2;
+
+  if (status && status !== 'all') {
+    countQuery += ` AND status = $${countParamCount++}`;
+    countValues.push(status);
   }
 
-  if (search) {
-    conditions.push(`(title ILIKE $${index++} OR request_code ILIKE $${index++} OR description ILIKE $${index++})`);
-    values.push(`%${search}%`, `%${search}%`, `%${search}%`);
+  if (priority && priority !== 'all') {
+    countQuery += ` AND priority = $${countParamCount++}`;
+    countValues.push(priority);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const dataQuery = `
-    SELECT * FROM maintenance_requests
-    ${whereClause}
-    ORDER BY 
-      CASE priority 
-        WHEN 'HIGH' THEN 1 
-        WHEN 'MEDIUM' THEN 2 
-        WHEN 'LOW' THEN 3 
-      END,
-      reported_at DESC
-    LIMIT $${index++} OFFSET $${index++}
-  `;
-
-  const countQuery = `
-    SELECT COUNT(*) FROM maintenance_requests
-    ${whereClause}
-  `;
-
-  const dataValues = [...values, size, offset];
-  const data = await pool.query(dataQuery, dataValues);
-  
-  const countValues = [...values];
+  const data = await pool.query(query, values);
   const count = await pool.query(countQuery, countValues);
 
   return {
@@ -103,29 +78,33 @@ const getAllMaintenanceRequests = async ({
   };
 };
 
-const getMaintenanceRequestById = async (id) => {
-  const query = `SELECT * FROM maintenance_requests WHERE id = $1`;
-  const result = await pool.query(query, [id]);
+// Lấy chi tiết 1 yêu cầu
+const getMaintenanceRequestById = async (id, userId) => {
+  const query = `
+    SELECT * FROM maintenance_requests 
+    WHERE id = $1 AND reported_by = $2
+  `;
+  const result = await pool.query(query, [id, userId]);
   return result.rows[0];
 };
 
-const updateMaintenanceRequest = async (id, request) => {
+// Cư dân cập nhật yêu cầu (bỏ updated_at)
+const updateMaintenanceRequest = async (id, userId, request) => {
   const fields = [];
   const values = [];
   let index = 1;
 
-  const updatableFields = [
-    'request_code', 'title', 'description', 'priority', 'status',
-    'building_id', 'apartment_id', 'unit', 'reported_by', 'reporter_name',
-    'reporter_phone', 'reported_at', 'scheduled_date', 'completed_at',
-    'technician_id', 'technician_name', 'estimated_cost', 'actual_cost', 'notes'
-  ];
-
-  for (const field of updatableFields) {
-    if (request[field] !== undefined) {
-      fields.push(`${field} = $${index++}`);
-      values.push(request[field]);
-    }
+  if (request.title !== undefined) {
+    fields.push(`title = $${index++}`);
+    values.push(request.title);
+  }
+  if (request.description !== undefined) {
+    fields.push(`description = $${index++}`);
+    values.push(request.description);
+  }
+  if (request.priority !== undefined) {
+    fields.push(`priority = $${index++}`);
+    values.push(request.priority);
   }
 
   if (fields.length === 0) {
@@ -133,11 +112,13 @@ const updateMaintenanceRequest = async (id, request) => {
   }
 
   values.push(id);
+  values.push(userId);
 
+  // Bỏ updated_at = NOW() vì cột không tồn tại
   const query = `
     UPDATE maintenance_requests
-    SET ${fields.join(", ")}, updated_at = NOW()
-    WHERE id = $${index}
+    SET ${fields.join(", ")}
+    WHERE id = $${index++} AND reported_by = $${index++} AND status = 'OPEN'
     RETURNING *
   `;
 
@@ -145,81 +126,79 @@ const updateMaintenanceRequest = async (id, request) => {
   return result.rows[0];
 };
 
-const deleteMaintenanceRequest = async (id) => {
+// Cư dân xóa yêu cầu
+const deleteMaintenanceRequest = async (id, userId) => {
   const query = `
-    UPDATE maintenance_requests
-    SET status = 'CANCELLED', updated_at = NOW()
-    WHERE id = $1
+    DELETE FROM maintenance_requests
+    WHERE id = $1 AND reported_by = $2 AND status = 'OPEN'
     RETURNING id
   `;
-
-  const result = await pool.query(query, [id]);
+  const result = await pool.query(query, [id, userId]);
   return result.rows[0];
 };
 
-const updateStatus = async (id, status) => {
-  const completedAt = status === 'COMPLETED' ? new Date() : null;
+// Nhân viên cập nhật trạng thái (bỏ updated_at)
+const updateStatusByStaff = async (id, status, note = null) => {
+  const completedAt = status === 'DONE' ? new Date() : null;
   
   const query = `
     UPDATE maintenance_requests
-    SET status = $1, completed_at = $2, updated_at = NOW()
-    WHERE id = $3
+    SET status = $1, completed_at = $2, staff_note = $3
+    WHERE id = $4
     RETURNING *
   `;
-
-  const result = await pool.query(query, [status, completedAt, id]);
+  const result = await pool.query(query, [status, completedAt, note, id]);
   return result.rows[0];
 };
 
+// Nhân viên phân công kỹ thuật viên (bỏ updated_at)
 const assignTechnician = async (id, technicianId, technicianName) => {
   const query = `
     UPDATE maintenance_requests
-    SET technician_id = $1, technician_name = $2, status = 'IN_PROGRESS', updated_at = NOW()
+    SET technician_id = $1, technician_name = $2, status = 'IN_PROGRESS'
     WHERE id = $3
     RETURNING *
   `;
-
   const result = await pool.query(query, [technicianId, technicianName, id]);
   return result.rows[0];
 };
 
-const getStatistics = async (buildingId = null) => {
-  let conditions = [];
-  let values = [];
-  let index = 1;
-
-  if (buildingId) {
-    conditions.push(`building_id = $${index++}`);
-    values.push(buildingId);
-  }
-
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
+// Kiểm tra xem cột có tồn tại không (dùng để debug)
+const checkColumns = async () => {
   const query = `
-    SELECT 
-      COUNT(*) as total,
-      COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as pending,
-      COUNT(CASE WHEN status = 'IN_PROGRESS' THEN 1 END) as in_progress,
-      COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed,
-      COUNT(CASE WHEN status = 'CANCELLED' THEN 1 END) as cancelled,
-      COUNT(CASE WHEN priority = 'HIGH' THEN 1 END) as high_priority,
-      COUNT(CASE WHEN priority = 'MEDIUM' THEN 1 END) as medium_priority,
-      COUNT(CASE WHEN priority = 'LOW' THEN 1 END) as low_priority
-    FROM maintenance_requests
-    ${whereClause}
+    SELECT column_name 
+    FROM information_schema.columns 
+    WHERE table_name = 'maintenance_requests'
   `;
+  const result = await pool.query(query);
+  console.log('📌 Columns in maintenance_requests:', result.rows.map(r => r.column_name));
+  return result.rows;
+};
 
-  const result = await pool.query(query, values);
+// Lấy thông tin apartment từ bảng resident_profiles
+const getUserApartment = async (userId) => {
+  const query = `
+    SELECT rp.apartment_id, rp.relationship, rp.status as resident_status, 
+           a.apartment_code, a.building_id, a.area, a.status as apartment_status
+    FROM public.resident_profiles rp
+    LEFT JOIN public.apartments a ON rp.apartment_id = a.id
+    WHERE rp.user_id = $1 
+      AND rp.status = 'ACTIVE'
+    ORDER BY rp.created_at DESC
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [userId]);
   return result.rows[0];
 };
 
 module.exports = {
   createMaintenanceRequest,
-  getAllMaintenanceRequests,
+  getMyMaintenanceRequests,
   getMaintenanceRequestById,
   updateMaintenanceRequest,
   deleteMaintenanceRequest,
-  updateStatus,
+  updateStatusByStaff,
   assignTechnician,
-  getStatistics,
+  checkColumns,
+  getUserApartment,
 };

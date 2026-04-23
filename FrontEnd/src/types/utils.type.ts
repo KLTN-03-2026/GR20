@@ -5,6 +5,7 @@ export interface ErrorResponseApi<Data> {
 
 export interface SuccessResponseApi<Data> {
   operationType: string
+  success:boolean
   message: string
   code: string
   data: Data

@@ -86,8 +86,6 @@ export default function ResidentDetail() {
     switch (status) {
       case 'ACTIVE':
         return 'Đang cư trú'
-      case 'INACTIVE':
-        return 'Không hoạt động'
       case 'MOVED_OUT':
         return 'Đã chuyển đi'
       default:
@@ -250,7 +248,6 @@ export default function ResidentDetail() {
                   >
                     <option value="ACTIVE">Đang cư trú</option>
                     <option value="MOVED_OUT">Đã chuyển đi</option>
-                    <option value="INACTIVE">Không hoạt động</option>
                   </select>
                 </div>
               )}

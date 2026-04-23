@@ -22,6 +22,11 @@ import ViewQRcodeDetails from './pages/QRCODE_USER/ViewQRcodeDetails'
 import ResultQrcode from './pages/QRCODE_USER/ResultQrcode'
 import HomePageProtect from './pages/protect/HomePage/HomePage'
 import HistoryQrcode from './pages/QRCODE_USER/HistoryQrcode'
+import GetMaintenanceRequestList from './pages/maintenance request management/GetMaintenanceRequestList'
+import MaintenanceRequestDetail from './pages/maintenance request management/MaintenanceRequestDetail'
+import AddMaintenanceRequest from './pages/maintenance request management/AddMaintenanceRequest'
+
+
 
 // kiểm tra login
 function ProtecdRouter() {
@@ -125,6 +130,18 @@ export default function useRouteElements() {
     {
       path: '/residents/:id',
       element: <ResidentDetail />
+    },
+    {
+      path: '/maintenance',
+      element: <GetMaintenanceRequestList/>
+    },
+    {
+      path: '/maintenanceDetail/:id',
+      element: <MaintenanceRequestDetail />
+    },
+    {
+      path: '/addMaintenanceDetail',
+      element: <AddMaintenanceRequest/>
     }
   ])
 
