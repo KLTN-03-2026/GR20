@@ -73,7 +73,7 @@ import type { data } from 'src/types/user.type'
 class Http {
   instance: AxiosInstance
   private accessToken: string
-  private refreshToken: string // ✅ THÊM DÒNG NÀY - khai báo thuộc tính refreshToken
+  private refreshToken: string
 
   constructor() {
     this.accessToken = getAccessToken()
