@@ -403,7 +403,7 @@ exports.residentProfiles = pgTable(
 );
 
 exports.notificationReceivers = pgTable(
-  "notificationReceivers",
+  "notification_receivers",
   {
     id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
     notificationId: bigint("notification_id", { mode: "number" }),
