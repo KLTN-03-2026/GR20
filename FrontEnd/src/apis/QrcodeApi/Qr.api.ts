@@ -3,7 +3,6 @@ import http from 'src/utils/http'
 import type { SuccessResponseApi } from 'src/types/utils.type'
 import type {
   Qrcodes,
-  GuestQrListResponse,
   BodyCreateQrcode,
   historyQrcode,
   ResultQrcode,
@@ -13,8 +12,15 @@ import type {
 
 export const QRCodeApi = {
   // Lấy danh sách guest QR
-  getGuestQrList(params?: { limit?: number; offset?: number; onlyValid?: boolean }) {
-    return http.get<SuccessResponseApi<GuestQrListResponse>>('api/qr/guest/list', { params })
+  getGuestQrList(params?: {
+    page?: number
+    limit?: number
+    onlyValid?: boolean
+    search?: string
+    fromDate?: string
+    toDate?: string
+  }) {
+    return http.get<SuccessResponseApi<Qrcodes[]>>('api/qr/guest/list', { params })
   },
   updateGuestQr(id: string, body: BodyCreateQrcode) {
     return http.put<SuccessResponseApi<Qrcodes>>(`api/qr/guest/${id}`, body)
@@ -39,8 +45,16 @@ export const QRCodeApi = {
   scanGuestQr(qrCode: string) {
     return http.get<SuccessResponseApi<ResultQrcode>>(`api/qr/guest/scan/${qrCode}`)
   },
-  getGuestQrHistory() {
-    return http.get<SuccessResponseApi<historyQrcode[]>>('api/qr/guest/history')
+  getGuestQrHistory(params?: {
+    page?: number
+    limit?: number
+    search?: string
+    toDate?: string
+    fromDate?: string
+    result?: string
+    qrType?: string
+  }) {
+    return http.get<SuccessResponseApi<historyQrcode[]>>('api/qr/guest/history', { params })
   },
   getQrcodeMe() {
     return http.get<SuccessResponseApi<QrcodeMe>>('api/qr/personal/me')

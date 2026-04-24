@@ -171,26 +171,53 @@ const getGuestQrById = async (id) => {
   return { ...mapper.toGuestQrResponse(data), qrImage };
 };
 
+// services/qrcode.service.js
 const getGuestQrsByHost = async (hostUserId, queryParams = {}) => {
-  const { limit, offset, onlyValid } = queryParams;
+  const { 
+    limit, 
+    page, 
+    onlyValid, 
+    search,
+    fromDate,   // ✅ fromDate
+    toDate      // ✅ toDate
+  } = queryParams;
+  
+  const pageNum = page ? parseInt(page) : 1;
+  const pageSize = limit ? parseInt(limit) : 10;
+  const offset = (pageNum - 1) * pageSize;
+  
+  // Xử lý thời gian
+  let fromDateTime = fromDate;
+  let toDateTime = toDate;
+  
+  if (fromDate && !fromDate.includes('T')) {
+    fromDateTime = `${fromDate}T00:00:00`;
+  }
+  if (toDate && !toDate.includes('T')) {
+    toDateTime = `${toDate}T23:59:59`;
+  }
   
   const result = await repo.getGuestQrsByHost(hostUserId, {
-    limit: limit ? parseInt(limit) : 10,
-    offset: offset ? parseInt(offset) : 0,
-    onlyValid: onlyValid === 'true'  // Chỉ lọc khi onlyValid=true
+    limit: pageSize,
+    offset: offset,
+    onlyValid: onlyValid === 'true',
+    search: search || '',
+    validFromDate: fromDateTime || null,   // ✅ từ fromDate
+    validToDate: toDateTime || null        // ✅ từ toDate
   });
   
-  // Map dữ liệu (mapper đã xử lý trạng thái EXPIRED)
   const mappedData = result.data.map(mapper.toGuestQrResponse);
   
   return {
-    total: result.total,
-    limit: result.limit,
-    offset: result.offset,
-    data: mappedData
+    data: mappedData,
+    size: mappedData.length,
+    totalElements: result.total,
+    totalPages: Math.ceil(result.total / pageSize),
+    page: pageNum,
+    pageSize: pageSize
   };
 };
-
+ 
 
 const updateGuestQr = async (id, updateData) => {
   const client = await pool.connect();
@@ -287,21 +314,106 @@ const deleteGuestQr = async (id) => {
   return { id: deleted.id };
 };
 
-const getGuestQrHistory = async (hostUserId) => {
-  const data = await repo.getGuestQrHistory(hostUserId);
-  return data.map((row) => ({
-    ...mapper.toGuestQrResponse(row),
-    scanTime: row.scan_time,
-    direction: row.direction,
-    gate: row.gate,
-    result: row.result,
-  }));
-};
+// services/qrcode.service.js
 
-// qr.service.js - Sửa lại hàm getScanHistoryByGuard
-const getScanHistoryByGuard = async (guardUserId) => {
-  // Query cho guest QR
-  const guestQuery = `
+const getGuestQrHistory = async (hostUserId, queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    result = '',
+    fromDate = null,
+    toDate = null,
+    qrType = ''
+  } = queryParams;
+
+  // Xử lý ngày tháng
+  let fromDateTime = fromDate;
+  let toDateTime = toDate;
+  
+  if (fromDate && !fromDate.includes('T')) {
+    fromDateTime = `${fromDate}T00:00:00`;
+  }
+  if (toDate && !toDate.includes('T')) {
+    toDateTime = `${toDate}T23:59:59`;
+  }
+
+  const resultData = await repo.getGuestQrHistory(hostUserId, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    result: result || '',
+    fromDate: fromDateTime || null,
+    toDate: toDateTime || null,
+    qrType: qrType || ''
+  });
+
+  return {
+     data: resultData.data,
+    size: resultData.data.length,
+    totalElements: resultData.total,
+    totalPages: resultData.totalPages,
+    page: resultData.page,
+    pageSize: resultData.limit
+  };
+};  
+
+// services/qrcode.service.js
+// services/qrcode.service.js
+const getScanHistoryByGuard = async (guardUserId, queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    result = '',
+    fromDate = null,
+    toDate = null,
+    qrType = ''
+  } = queryParams;
+
+  const offset = (page - 1) * limit;
+  let conditions = [`al.scanned_by = $1`];
+  let params = [guardUserId];
+  let paramIndex = 2;
+
+  // Tìm kiếm
+  if (search && search.trim()) {
+    conditions.push(`(v.name ILIKE $${paramIndex} OR v.phone ILIKE $${paramIndex} OR u_full.full_name ILIKE $${paramIndex})`);
+    params.push(`%${search.trim()}%`);
+    paramIndex++;
+  }
+
+  // Lọc kết quả
+  if (result && result.trim()) {
+    conditions.push(`al.result = $${paramIndex}`);
+    params.push(result.toUpperCase());
+    paramIndex++;
+  }
+
+  // Lọc loại QR
+  if (qrType === 'guest') {
+    conditions.push(`al.qr_code_id IS NOT NULL`);
+  } else if (qrType === 'personal') {
+    conditions.push(`al.personal_qr_code_id IS NOT NULL`);
+  }
+
+  // Lọc thời gian
+  if (fromDate) {
+    conditions.push(`al.scan_time >= $${paramIndex}`);
+    params.push(fromDate);
+    paramIndex++;
+  }
+  if (toDate) {
+    conditions.push(`al.scan_time <= $${paramIndex}`);
+    params.push(toDate);
+    paramIndex++;
+  }
+
+  const whereClause = conditions.length > 0 
+    ? `WHERE ${conditions.join(' AND ')}` 
+    : '';
+
+  const dataQuery = `
     SELECT 
       al.id,
       al.scan_time,
@@ -309,81 +421,67 @@ const getScanHistoryByGuard = async (guardUserId) => {
       al.gate,
       al.result,
       al.scanned_by,
-      'guest' as qr_type,
-      gq.qr_code,
+      CASE 
+        WHEN al.qr_code_id IS NOT NULL THEN 'guest'
+        ELSE 'personal'
+      END AS qr_type,
+      COALESCE(gq.qr_code, pq.qr_code) AS qr_code,
       gq.valid_from,
-      gq.valid_to,
-      v.name AS visitor_name,
-      v.phone AS visitor_phone,
+      COALESCE(gq.valid_to, pq.expires_at) AS valid_to,
+      CASE 
+        WHEN al.qr_code_id IS NOT NULL THEN v.name
+        ELSE u_full.full_name
+      END AS visitor_name,
+      CASE 
+        WHEN al.qr_code_id IS NOT NULL THEN v.phone
+        ELSE u_full.phone
+      END AS visitor_phone,
       a.apartment_code,
-      u.full_name AS creator_name
+      CASE 
+        WHEN al.qr_code_id IS NOT NULL THEN creator.full_name
+        ELSE 'Admin'
+      END AS creator_name,
+      guard.full_name AS scanned_by_name
     FROM access_logs al
-    INNER JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
+    LEFT JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
+    LEFT JOIN qr_codes pq ON pq.id = al.personal_qr_code_id
     LEFT JOIN visitors v ON v.id = gq.visitor_id
-    LEFT JOIN apartments a ON a.id = gq.apartment_id
-    LEFT JOIN users u ON u.id = gq.host_user_id
-    WHERE al.scanned_by = $1 AND al.qr_code_id IS NOT NULL
+    LEFT JOIN apartments a ON a.id = COALESCE(gq.apartment_id, pq.apartment_id)
+    LEFT JOIN users u_full ON u_full.id = COALESCE(gq.host_user_id, pq.user_id)
+    LEFT JOIN users creator ON creator.id = gq.host_user_id
+    LEFT JOIN users guard ON guard.id = al.scanned_by
+    ${whereClause}
+    ORDER BY al.scan_time DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
-  
-  // Query cho personal QR
-  const personalQuery = `
-    SELECT 
-      al.id,
-      al.scan_time,
-      al.direction,
-      al.gate,
-      al.result,
-      al.scanned_by,
-      'personal' as qr_type,
-      pq.qr_code,
-      pq.expires_at as valid_to,
-      NULL as valid_from,
-      u.full_name AS visitor_name,
-      u.phone AS visitor_phone,
-      a.apartment_code,
-      'Admin' as creator_name
-    FROM access_logs al
-    INNER JOIN qr_codes pq ON pq.id = al.personal_qr_code_id
-    LEFT JOIN users u ON u.id = pq.user_id
-    LEFT JOIN apartments a ON a.id = pq.apartment_id
-    WHERE al.scanned_by = $1 AND al.personal_qr_code_id IS NOT NULL
-  `;
-  
-  const [guestResult, personalResult] = await Promise.all([
-    pool.query(guestQuery, [guardUserId]),
-    pool.query(personalQuery, [guardUserId])
-  ]);
-  
-  // Gộp và sắp xếp theo thời gian giảm dần
-  const allLogs = [...guestResult.rows, ...personalResult.rows];
-  allLogs.sort((a, b) => new Date(b.scan_time) - new Date(a.scan_time));
-  
-  return allLogs;
-};
 
-// const getScanHistoryByGuard = async (guardUserId) => {
-//   const query = `
-//     SELECT 
-//       al.*,
-//       gq.qr_code,
-//       gq.valid_from,
-//       gq.valid_to,
-//       v.name AS visitor_name,
-//       v.phone AS visitor_phone,
-//       a.apartment_code,
-//       u.full_name AS host_name
-//     FROM access_logs al
-//     LEFT JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
-//     LEFT JOIN visitors v ON v.id = gq.visitor_id
-//     LEFT JOIN apartments a ON a.id = gq.apartment_id
-//     LEFT JOIN users u ON u.id = gq.host_user_id
-//     WHERE al.scanned_by = $1
-//     ORDER BY al.scan_time DESC
-//   `;
-//   const result = await pool.query(query, [guardUserId]);
-//   return result.rows;
-// };
-// qr.service.js
+  const dataResult = await pool.query(dataQuery, [...params, limit, offset]);
+
+  // ✅ SỬA: Count query cần JOIN đủ các bảng
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM access_logs al
+    LEFT JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
+    LEFT JOIN qr_codes pq ON pq.id = al.personal_qr_code_id
+    LEFT JOIN visitors v ON v.id = gq.visitor_id
+    LEFT JOIN users u_full ON u_full.id = COALESCE(gq.host_user_id, pq.user_id)
+    LEFT JOIN users creator ON creator.id = gq.host_user_id
+    LEFT JOIN users guard ON guard.id = al.scanned_by
+    LEFT JOIN apartments a ON a.id = COALESCE(gq.apartment_id, pq.apartment_id)
+    ${whereClause}
+  `;
+
+  const countResult = await pool.query(countQuery, params);
+
+  return {
+    data: dataResult.rows,
+    size: dataResult.rows.length,
+    totalElements: parseInt(countResult.rows[0]?.total || 0),
+    totalPages: Math.ceil(parseInt(countResult.rows[0]?.total || 0) / limit),
+    page: page,
+    pageSize: limit
+  };
+};
 const createPersonalQr = async (data) => {
   const query = `
     INSERT INTO qr_codes (user_id, apartment_id, qr_code, expires_at, status)
@@ -437,31 +535,111 @@ const revokePersonalQr = async (id) => {
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
-// qr.service.js - Thêm hàm này
-const getAllPersonalQrs = async () => {
-  const query = `
-    SELECT 
-      qc.*,
-      u.full_name AS user_name,
-      u.email AS user_email,
-      u.phone AS user_phone,
-      a.apartment_code
-    FROM qr_codes qc
-    LEFT JOIN users u ON u.id = qc.user_id
-    LEFT JOIN apartments a ON a.id = qc.apartment_id
-    ORDER BY qc.created_at DESC
-  `;
-  const result = await pool.query(query);
-  return result.rows;
+// services/qrcode.service.js
+const getAllPersonalQrs = async (queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    status = ''
+  } = queryParams;
+
+  const result = await repo.getAllPersonalQrs({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    status: status || ''
+  });
+
+  return {
+    data: result.data,
+    size: result.data.length,
+    totalElements: result.total,
+    totalPages: result.totalPages,
+    page: result.page,
+    pageSize: result.limit
+  };
 };
 
 // Lấy tất cả lịch sử ra vào của cư dân (ADMIN)
-const getAllResidentAccessHistory = async () => {
-  return await repo.getAllResidentAccessHistory();
+// services/qrcode.service.js
+const getAllResidentAccessHistory = async (queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    result = '',
+    fromDate = null,
+    toDate = null
+  } = queryParams;
+
+  let fromDateTime = fromDate;
+  let toDateTime = toDate;
+
+  if (fromDate && !fromDate.includes('T')) {
+    fromDateTime = `${fromDate}T00:00:00`;
+  }
+  if (toDate && !toDate.includes('T')) {
+    toDateTime = `${toDate}T23:59:59`;
+  }
+
+  const resultData = await repo.getAllResidentAccessHistory({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    result: result || '',
+    fromDate: fromDateTime || null,
+    toDate: toDateTime || null
+  });
+
+  return {
+    data: resultData.data,
+    size: resultData.data.length,
+    totalElements: resultData.total,
+    totalPages: resultData.totalPages,
+    page: resultData.page,
+    pageSize: resultData.limit
+  };
 };
 
-const getResidentAccessHistory = async (userId) => {
-  return await repo.getResidentAccessHistory(userId);
+// services/qrcode.service.js
+const getResidentAccessHistory = async (userId, queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    result = '',
+    fromDate = null,
+    toDate = null
+  } = queryParams;
+
+  let fromDateTime = fromDate;
+  let toDateTime = toDate;
+
+  if (fromDate && !fromDate.includes('T')) {
+    fromDateTime = `${fromDate}T00:00:00`;
+  }
+  if (toDate && !toDate.includes('T')) {
+    toDateTime = `${toDate}T23:59:59`;
+  }
+
+  const resultData = await repo.getResidentAccessHistory(userId, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    result: result || '',
+    fromDate: fromDateTime || null,
+    toDate: toDateTime || null
+  });
+
+  return {
+    data: resultData.data,
+    size: resultData.data.length,
+    totalElements: resultData.total,
+    totalPages: resultData.totalPages,
+    page: resultData.page,
+    pageSize: resultData.limit
+  };
 };
 
 // qr.service.js
@@ -515,36 +693,7 @@ const updatePersonalQr = async (id, updateData) => {
   return result.rows[0];
 };
 
-// qr.service.js
-// const getAllResidentsWithQRStatus = async () => {
-//   const query = `
-//     SELECT 
-//       u.id AS user_id,
-//       u.full_name AS user_name,
-//       u.email AS user_email,
-//       u.phone AS user_phone,
-//       a.id AS apartment_id,
-//       a.apartment_code,
-//       qc.id AS qr_id,
-//       qc.qr_code,
-//       qc.status AS qr_status,
-//       qc.expires_at,
-//       qc.created_at,
-//       CASE 
-//         WHEN qc.id IS NOT NULL THEN 'HAS_QR'
-//         ELSE 'NO_QR'
-//       END AS qr_exists
-//     FROM users u
-//     LEFT JOIN apartments a ON a.owner_user_id = u.id
-//     LEFT JOIN qr_codes qc ON qc.user_id = u.id
-//     WHERE u.role_id IN (SELECT id FROM roles WHERE name IN ('RESIDENT', 'USER'))
-//        OR u.role_id IS NULL
-//     ORDER BY qr_exists DESC, u.created_at DESC
-//   `;
-//   const result = await pool.query(query);
-//   return result.rows;
-// };
-// qr.service.js
+
 const getAllResidentsWithQRStatus = async () => {
   const query = `
     SELECT 

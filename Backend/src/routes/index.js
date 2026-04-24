@@ -12,7 +12,7 @@ const floorRoute = require("../modules/floors/floors.route");
 
 const residentRoute = require("../modules/residents/resident.route");
 const maintenanceRoute = require("../modules/maintenances/maintenance.route");
-
+const securityResidentRoute = require("../modules/security/security.resident.routes");
 router.use("/buildings", buildingRoute);
 
 router.use("/employees", employeeRoutes);
@@ -24,5 +24,7 @@ router.use("/qr", qrRoute);
 
 router.use("/residents", residentRoute);
 router.use("/maintenances", maintenanceRoute);
-
+router.use("/security", securityResidentRoute);
+router.use("/security-residents", securityResidentRoute);
+console.log('✅ Mounted security/residents route');
 module.exports = router;

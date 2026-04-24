@@ -90,6 +90,7 @@ export interface historyQrcode {
   visitor_phone: string
   apartment_code: string
   creator_name: string
+  scanned_by_name: string
 }
 
 export interface ResultQrcode {
@@ -142,18 +143,11 @@ export interface Qrcodes {
   qrImage?: string // base64 image
 }
 
-export interface GuestQrListResponse {
-  total: number
-  limit: number
-  offset: number
-  data: Qrcodes[]
-}
-
 export interface BodyCreateQrcode {
   visitorName: string
   visitorPhone: string
   visitorIdCard: string
-  apartmentId: number
+  apartmentId?: number
   validFrom: Date | string
   validTo: Date | string
   maxEntries: number

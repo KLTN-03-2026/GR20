@@ -64,54 +64,71 @@ const createGuestQr = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-// const createGuestQr = async (req, res) => {
-//   try {
-//     const hostUserId = req.user.id;  // ✅ Lấy từ token
-//     console.log('✅ Creating QR for user:', hostUserId);  // Debug
-    
-//     const data = await service.createGuestQr({ 
-//       ...req.body, 
-//       hostUserId  // 👈 Phải truyền vào
-//     });
-    
-//     res.status(201).json({ 
-//       operationType: "Success", 
-//       message: "Create guest QR successfully", 
-//       code: "CREATED", 
-//       data, 
-//       timestamp: new Date() 
-//     });
-//   } catch (err) {
-//     console.error('❌ Error:', err.message);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-// ─── DANH SÁCH QR KHÁCH (Có lọc, phân trang, sắp xếp) ───────────────────────────────────
+// controllers/qrcode.controller.js
 const getGuestQrsByHost = async (req, res) => {
   try {
-    // const { userId } = req.params;
-    const userId = req.user.sub;  // 👈 Lấy từ token
-    const { limit, offset, onlyValid } = req.query;
+    const userId = req.user.sub;
+    const { limit, page, onlyValid, search, fromDate, toDate } = req.query;  // ✅ fromDate, toDate
     
     const data = await service.getGuestQrsByHost(userId, {
       limit,
-      offset,
-      onlyValid
+      page,
+      onlyValid,
+      search,
+      fromDate,  // ✅ fromDate
+      toDate     // ✅ toDate
     });
     
     res.json({ 
       operationType: "Success", 
-      message: "Get guest QR list successfully", 
+      message: "success", 
       code: "OK", 
-      data, 
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
       timestamp: new Date() 
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Error:', err);
+    res.status(500).json({ 
+      operationType: "Error",
+      message: err.message, 
+      code: "INTERNAL_ERROR",
+      timestamp: new Date() 
+    });
   }
 };
-
+// const getGuestQrsByHost = async (req, res) => {
+//   try {
+//     const userId = req.user.sub;
+//     const { limit, page, onlyValid, search } = req.query;
+    
+//     const data = await service.getGuestQrsByHost(userId, {
+//       limit,
+//       page,
+//       onlyValid,
+//       search
+//     });
+    
+//     res.json({ 
+//       operationType: "Success", 
+//       message: "success", 
+//       code: "OK", 
+//       ...data,
+//       timestamp: new Date() 
+//     });
+//   } catch (err) {
+//     res.status(500).json({ 
+//       operationType: "Error",
+//       message: err.message, 
+//       code: "INTERNAL_ERROR",
+//       timestamp: new Date() 
+//     });
+//   }
+// };
 const getGuestQrById = async (req, res) => {
   try {
     const data = await service.getGuestQrById(req.params.id);
@@ -214,35 +231,88 @@ const deleteGuestQr = async (req, res) => {
 };
 
 
+// // controllers/qrcode.controller.js
+// const getGuestQrHistory = async (req, res) => {
+//   try {
+//     const userId = req.user.sub || req.user.id;
+//     const userRole = req.user.role;
+    
+//     let data;
+    
+//     // Nếu là BẢO VỆ -> lấy lịch sử quét của chính họ
+//     if (userRole === 'Bảo vệ' || userRole === 'SECURITY' || userRole === 'GUARD') {
+//       data = await service.getScanHistoryByGuard(userId);
+//     } 
+//     // Nếu là CƯ DÂN -> lấy lịch sử QR của họ
+//     else {
+//       data = await service.getGuestQrHistory(userId);
+//     }
+    
+//     res.json({
+//       operationType: "Success",
+//       message: "Get history successfully",
+//       code: "OK",
+//       data: data,
+//       timestamp: new Date()
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+// controllers/qrcode.controller.js
 const getGuestQrHistory = async (req, res) => {
   try {
-    const userId = req.user?.sub || req.user?.id;
-    const userRole = req.user?.role;
+    const userId = req.user.sub || req.user.id;
+    const userRole = req.user.role;
     
-    console.log('User ID:', userId);
-    console.log('User Role:', userRole);
+    const { page, limit, search, result, fromDate, toDate, qrType } = req.query;
     
     let data;
     
-    // Nếu là bảo vệ, lấy lịch sử quét của chính họ
     if (userRole === 'Bảo vệ' || userRole === 'SECURITY' || userRole === 'GUARD') {
-      data = await service.getScanHistoryByGuard(userId);
-    } 
-    // Nếu là cư dân, lấy lịch sử QR của họ
-    else {
-      data = await service.getGuestQrHistory(userId);
+      data = await service.getScanHistoryByGuard(userId, {
+        page: page || 1,
+        limit: limit || 10,
+        search: search || '',
+        result: result || '',
+        fromDate: fromDate || null,
+        toDate: toDate || null,
+        qrType: qrType || ''
+      });
+    } else {
+      data = await service.getGuestQrHistory(userId, {
+        page: page || 1,
+        limit: limit || 10,
+        search: search || '',
+        result: result || '',
+        fromDate: fromDate || null,
+        toDate: toDate || null,
+        qrType: qrType || ''
+      });
     }
     
-    res.json({ 
-      operationType: "Success", 
-      message: "Get history successfully", 
-      code: "OK", 
-      data, 
-      timestamp: new Date() 
+    // ✅ Đảm bảo trả về đầy đủ các field
+    res.json({
+      operationType: "Success",
+      message: "Get history successfully",
+      code: "OK",
+      data: data.data || [],           // Mảng dữ liệu
+      size: data.data?.length || 0,    // Số lượng phần tử hiện tại
+      totalElements: data.totalElements || 0,  // Tổng số bản ghi
+      totalPages: data.totalPages || 0,        // Tổng số trang
+      page: data.page || 1,                    // Trang hiện tại
+      pageSize: data.pageSize || 10,           // Số bản ghi mỗi trang
+      timestamp: new Date()
     });
   } catch (err) {
     console.error('History error:', err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      operationType: "Error",
+      message: err.message,
+      code: "INTERNAL_ERROR",
+      timestamp: new Date()
+    });
   }
 };
 
@@ -312,20 +382,32 @@ const getMyPersonalQr = async (req, res) => {
 };
 
 // qr.controller.js
+// controllers/qrcode.controller.js
 const getAllPersonalQrs = async (req, res) => {
   try {
     if (req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Forbidden: Only admin can access' });
     }
     
-    // Trả về danh sách tất cả cư dân kèm thông tin QR (nếu có)
-    const data = await service.getAllResidentsWithQRStatus();
+    const { page, limit, search, status } = req.query;
+    
+    const data = await service.getAllPersonalQrs({
+      page: page || 1,
+      limit: limit || 10,
+      search: search || '',
+      status: status || ''
+    });
     
     res.json({
       operationType: "Success",
-      message: "Get residents list with QR status successfully",
+      message: "Get all personal QRs successfully",
       code: "OK",
-      data,
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
       timestamp: new Date()
     });
   } catch (err) {
@@ -333,26 +415,7 @@ const getAllPersonalQrs = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-// const getAllPersonalQrs = async (req, res) => {
-//   try {
-//     if (req.user.role !== 'ADMIN') {
-//       return res.status(403).json({ message: 'Forbidden: Only admin can access' });
-//     }
-    
-//     const data = await service.getAllPersonalQrs();  // ← GỌI SERVICE
-    
-//     res.json({
-//       operationType: "Success",
-//       message: "Get all personal QRs successfully",
-//       code: "OK",
-//       data: data,
-//       timestamp: new Date()
-//     });
-//   } catch (err) {
-//     console.error('Error:', err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
+
 
 const revokePersonalQr = async (req, res) => {
   try {
@@ -394,28 +457,35 @@ const getPersonalQrByUserId = async (req, res) => {
 
 
 // Lấy lịch sử ra vào của cư dân theo user_id (ADMIN)
+// controllers/qrcode.controller.js
 const getResidentAccessHistory = async (req, res) => {
   try {
-    // Kiểm tra role ADMIN
     if (req.user.role !== 'ADMIN') {
-      return res.status(403).json({ 
-        message: 'Forbidden: Only admin can access this resource' 
-      });
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
     }
     
     const { userId } = req.params;
+    const { page, limit, search, result, fromDate, toDate } = req.query;
     
-    if (!userId) {
-      return res.status(400).json({ message: 'userId is required' });
-    }
-    
-    const data = await service.getResidentAccessHistory(userId);
+    const data = await service.getResidentAccessHistory(userId, {
+      page: page || 1,
+      limit: limit || 10,
+      search: search || '',
+      result: result || '',
+      fromDate: fromDate || null,
+      toDate: toDate || null
+    });
     
     res.json({
       operationType: "Success",
       message: "Get resident access history successfully",
       code: "OK",
-      data,
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
       timestamp: new Date()
     });
   } catch (err) {
@@ -425,22 +495,34 @@ const getResidentAccessHistory = async (req, res) => {
 };
 
 // Lấy tất cả lịch sử ra vào của tất cả cư dân (ADMIN)
+// controllers/qrcode.controller.js
 const getAllResidentAccessHistory = async (req, res) => {
   try {
-    // Kiểm tra role ADMIN
     if (req.user.role !== 'ADMIN') {
-      return res.status(403).json({ 
-        message: 'Forbidden: Only admin can access this resource' 
-      });
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
     }
     
-    const data = await service.getAllResidentAccessHistory();
+    const { page, limit, search, result, fromDate, toDate } = req.query;
+    
+    const data = await service.getAllResidentAccessHistory({
+      page: page || 1,
+      limit: limit || 10,
+      search: search || '',
+      result: result || '',
+      fromDate: fromDate || null,
+      toDate: toDate || null
+    });
     
     res.json({
       operationType: "Success",
       message: "Get all resident access history successfully",
       code: "OK",
-      data,
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
       timestamp: new Date()
     });
   } catch (err) {

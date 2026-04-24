@@ -25,6 +25,10 @@ import HistoryQrcode from './pages/QRCODE_USER/HistoryQrcode'
 import ViewQrcodeMe from './pages/QRCODE_USER/ViewQrcodeMe'
 import QrcodeManagementAdmin from './pages/QrcodeAdmin/QrcodeManagementAdmin'
 import ViewAllHistoryQrcode from './pages/QrcodeAdmin/ViewAllHistoryQrcode'
+import DashboaedLayoutStaff from './layout/DashboaedLayoutStaff'
+import DashboaedLayoutAdmin from './layout/DashboaedLayoutAdmin'
+import SecurityResident from './pages/security_CuDan/SecurityResident'
+import ResidentDetailPage from './pages/security_CuDan/ResidentDetailModal'
 
 // kiểm tra login
 function ProtecdRouter() {
@@ -49,7 +53,11 @@ export default function useRouteElements() {
     },
     {
       path: '/buildings',
-      element: <Buildings />
+      element: (
+        <DashboaedLayoutStaff>
+          <Buildings />
+        </DashboaedLayoutStaff>
+      )
     },
     {
       path: '/profile',
@@ -139,11 +147,35 @@ export default function useRouteElements() {
     },
     {
       path: 'qrcodeAdmin',
-      element: <QrcodeManagementAdmin />
+      element: (
+        <DashboaedLayoutAdmin>
+          <QrcodeManagementAdmin />
+        </DashboaedLayoutAdmin>
+      )
     },
     {
       path: 'historyQrcodeAdmin',
-      element: <ViewAllHistoryQrcode />
+      element: (
+        <DashboaedLayoutAdmin>
+          <ViewAllHistoryQrcode />
+        </DashboaedLayoutAdmin>
+      )
+    },
+    {
+      path: 'security/residents',
+      element: (
+        <DashboardLayoutProtect>
+          <SecurityResident />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/security/residents/:id',
+      element: (
+        <DashboardLayoutProtect>
+          <ResidentDetailPage />
+        </DashboardLayoutProtect>
+      )
     }
   ])
 

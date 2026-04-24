@@ -3,14 +3,31 @@ import type { SuccessResponseApi } from 'src/types/utils.type'
 import http from 'src/utils/http'
 
 export const qrApiAdmin = {
-  getAllQrcodd() {
-    return http.get<SuccessResponseApi<historyQrcodeAdmin[]>>('/api/qr/personal/list')
+  getAllQrcodd(params?: { page?: number; limit?: number; search?: string; status?: string }) {
+    return http.get<SuccessResponseApi<historyQrcodeAdmin[]>>('/api/qr/personal/list', { params })
   },
-  getAllHistoryQrcode() {
-    return http.get<SuccessResponseApi<historyQrcodeAdmin1[]>>('/api/qr/resident/history/all')
+  getAllHistoryQrcode(params?: {
+    page?: number
+    limit?: number
+    search?: string
+    result?: string
+    fromDate?: string
+    toDate?: string
+  }) {
+    return http.get<SuccessResponseApi<historyQrcodeAdmin1[]>>('/api/qr/resident/history/all', { params })
   },
-  getAllHistoryQrCodeId(id: string) {
-    return http.get<SuccessResponseApi<historyQrcodeAdmin1[]>>(`/api/qr/resident/history/${id}`)
+  getAllHistoryQrCodeId(
+    id: string,
+    params?: {
+      page?: number
+      limit?: number
+      search?: string
+      result?: string
+      fromDate?: string
+      toDate?: string
+    }
+  ) {
+    return http.get<SuccessResponseApi<historyQrcodeAdmin1[]>>(`/api/qr/resident/history/${id}`, { params })
   },
   deleteQrcodeAdmin(id: string) {
     return http.delete<SuccessResponseApi<deleteQrcodeId>>(`/api/qr/personal/${id}`)

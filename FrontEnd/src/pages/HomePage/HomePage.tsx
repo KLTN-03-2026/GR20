@@ -1,13 +1,9 @@
 import 'material-symbols'
 import { Link } from 'react-router-dom'
-import SidebarUser from 'src/components/SidebarUser'
 
 export default function HomePage() {
   return (
     <div className='bg-surface text-on-surface min-h-screen flex'>
-      {/* Side Navigation Bar */}
-      {/* <SidebarUser /> */}
-
       {/* Main Content Area */}
       {/* <main className='flex-1 lg:ml-64 w-full pb-24 lg:pb-8'> */}
       <div className='px-6 py-4 max-w-screen-2xl mx-auto space-y-8'>
@@ -42,7 +38,7 @@ export default function HomePage() {
               </span>
             </div>
             {/* <Link to={'/viewQrcodeMe'}> */}
-            <span className='font-manrope font-bold text-sm text-primary'>Mã QR Khách</span>
+            <span className='font-manrope font-bold text-sm text-primary'>Mã QR Cá Nhân</span>
             {/* </Link> */}
 
             <span className='text-[10px] text-slate-500 mt-1 uppercase tracking-wider'>An ninh vào cổng</span>
