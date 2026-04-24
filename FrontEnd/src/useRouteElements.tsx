@@ -10,7 +10,8 @@ import HomePage from './pages/HomePage'
 
 import DashboardLayoutUser from './layout/DashboardLayoutUser'
 import DashboardLayoutProtect from './layout/DashboardLayoutProtect'
-
+import ResidentNotifications from './pages/notifications/ResidentNotifications'
+import AdminNotifications from './pages/notifications/AdminNotifications'
 import EmployeeManagement from './pages/employees/EmployeeManagement'
 import Getresidentlist from './pages/residentmanagement/Getresidentlist'
 import Addresident from './pages/residentmanagement/Addresident'
@@ -160,6 +161,24 @@ export default function useRouteElements() {
     {
       path: 'historyQrcodeAdmin',
       element: <ViewAllHistoryQrcode />
+    },
+    {
+      path: '/notifications',
+      element: (
+        <DashboardLayoutUser>
+          <ResidentNotifications />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/admin/notifications',
+      element: (
+        <ProtectedAdminRoute>
+          <DashboardLayoutProtect>
+            <AdminNotifications />
+          </DashboardLayoutProtect>
+        </ProtectedAdminRoute>
+      )
     }
   ])
 
