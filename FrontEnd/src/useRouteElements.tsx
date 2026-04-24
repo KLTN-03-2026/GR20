@@ -10,7 +10,8 @@ import HomePage from './pages/HomePage'
 
 import DashboardLayoutUser from './layout/DashboardLayoutUser'
 import DashboardLayoutProtect from './layout/DashboardLayoutProtect'
-
+import ResidentNotifications from './pages/notifications/ResidentNotifications'
+import AdminNotifications from './pages/notifications/AdminNotifications'
 import EmployeeManagement from './pages/employees/EmployeeManagement'
 import Getresidentlist from './pages/residentmanagement/Getresidentlist'
 import Addresident from './pages/residentmanagement/Addresident'
@@ -22,8 +23,21 @@ import ViewQRcodeDetails from './pages/QRCODE_USER/ViewQRcodeDetails'
 import ResultQrcode from './pages/QRCODE_USER/ResultQrcode'
 import HomePageProtect from './pages/protect/HomePage/HomePage'
 import HistoryQrcode from './pages/QRCODE_USER/HistoryQrcode'
+import ViewQrcodeMe from './pages/QRCODE_USER/ViewQrcodeMe'
+import QrcodeManagementAdmin from './pages/QrcodeAdmin/QrcodeManagementAdmin'
+import ViewAllHistoryQrcode from './pages/QrcodeAdmin/ViewAllHistoryQrcode'
 
 // kiểm tra login
+function ProtectedAdminRoute({ children }: { children?: React.ReactNode }) {
+  const { isAuthenticated, user } = useContext(AppContext)
+  const hasPermission = user?.roles?.includes('ADMIN') || user?.roles?.includes('Quản lý')
+
+  if (!isAuthenticated) return <Navigate to='/login' />
+  if (!hasPermission) return <Navigate to='/' />
+
+  return children || <Outlet />
+}
+
 function ProtecdRouter() {
   const { isAuthenticated } = useContext(AppContext)
   return isAuthenticated ? <Outlet /> : <Navigate to='/login' />
@@ -62,7 +76,13 @@ export default function useRouteElements() {
     },
     {
       path: '/employees',
-      element: <EmployeeManagement />
+      element: (
+        <ProtectedAdminRoute>
+          <DashboardLayoutProtect>
+            <EmployeeManagement />
+          </DashboardLayoutProtect>
+        </ProtectedAdminRoute>
+      )
     },
 
     // ===== QR CODE =====
@@ -71,6 +91,14 @@ export default function useRouteElements() {
       element: (
         <DashboardLayoutUser>
           <QrcodeManagement />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: 'viewQrcodeMe',
+      element: (
+        <DashboardLayoutUser>
+          <ViewQrcodeMe />
         </DashboardLayoutUser>
       )
     },
@@ -125,6 +153,32 @@ export default function useRouteElements() {
     {
       path: '/residents/:id',
       element: <ResidentDetail />
+    },
+    {
+      path: 'qrcodeAdmin',
+      element: <QrcodeManagementAdmin />
+    },
+    {
+      path: 'historyQrcodeAdmin',
+      element: <ViewAllHistoryQrcode />
+    },
+    {
+      path: '/notifications',
+      element: (
+        <DashboardLayoutUser>
+          <ResidentNotifications />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/admin/notifications',
+      element: (
+        <ProtectedAdminRoute>
+          <DashboardLayoutProtect>
+            <AdminNotifications />
+          </DashboardLayoutProtect>
+        </ProtectedAdminRoute>
+      )
     }
   ])
 

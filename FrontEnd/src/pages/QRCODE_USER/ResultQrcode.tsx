@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
 import type { QrScanResult, ResultQrcode, ResultQrcode1 } from 'src/types/qrcode.type'
@@ -164,7 +164,7 @@ export default function ResultQrcodePage() {
               Về trang chủ
             </button>
             <button
-              onClick={() => navigate('/scan-qr')}
+              onClick={() => navigate('/scanqr')}
               className='px-6 py-2 border border-primary text-primary rounded-full'
             >
               Quét QR mới
@@ -186,14 +186,13 @@ export default function ResultQrcodePage() {
       </div>
     )
   }
-
   return (
     <div className="bg-surface text-on-surface min-h-screen font-['Manrope',sans-serif]">
       <main className='px-4 md:px-8 max-w-7xl mx-auto'>
         <header className='mb-12 flex justify-between items-center'>
           <div>
-            <h1 className='text-3xl font-bold tracking-tight text-on-surface mb-2'>Scan Verification</h1>
-            <p className='text-on-surface-variant max-w-xl'>Real-time authentication and access control.</p>
+            <h1 className='text-3xl font-bold tracking-tight text-on-surface mb-2'>Xác minh quét</h1>
+            <p className='text-on-surface-variant max-w-xl'>Xác thực thời gian thực và kiểm soát truy cập.</p>
           </div>
           <div className='text-right'>
             <p className='text-xs text-on-surface-variant'>Mã QR</p>
@@ -220,14 +219,14 @@ export default function ResultQrcodePage() {
                     >
                       {isSuccess && scanResult?.status === 'ACTIVE' ? 'verified' : 'error'}
                     </span>
-                    {isSuccess && scanResult?.status === 'ACTIVE' ? 'Authenticated' : 'Authentication Failed'}
+                    {isSuccess && scanResult?.status === 'ACTIVE' ? 'Đã xác thực' : 'Xác thực thất bại'}
                   </div>
                   <h2 className='text-4xl md:text-5xl font-black tracking-tighter mb-2'>
                     {isSuccess && scanResult?.status === 'ACTIVE' ? 'QR hợp lệ' : 'QR không hợp lệ'}
                   </h2>
                   <p className='text-blue-100 text-lg opacity-90'>
                     {isSuccess && scanResult?.status === 'ACTIVE'
-                      ? `${isGuestQR() ? 'Guest' : 'Resident'} Verified • ${scanResult.status}`
+                      ? `${isGuestQR() ? 'Khách' : 'Cư dân'} đã xác minh • ${scanResult.status === 'ACTIVE' ? 'Hoạt động' : scanResult.status}`
                       : scanResult?.status === 'EXPIRED'
                         ? 'QR đã hết hạn'
                         : scanResult?.status === 'REVOKED'
@@ -238,11 +237,11 @@ export default function ResultQrcodePage() {
                 {isSuccess && isGuestQR() && (
                   <div className='bg-white/10 backdrop-blur-xl p-6 rounded-3xl border border-white/20 text-center min-w-[160px]'>
                     <p className='text-[10px] uppercase tracking-[0.2em] font-bold text-blue-100 mb-2'>
-                      Remaining Entries
+                      Số lượt còn lại
                     </p>
                     <p className='text-5xl font-black'>{getRemainingEntries()}</p>
                     <p className='text-xs mt-2 text-blue-200'>
-                      Used: {getUsedEntries()}/{getMaxEntries()}
+                      Đã dùng: {getUsedEntries()}/{getMaxEntries()}
                     </p>
                     <div className='mt-2 w-full h-1 bg-white/20 rounded-full overflow-hidden'>
                       <div
@@ -262,7 +261,7 @@ export default function ResultQrcodePage() {
                 <div className='bg-surface-container-lowest p-8 rounded-[2rem] border border-outline-variant/15'>
                   <div className='flex justify-between items-start mb-6'>
                     <p className='text-[10px] uppercase tracking-widest font-bold text-primary'>
-                      {isGuestQR() ? 'Guest Profile' : 'Resident Profile'}
+                      {isGuestQR() ? 'HỒ SƠ KHÁCH' : 'HỒ SƠ CƯ DÂN'}
                     </p>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-bold ${
@@ -283,7 +282,7 @@ export default function ResultQrcodePage() {
                     <div>
                       <h3 className='text-2xl font-bold text-on-surface'>{getDisplayName()}</h3>
                       <p className='text-on-surface-variant'>
-                        {isGuestQR() ? 'Visitor • Resident Guest' : 'Resident • Home Owner'}
+                        {isGuestQR() ? 'Khách • Thăm cư dân' : 'Cư dân • Chủ căn hộ'}
                       </p>
                       <span
                         className={`inline-flex items-center gap-1 text-xs mt-1 ${
@@ -293,17 +292,17 @@ export default function ResultQrcodePage() {
                         <span className='material-symbols-outlined text-xs'>
                           {scanResult.status === 'ACTIVE' ? 'check_circle' : 'cancel'}
                         </span>
-                        {scanResult.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                        {scanResult.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
                       </span>
                     </div>
                   </div>
                   <div className='space-y-4'>
                     <div className='flex justify-between items-center py-3 border-b border-surface-container-low'>
-                      <span className='text-sm text-on-surface-variant'>Phone</span>
+                      <span className='text-sm text-on-surface-variant'>Số điện thoại</span>
                       <span className='font-mono font-medium'>{getDisplayPhone() || 'N/A'}</span>
                     </div>
                     <div className='flex justify-between items-center py-3'>
-                      <span className='text-sm text-on-surface-variant'>QR Code</span>
+                      <span className='text-sm text-on-surface-variant'>Mã QR</span>
                       <span className='font-mono text-xs'>{scanResult.qrCode?.slice(-12)}</span>
                     </div>
                   </div>
@@ -311,31 +310,31 @@ export default function ResultQrcodePage() {
 
                 <div className='bg-surface-container-lowest p-8 rounded-[2rem] border border-outline-variant/15'>
                   <p className='text-[10px] uppercase tracking-widest font-bold text-primary mb-6'>
-                    Destination Details
+                    THÔNG TIN ĐIỂM ĐẾN
                   </p>
                   <div className='flex items-center gap-4 mb-8 p-4 bg-surface-container-low rounded-2xl'>
                     <div className='w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600'>
                       <span className='material-symbols-outlined'>apartment</span>
                     </div>
                     <div>
-                      <p className='text-xs text-on-surface-variant font-bold uppercase tracking-tight'>Apartment</p>
+                      <p className='text-xs text-on-surface-variant font-bold uppercase tracking-tight'>Căn hộ</p>
                       <p className='text-xl font-bold text-on-surface'>{getApartmentCode()}</p>
                     </div>
                   </div>
                   <div className='space-y-4'>
                     <div>
                       <p className='text-[10px] uppercase tracking-widest font-bold text-on-surface-variant'>
-                        {isGuestQR() ? 'Host' : 'Created By'}
+                        {isGuestQR() ? 'Chủ nhà' : 'Được tạo bởi'}
                       </p>
                       <p className='text-lg font-bold text-on-surface'>{getHostName()}</p>
                       <div className='inline-flex items-center gap-2 text-xs text-on-surface-variant mt-2'>
                         <span className='material-symbols-outlined text-sm'>person</span>
-                        {isGuestQR() ? 'Verified Resident' : 'System Admin'}
+                        {isGuestQR() ? 'Cư dân đã xác minh' : 'Quản trị viên'}
                       </div>
                     </div>
                     <div className='pt-4 border-t border-surface-container-low'>
                       <p className='text-[10px] uppercase tracking-widest font-bold text-on-surface-variant mb-2'>
-                        {isGuestQR() ? 'Valid Until' : 'Expires At'}
+                        {isGuestQR() ? 'HIỆU LỰC ĐẾN' : 'HẾT HẠN LÚC'}
                       </p>
                       <p className='text-sm text-on-surface'>{formatDate(getValidTo())}</p>
                     </div>
@@ -353,11 +352,11 @@ export default function ResultQrcodePage() {
                   {scanResult?.status === 'EXPIRED'
                     ? 'Mã QR này đã hết hạn. Vui lòng yêu cầu tạo mã mới.'
                     : scanResult?.status === 'REVOKED'
-                      ? 'Mã QR này đã bị thu hồi. Vui lòng liên hệ chủ căn hộ hoặc admin.'
+                      ? 'Mã QR này đã bị thu hồi. Vui lòng liên hệ chủ căn hộ hoặc quản trị viên.'
                       : 'Mã QR không tồn tại trong hệ thống hoặc đã bị vô hiệu hóa.'}
                 </p>
                 <button
-                  onClick={() => navigate('/scan-qr')}
+                  onClick={() => navigate('/scanqr')}
                   className='px-6 py-3 bg-primary text-white rounded-full inline-flex items-center gap-2'
                 >
                   <span className='material-symbols-outlined'>qr_code_scanner</span>
@@ -372,13 +371,13 @@ export default function ResultQrcodePage() {
             {/* Validity Module */}
             {isSuccess && scanResult && (
               <div className='bg-white p-8 rounded-[2rem] border border-outline-variant/15'>
-                <p className='text-[10px] uppercase tracking-widest font-bold text-primary mb-6'>Validity Window</p>
+                <p className='text-[10px] uppercase tracking-widest font-bold text-primary mb-6'>THỜI GIAN HIỆU LỰC</p>
                 <div className='space-y-6'>
                   {isGuestQR() && getValidFrom() && (
                     <div className='flex items-start gap-4'>
                       <div className='w-1 h-12 bg-blue-600 rounded-full mt-1'></div>
                       <div>
-                        <p className='text-xs text-on-surface-variant font-bold'>Valid From</p>
+                        <p className='text-xs text-on-surface-variant font-bold'>Hiệu lực từ</p>
                         <p className='text-lg font-bold'>{formatDate(getValidFrom())}</p>
                       </div>
                     </div>
@@ -387,7 +386,7 @@ export default function ResultQrcodePage() {
                     <div className='w-1 h-12 bg-slate-200 rounded-full mt-1'></div>
                     <div>
                       <p className='text-xs text-on-surface-variant font-bold'>
-                        {isGuestQR() ? 'Valid Until' : 'Expires At'}
+                        {isGuestQR() ? 'Hiệu lực đến' : 'Hết hạn lúc'}
                       </p>
                       <p className='text-lg font-bold'>{formatDate(getValidTo())}</p>
                     </div>
@@ -398,24 +397,24 @@ export default function ResultQrcodePage() {
 
             {/* Primary Actions */}
             <div className='space-y-4'>
-              {isSuccess && scanResult?.status === 'ACTIVE' && (
-                <>
-                  <button
-                    onClick={handleAllowEntry}
-                    className='w-full bg-gradient-to-r from-primary to-primary-container text-white py-6 rounded-full font-bold text-lg shadow-lg shadow-blue-500/20 active:scale-95 transition-transform flex items-center justify-center gap-3'
-                  >
-                    <span className='material-symbols-outlined'>login</span>
-                    Allow Entry
-                  </button>
-                  <button
-                    onClick={handleRevokeQR}
-                    className='w-full bg-error/10 text-error py-4 rounded-full font-bold text-base border border-error/20 active:scale-95 transition-transform flex items-center justify-center gap-2'
-                  >
-                    <span className='material-symbols-outlined'>block</span>
-                    Thu hồi mã QR
-                  </button>
-                </>
-              )}
+              {/* {isSuccess && scanResult?.status === 'ACTIVE' && (
+                // <>
+                //   <button
+                //     onClick={handleAllowEntry}
+                //     className='w-full bg-gradient-to-r from-primary to-primary-container text-white py-6 rounded-full font-bold text-lg shadow-lg shadow-blue-500/20 active:scale-95 transition-transform flex items-center justify-center gap-3'
+                //   >
+                //     <span className='material-symbols-outlined'>login</span>
+                //     Cho phép vào
+                //   </button>
+                //   <button
+                //     onClick={handleRevokeQR}
+                //     className='w-full bg-error/10 text-error py-4 rounded-full font-bold text-base border border-error/20 active:scale-95 transition-transform flex items-center justify-center gap-2'
+                //   >
+                //     <span className='material-symbols-outlined'>block</span>
+                //     Thu hồi mã QR
+                //   </button>
+                // </>
+              )} */}
               <button
                 onClick={() => navigate('/qr-management')}
                 className='w-full bg-surface-container-lowest text-on-surface py-6 rounded-full font-bold text-lg border border-outline-variant/15 active:scale-95 transition-transform flex items-center justify-center gap-3'
@@ -423,13 +422,13 @@ export default function ResultQrcodePage() {
                 <span className='material-symbols-outlined'>home</span>
                 Về trang chủ
               </button>
-              <button
-                onClick={() => navigate('/scan-qr')}
+              <Link
+                to={'/scanqr'}
                 className='w-full bg-surface-container-low text-on-surface py-4 rounded-full font-medium text-base border border-outline-variant/15 active:scale-95 transition-transform flex items-center justify-center gap-2'
               >
                 <span className='material-symbols-outlined'>qr_code_scanner</span>
                 Quét QR khác
-              </button>
+              </Link>
             </div>
 
             {/* Intelligence Chip */}
@@ -443,7 +442,7 @@ export default function ResultQrcodePage() {
                     info
                   </span>
                   <div>
-                    <p className='text-sm font-bold text-on-secondary-fixed leading-tight mb-1'>Gate Guard Insight</p>
+                    <p className='text-sm font-bold text-on-secondary-fixed leading-tight mb-1'>GỢI Ý TỪ BẢO VỆ</p>
                     <p className='text-xs text-on-secondary-fixed-variant leading-relaxed'>
                       {isGuestQR() ? 'Khách' : 'Cư dân'} <span className='font-bold'>{getDisplayName()}</span> đến căn
                       hộ <span className='font-bold'>{getApartmentCode()}</span>.
@@ -460,7 +459,7 @@ export default function ResultQrcodePage() {
         </div>
       </main>
 
-      {/* History Modal - Giữ nguyên */}
+      {/* History Modal */}
       {showHistory && (
         <div className='fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
           <div className='bg-white rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden'>
@@ -495,7 +494,7 @@ export default function ResultQrcodePage() {
                               item.result === 'SUCCESS' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                             }`}
                           >
-                            {item.result || 'PENDING'}
+                            {item.result === 'SUCCESS' ? 'THÀNH CÔNG' : 'TỪ CHỐI'}
                           </span>
                         </td>
                       </tr>
@@ -515,21 +514,21 @@ export default function ResultQrcodePage() {
           className='flex flex-col items-center justify-center bg-blue-600 text-white rounded-full p-3 mb-2 shadow-lg shadow-blue-500/40 active:scale-90 duration-150'
         >
           <span className='material-symbols-outlined'>qr_code_2</span>
-          <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>Scan</span>
+          <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>Quét</span>
         </button>
         <button
           onClick={handleLoadHistory}
           className='flex flex-col items-center justify-center text-slate-400 p-2 active:scale-90 duration-150'
         >
           <span className='material-symbols-outlined'>receipt_long</span>
-          <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>History</span>
+          <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>Lịch sử</span>
         </button>
         <button
           onClick={() => navigate('/qr-management')}
           className='flex flex-col items-center justify-center text-slate-400 p-2 active:scale-90 duration-150'
         >
           <span className='material-symbols-outlined'>home</span>
-          <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>Home</span>
+          <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>Trang chủ</span>
         </button>
       </nav>
     </div>

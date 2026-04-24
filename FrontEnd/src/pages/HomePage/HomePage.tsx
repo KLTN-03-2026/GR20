@@ -1,4 +1,5 @@
 import 'material-symbols'
+import { Link } from 'react-router-dom'
 import SidebarUser from 'src/components/SidebarUser'
 
 export default function HomePage() {
@@ -31,15 +32,21 @@ export default function HomePage() {
 
         {/* Quick Actions Grid */}
         <section className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-          <button className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'>
+          <Link
+            to={'/viewQrcodeMe'}
+            className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'
+          >
             <div className='w-12 h-12 rounded-xl bg-secondary-container/20 flex items-center justify-center text-secondary mb-4 group-hover:bg-secondary group-hover:text-white transition-colors'>
               <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
                 qr_code_2
               </span>
             </div>
+            {/* <Link to={'/viewQrcodeMe'}> */}
             <span className='font-manrope font-bold text-sm text-primary'>Mã QR Khách</span>
+            {/* </Link> */}
+
             <span className='text-[10px] text-slate-500 mt-1 uppercase tracking-wider'>An ninh vào cổng</span>
-          </button>
+          </Link>
           <button className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'>
             <div className='w-12 h-12 rounded-xl bg-secondary-container/20 flex items-center justify-center text-secondary mb-4 group-hover:bg-secondary group-hover:text-white transition-colors'>
               <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
