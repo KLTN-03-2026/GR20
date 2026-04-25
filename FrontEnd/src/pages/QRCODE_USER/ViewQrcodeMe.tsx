@@ -1,7 +1,5 @@
-import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
-import type { QrcodeMe } from 'src/types/qrcode.type'
 import { toast } from 'react-toastify'
 
 export default function ViewQrcodeMe() {

@@ -1,4 +1,3 @@
-// apis/QrcodeApi/Qr.api.ts
 import http from 'src/utils/http'
 import type { SuccessResponseApi } from 'src/types/utils.type'
 import type {
@@ -11,7 +10,6 @@ import type {
 } from 'src/types/qrcode.type'
 
 export const QRCodeApi = {
-  // Lấy danh sách guest QR
   getGuestQrList(params?: {
     page?: number
     limit?: number

@@ -535,72 +535,8 @@ const revokePersonalQr = async (id) => {
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
-// services/qrcode.service.js
-const getAllPersonalQrs = async (queryParams = {}) => {
-  const {
-    page = 1,
-    limit = 10,
-    search = '',
-    status = ''
-  } = queryParams;
+ 
 
-  const result = await repo.getAllPersonalQrs({
-    page: parseInt(page),
-    limit: parseInt(limit),
-    search: search || '',
-    status: status || ''
-  });
-
-  return {
-    data: result.data,
-    size: result.data.length,
-    totalElements: result.total,
-    totalPages: result.totalPages,
-    page: result.page,
-    pageSize: result.limit
-  };
-};
-
-// Lấy tất cả lịch sử ra vào của cư dân (ADMIN)
-// services/qrcode.service.js
-const getAllResidentAccessHistory = async (queryParams = {}) => {
-  const {
-    page = 1,
-    limit = 10,
-    search = '',
-    result = '',
-    fromDate = null,
-    toDate = null
-  } = queryParams;
-
-  let fromDateTime = fromDate;
-  let toDateTime = toDate;
-
-  if (fromDate && !fromDate.includes('T')) {
-    fromDateTime = `${fromDate}T00:00:00`;
-  }
-  if (toDate && !toDate.includes('T')) {
-    toDateTime = `${toDate}T23:59:59`;
-  }
-
-  const resultData = await repo.getAllResidentAccessHistory({
-    page: parseInt(page),
-    limit: parseInt(limit),
-    search: search || '',
-    result: result || '',
-    fromDate: fromDateTime || null,
-    toDate: toDateTime || null
-  });
-
-  return {
-    data: resultData.data,
-    size: resultData.data.length,
-    totalElements: resultData.total,
-    totalPages: resultData.totalPages,
-    page: resultData.page,
-    pageSize: resultData.limit
-  };
-};
 
 // services/qrcode.service.js
 const getResidentAccessHistory = async (userId, queryParams = {}) => {
@@ -691,6 +627,72 @@ const updatePersonalQr = async (id, updateData) => {
   `;
   const result = await pool.query(query, values);
   return result.rows[0];
+};
+
+const getAllPersonalQrs = async (queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    status = '',
+    hasQrOnly = false
+  } = queryParams;
+
+  const result = await repo.getAllPersonalQrs({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    status: status || '',
+    hasQrOnly: hasQrOnly === 'true'
+  });
+
+  return {
+    data: result.data,
+    size: result.data.length,
+    totalElements: result.total,
+    totalPages: result.totalPages,
+    page: result.page,
+    pageSize: result.limit
+  };
+};
+
+const getAllResidentAccessHistory = async (queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    result = '',
+    fromDate = null,
+    toDate = null
+  } = queryParams;
+
+  let fromDateTime = fromDate;
+  let toDateTime = toDate;
+
+  if (fromDate && !fromDate.includes('T')) {
+    fromDateTime = `${fromDate}T00:00:00`;
+  }
+  if (toDate && !toDate.includes('T')) {
+    toDateTime = `${toDate}T23:59:59`;
+  }
+
+  const resultData = await repo.getAllResidentAccessHistory({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    result: result || '',
+    fromDate: fromDateTime,
+    toDate: toDateTime
+  });
+
+  return {
+    data: resultData.data,
+    size: resultData.data.length,
+    totalElements: resultData.total,
+    totalPages: resultData.totalPages,
+    page: resultData.page,
+    pageSize: resultData.limit
+  };
 };
 
 

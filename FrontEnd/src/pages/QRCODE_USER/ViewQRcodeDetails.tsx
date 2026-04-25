@@ -41,12 +41,6 @@ export default function ViewQRcodeDetails() {
     return (qr.usedEntries / qr.maxEntries) * 100
   }
 
-  // const handleShare = () => {
-  //   // TODO: Implement share functionality
-  //   navigator.clipboard.writeText(qrDetail?.qrCode || '')
-  //   alert('Đã sao chép mã QR')
-  // }
-
   const handleDownloadQR = () => {
     if (!qrDetail?.qrImage) {
       toast.error('Không có ảnh QR để tải')
@@ -85,13 +79,8 @@ export default function ViewQRcodeDetails() {
         toast.info('Trình duyệt không hỗ trợ chia sẻ, bạn có thể tải ảnh về')
       }
     } catch (error) {
-      console.error('Share error:', error)
+      toast.error(error)
     }
-  }
-
-  const handleDownload = () => {
-    // TODO: Implement download QR image
-    alert('Tính năng đang phát triển')
   }
 
   if (isLoading) {

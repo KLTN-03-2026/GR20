@@ -93,6 +93,7 @@ export default function QrcodeManagementAdmin() {
   })
 
   const dataListQr: historyQrcodeAdmin[] = data?.data?.data || []
+
   const totalElements = data?.data?.totalElements || 0
   const totalPages = data?.data?.totalPages || 1
   const currentPage = data?.data?.page || Number(pageFromUrl)
@@ -158,7 +159,11 @@ export default function QrcodeManagementAdmin() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (body: PostQRcode) => qrApiAdmin.postQrcodeAdmin(body),
+    mutationFn: (body: PostQRcode) => {
+      console.log('📤 Dữ liệu gửi:', body) // 👈 Log ra xem
+      return qrApiAdmin.postQrcodeAdmin(body)
+    },
+    // mutationFn: (body: PostQRcode) => qrApiAdmin.postQrcodeAdmin(body),
     onSuccess: () => {
       toast.success('Tạo mã QR thành công')
       queryClient.invalidateQueries({ queryKey: ['personal/list'] })
@@ -454,7 +459,7 @@ export default function QrcodeManagementAdmin() {
                               >
                                 <span className='material-symbols-outlined text-sm'>history</span>
                               </button>
-                              {item.qr_id ? (
+                              {/* {item.qr_id ? (
                                 <>
                                   <button
                                     onClick={() => handleEdit(item)}
@@ -486,6 +491,45 @@ export default function QrcodeManagementAdmin() {
                                 <button
                                   disabled
                                   className='p-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed'
+                                >
+                                  <span className='material-symbols-outlined text-sm'>add</span>
+                                </button>
+                              )} */}
+                              {item.qr_id ? (
+                                <>
+                                  <button
+                                    onClick={() => handleEdit(item)}
+                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
+                                  >
+                                    <span className='material-symbols-outlined text-sm'>edit</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleRevoke(item)}
+                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-red-500 hover:text-white'
+                                  >
+                                    <span className='material-symbols-outlined text-sm'>block</span>
+                                  </button>
+                                </>
+                              ) : item.apartment_code && item.apartment_code !== 'Chưa có căn hộ' ? (
+                                <button
+                                  onClick={() => {
+                                    setSelectedUserForCreate({
+                                      userId: item.user_id,
+                                      apartmentId: String(item.apartment_id),
+                                      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+                                    })
+                                    setIsCreateModalOpen(true) // 👈 QUAN TRỌNG: phải set state này
+                                  }}
+                                  className='p-2 bg-green-500 text-white rounded-lg hover:bg-green-600'
+                                  title='Tạo mã QR'
+                                >
+                                  <span className='material-symbols-outlined text-sm'>add</span>
+                                </button>
+                              ) : (
+                                <button
+                                  disabled
+                                  className='p-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed'
+                                  title='Cư dân chưa có căn hộ'
                                 >
                                   <span className='material-symbols-outlined text-sm'>add</span>
                                 </button>

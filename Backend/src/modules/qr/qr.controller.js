@@ -129,14 +129,43 @@ const getGuestQrsByHost = async (req, res) => {
 //     });
 //   }
 // };
+
+
+
 const getGuestQrById = async (req, res) => {
   try {
     const data = await service.getGuestQrById(req.params.id);
-    res.json({ operationType: "Success", message: "Get guest QR successfully", code: "OK", data, timestamp: new Date() });
+    
+    // 📌 Luôn tạo mới ảnh, KHÔNG dùng ảnh từ database
+    const freshQrImage = await QRCode.toDataURL(data.qrCode, {
+      width: 512,
+      scale: 6,
+      margin: 2,
+      errorCorrectionLevel: 'H'
+    });
+    
+    // Ghi đè hoàn toàn
+    data.qrImage = freshQrImage;
+    
+    res.json({ 
+      operationType: "Success", 
+      message: "Get guest QR successfully", 
+      code: "OK", 
+      data, 
+      timestamp: new Date() 
+    });
   } catch (err) {
     res.status(404).json({ message: err.message });
   }
 };
+// const getGuestQrById = async (req, res) => {
+//   try {
+//     const data = await service.getGuestQrById(req.params.id);
+//     res.json({ operationType: "Success", message: "Get guest QR successfully", code: "OK", data, timestamp: new Date() });
+//   } catch (err) {
+//     res.status(404).json({ message: err.message });
+//   }
+// };
 
 
 const scanQr = async (req, res) => {
@@ -366,8 +395,13 @@ const getMyPersonalQr = async (req, res) => {
       return res.status(404).json({ message: 'Personal QR not found. Please contact admin.' });
     }
     
-    // Tạo ảnh QR từ mã
-    const qrImage = await QRCode.toDataURL(data.qr_code);
+    // Tạo ảnh QR với kích thước lớn hơn
+    const qrImage = await QRCode.toDataURL(data.qr_code, {
+      width: 526,           // Chiều rộng lớn hơn (mặc định 256)
+      margin: 4,            // Margin rộng hơn
+      scale: 10,            // Scale lớn hơn (mặc định 4)
+      errorCorrectionLevel: 'H',  // Mức độ sửa lỗi cao
+    });
     
     res.json({
       operationType: "Success",
@@ -377,37 +411,58 @@ const getMyPersonalQr = async (req, res) => {
       timestamp: new Date()
     });
   } catch (err) {
+    console.error('Error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// qr.controller.js
-// controllers/qrcode.controller.js
-const getAllPersonalQrs = async (req, res) => {
+
+
+
+// Thêm controller mới để cấp QR
+const grantQrToResident = async (req, res) => {
   try {
     if (req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'Forbidden: Only admin can access' });
     }
     
-    const { page, limit, search, status } = req.query;
+    const { userId } = req.params;
+    const { expiresAt } = req.body;
     
-    const data = await service.getAllPersonalQrs({
-      page: page || 1,
-      limit: limit || 10,
-      search: search || '',
-      status: status || ''
-    });
+    // Kiểm tra user có phải cư dân không
+    const userCheck = await pool.query(
+      `SELECT id, role FROM users WHERE id = $1 AND role = 'RESIDENT'`,
+      [userId]
+    );
+    
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found or is not a resident' });
+    }
+
+    // Kiểm tra đã có QR code chưa
+    const existingQr = await pool.query(
+      `SELECT id FROM qr_codes WHERE user_id = $1 AND type = 'PERSONAL' AND status != 'REVOKED'`,
+      [userId]
+    );
+
+    if (existingQr.rows.length > 0) {
+      return res.status(400).json({ message: 'Resident already has an active QR code' });
+    }
+
+    // Tạo QR code mới
+    const qrCode = `PERSONAL_${uuidv4()}`;
+    const result = await pool.query(
+      `INSERT INTO qr_codes (user_id, qr_code, type, expires_at, status, created_at)
+       VALUES ($1, $2, 'PERSONAL', $3, 'ACTIVE', NOW())
+       RETURNING *`,
+      [userId, qrCode, expiresAt || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)]
+    );
     
     res.json({
       operationType: "Success",
-      message: "Get all personal QRs successfully",
+      message: "QR code granted successfully",
       code: "OK",
-      data: data.data,
-      size: data.size,
-      totalElements: data.totalElements,
-      totalPages: data.totalPages,
-      page: data.page,
-      pageSize: data.pageSize,
+      data: result.rows[0],
       timestamp: new Date()
     });
   } catch (err) {
@@ -494,8 +549,41 @@ const getResidentAccessHistory = async (req, res) => {
   }
 };
 
-// Lấy tất cả lịch sử ra vào của tất cả cư dân (ADMIN)
-// controllers/qrcode.controller.js
+const getAllPersonalQrs = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+    }
+    
+    const { page, limit, search, status, hasQrOnly } = req.query;
+    
+    const data = await service.getAllPersonalQrs({
+      page: page || 1,
+      limit: limit || 10,
+      search: search || '',
+      status: status || '',
+      hasQrOnly: hasQrOnly || false
+    });
+    
+    res.json({
+      operationType: "Success",
+      message: "Get all personal QRs successfully",
+      code: "OK",
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Lấy lịch sử quét của tất cả cư dân
 const getAllResidentAccessHistory = async (req, res) => {
   try {
     if (req.user.role !== 'ADMIN') {
