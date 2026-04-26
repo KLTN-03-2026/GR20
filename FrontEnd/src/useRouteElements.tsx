@@ -3,6 +3,18 @@ import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 
 import Buildings from './pages/building management/Buildings'
+import BuildingImagesManagement from './pages/building management/BuildingImagesManagement'
+import UtilityMetersPage from './pages/utility/UtilityMetersPage'
+import UtilityPricingPage from './pages/utility/UtilityPricingPage'
+import MeterReadingsPage from './pages/utility/MeterReadingsPage'
+import UserUtilityMetersPage from './pages/utility/UserUtilityMetersPage'
+import UserMeterReadingsPage from './pages/utility/UserMeterReadingsPage'
+import InvoicesPage from './pages/billing/InvoicesPage'
+import UserInvoicesPage from './pages/billing/UserInvoicesPage'
+import InvoiceItemsPage from './pages/billing/InvoiceItemsPage'
+import PaymentsPage from './pages/billing/PaymentsPage'
+import UserPaymentsPage from './pages/billing/UserPaymentsPage'
+import GenerateCashInvoicePage from './pages/billing/GenerateCashInvoicePage'
 import Profile from './pages/profile_Management/Profile'
 import ScanQr from './pages/QRCODE_USER/Scanqr'
 import Login from './pages/Login'
@@ -61,6 +73,70 @@ export default function useRouteElements() {
     {
       path: '/buildings',
       element: <Buildings />
+    },
+    {
+      path: '/building-images',
+      element: <BuildingImagesManagement />
+    },
+    {
+      path: '/utility-meters',
+      element: <UtilityMetersPage />
+    },
+    {
+      path: '/my-utility-meters',
+      element: (
+        <DashboardLayoutUser>
+          <UserUtilityMetersPage />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/utility-pricing',
+      element: <UtilityPricingPage />
+    },
+    {
+      path: '/meter-readings',
+      element: <MeterReadingsPage />
+    },
+    {
+      path: '/my-meter-readings',
+      element: (
+        <DashboardLayoutUser>
+          <UserMeterReadingsPage />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/invoices',
+      element: <InvoicesPage />
+    },
+    {
+      path: '/my-invoices',
+      element: (
+        <DashboardLayoutUser>
+          <UserInvoicesPage />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/invoice-items',
+      element: <InvoiceItemsPage />
+    },
+    {
+      path: '/payments',
+      element: (
+        <DashboardLayoutUser>
+          <UserPaymentsPage />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/admin/payments',
+      element: <PaymentsPage />
+    },
+    {
+      path: '/billing-generate-cash',
+      element: <GenerateCashInvoicePage />
     },
     {
       path: '/profile',

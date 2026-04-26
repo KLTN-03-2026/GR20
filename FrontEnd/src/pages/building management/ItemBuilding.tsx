@@ -5,9 +5,10 @@ interface Props {
   onEdit?: (building: Buildings) => void
   onDelete?: (building: Buildings) => void
   onReopen?: (building: Buildings) => void
+  onManageImages?: (building: Buildings) => void
 }
 
-export default function ItemBuilding({ building, onEdit, onDelete, onReopen }: Props) {
+export default function ItemBuilding({ building, onEdit, onDelete, onReopen, onManageImages }: Props) {
   return (
     <tr className='hover:bg-gray-50/50 transition-colors group'>
       {/* Name */}
@@ -52,6 +53,13 @@ export default function ItemBuilding({ building, onEdit, onDelete, onReopen }: P
       {/* Actions */}
       <td className='px-6 py-5 text-right'>
         <div className='flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+          <button
+            type='button'
+            onClick={() => onManageImages && onManageImages(building)}
+            className='p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all'
+          >
+            <span className='material-symbols-outlined text-[20px]'>photo_library</span>
+          </button>
           <button
             type='button'
             onClick={() => onEdit && onEdit(building)}

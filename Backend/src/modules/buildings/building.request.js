@@ -75,6 +75,16 @@ const updateBuildingSchema = z
     "At least one field is required for update"
   );
 
+const pathIdSchema = z.coerce
+  .number({ error: "id must be a number" })
+  .int("id must be an integer")
+  .positive("id must be greater than 0");
+
+const paginationSchema = z.object({
+  page: z.coerce.number().int().min(0).default(0),
+  size: z.coerce.number().int().min(1).max(100).default(10),
+});
+
 /** @param {unknown} body */
 function parseCreateBuilding(body) {
   return createBuildingSchema.parse(body);
@@ -85,9 +95,21 @@ function parseUpdateBuilding(body) {
   return updateBuildingSchema.parse(body);
 }
 
+/** @param {unknown} id */
+function parsePathId(id) {
+  return pathIdSchema.parse(id);
+}
+
+/** @param {unknown} query */
+function parseBuildingPagination(query) {
+  return paginationSchema.parse(query || {});
+}
+
 module.exports = {
   createBuildingSchema,
   updateBuildingSchema,
   parseCreateBuilding,
   parseUpdateBuilding,
+  parsePathId,
+  parseBuildingPagination,
 };

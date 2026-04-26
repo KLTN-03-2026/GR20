@@ -1,4 +1,5 @@
 // app.js
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -18,7 +19,7 @@ app.use(
     origin: ["http://localhost:3000", "http://localhost:5173"], // Cho phép frontend
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Secret-Key", "X-Casso-Signature"],
   }),
 );
 

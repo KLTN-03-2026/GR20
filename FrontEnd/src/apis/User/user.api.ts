@@ -6,6 +6,9 @@ import type { UpdateProfileFormData } from 'src/utils/rules'
 const URL = '/api/users'
 
 export const UserApi = {
+  getAllUsers(params?: { page?: number; size?: number }) {
+    return http.get<SuccessResponseApi<User[]>>('/api/users', { params })
+  },
   getProfile() {
     return http.get<SuccessResponseApi<User>>('/api/users/me')
   },

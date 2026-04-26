@@ -1,15 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
 import ItemBuilding from './ItemBuilding'
 
 export default function Buildings() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    error: buildingsError
+  } = useQuery({
     queryKey: ['buildings'],
     queryFn: () => {
       return buildingApi.getAllBuildings()
@@ -37,6 +44,7 @@ export default function Buildings() {
       setEditingId(null)
     },
     onError: (error: any) => {
+      console.error('[Building][CreateOrUpdate] error:', error?.response?.data || error)
       const msg = error?.response?.data?.message || 'Không lưu được tòa nhà'
       setFormError(msg)
     }
@@ -46,6 +54,9 @@ export default function Buildings() {
     mutationFn: (id: string) => buildingApi.deleteBuilding(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
+    },
+    onError: (error: any) => {
+      console.error('[Building][Delete] error:', error?.response?.data || error)
     }
   })
 
@@ -53,8 +64,12 @@ export default function Buildings() {
     mutationFn: (id: string) => buildingApi.updateBuilding(id, { status: 'ACTIVE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
+    },
+    onError: (error: any) => {
+      console.error('[Building][Reopen] error:', error?.response?.data || error)
     }
   })
+
 
   const handleSubmitCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -84,6 +99,10 @@ export default function Buildings() {
     const ok = window.confirm(`Bạn muốn mở lại tòa nhà "${building.name}"?`)
     if (!ok) return
     reopenMutation.mutate(building.id)
+  }
+
+  if (isError) {
+    console.error('[Building][GetAll] error:', (buildingsError as any)?.response?.data || buildingsError)
   }
 
   const totalApartments =
@@ -239,6 +258,9 @@ export default function Buildings() {
                             setEditingId(b.id)
                             setIsCreateOpen(true)
                             setFormError(null)
+                          }}
+                          onManageImages={(b) => {
+                            navigate(`/building-images?buildingId=${b.id}`)
                           }}
                         />
                       ))}
