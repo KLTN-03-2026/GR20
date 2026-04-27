@@ -13,6 +13,7 @@ const notificationRoute = require("../modules/notifications/notification.route")
 const residentRoute = require("../modules/residents/resident.route");
 const maintenanceRoute = require("../modules/maintenances/maintenance.route");
 const notificationAdminRoute = require("../modules/notificationsADMIN/notificationADMIN.route");
+const chatRoute = require("../modules/chat/chat.route");
 
 router.use("/buildings", buildingRoute);
 
@@ -26,5 +27,6 @@ router.use("/notifications", notificationRoute);
 router.use("/admin/notifications", notificationAdminRoute);
 router.use("/residents", residentRoute);
 router.use("/maintenances", maintenanceRoute);
+router.use("/chat", chatRoute);
 
 module.exports = router;
