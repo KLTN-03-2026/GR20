@@ -4,7 +4,8 @@ import { useContext } from 'react'
 
 import Buildings from './pages/building management/Buildings'
 import Floors from './pages/building management/Floors'
-import Apartments from './pages/building management/Apartments'
+import Apartment from './pages/building management/Apartments'
+import ApartmentDetail from './pages/building management/ApartmentDetail'
 import BuildingAssignmentsManagement from './pages/building management/BuildingAssignmentsManagement'
 import BuildingDetailManagement from './pages/building management/BuildingDetailManagement'
 import BuildingImagesManagement from './pages/building management/BuildingImagesManagement'
@@ -84,7 +85,11 @@ export default function useRouteElements() {
     },
     {
       path: '/apartments',
-      element: <Apartments />
+      element: <Apartment />
+    },
+    {
+      path: '/apartments/:id',
+      element: <ApartmentDetail />
     },
     {
       path: '/building-images',
@@ -244,11 +249,7 @@ export default function useRouteElements() {
     },
     {
       path: '/admin/apartments',
-      element: (
-        <DashboardLayoutProtect>
-          <Apartments />
-        </DashboardLayoutProtect>
-      )
+      element: <Apartment />
     },
     {
       path: '/admin/utility-pricing',

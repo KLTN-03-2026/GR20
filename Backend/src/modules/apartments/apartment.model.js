@@ -1,4 +1,3 @@
-// apartments.model.js
 class Apartment {
   constructor({
     id,

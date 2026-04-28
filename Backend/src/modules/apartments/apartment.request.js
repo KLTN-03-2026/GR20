@@ -23,100 +23,43 @@ const apartmentCodeSchema = z
     "Apartment code may only contain letters, digits, underscore and hyphen"
   );
 
-// CREATE
 const createApartmentSchema = z.object({
-  buildingId: z.coerce
-    .number({ error: "buildingId must be a number" })
-    .int("buildingId must be an integer")
-    .positive("buildingId must be greater than 0"),
-
-  ownerUserId: z.coerce
-    .number({ error: "ownerUserId must be a number" })
-    .int("ownerUserId must be an integer")
-    .positive("ownerUserId must be greater than 0")
-    .optional(),
-
-  floorId: z.coerce
-    .number({ error: "floorId must be a number" })
-    .int("floorId must be an integer")
-    .positive("floorId must be greater than 0"),
-
+  buildingId: z.coerce.number({ error: "buildingId must be a number" }).int("buildingId must be an integer").positive("buildingId must be greater than 0"),
+  ownerUserId: z.coerce.number({ error: "ownerUserId must be a number" }).int("ownerUserId must be an integer").positive("ownerUserId must be greater than 0").optional(),
+  floorId: z.coerce.number({ error: "floorId must be a number" }).int("floorId must be an integer").positive("floorId must be greater than 0"),
   apartmentCode: apartmentCodeSchema,
-
-  area: z.coerce
-    .number({ error: "area must be a number" })
-    .positive("area must be greater than 0"),
-
-  bedrooms: z.coerce
-    .number({ error: "bedrooms must be a number" })
-    .int("bedrooms must be an integer")
-    .min(0, "bedrooms cannot be negative"),
-
-  bathrooms: z.coerce
-    .number({ error: "bathrooms must be a number" })
-    .int("bathrooms must be an integer")
-    .min(0, "bathrooms cannot be negative"),
-
+  area: z.coerce.number({ error: "area must be a number" }).positive("area must be greater than 0"),
+  bedrooms: z.coerce.number({ error: "bedrooms must be a number" }).int("bedrooms must be an integer").min(0, "bedrooms cannot be negative"),
+  bathrooms: z.coerce.number({ error: "bathrooms must be a number" }).int("bathrooms must be an integer").min(0, "bathrooms cannot be negative"),
   balconyDirection: directionSchema.optional(),
-
   status: apartmentStatusSchema.optional(),
 });
 
-// UPDATE
 const updateApartmentSchema = z
   .object({
     buildingId: z.coerce.number().int().positive().optional(),
-
     ownerUserId: z.coerce.number().int().positive().optional(),
-
     floorId: z.coerce.number().int().positive().optional(),
-
     apartmentCode: apartmentCodeSchema.optional(),
-
     area: z.coerce.number().positive().optional(),
-
     bedrooms: z.coerce.number().int().min(0).optional(),
-
     bathrooms: z.coerce.number().int().min(0).optional(),
-
     balconyDirection: directionSchema.optional(),
-
     status: apartmentStatusSchema.optional(),
   })
-  .refine(
-    (data) => Object.keys(data).length > 0,
-    "At least one field is required for update"
-  );
+  .refine((data) => Object.keys(data).length > 0, "At least one field is required for update");
 
-const listApartmentSchema = z.object({
-  page: z.coerce.number().int().min(0).default(0),
-  size: z.coerce.number().int().min(1).max(1000).default(10),
-  search: z.string().trim().optional(),
-  buildingId: z.coerce.number().int().positive().optional(),
-  floorId: z.coerce.number().int().positive().optional(),
-  status: apartmentStatusSchema.optional(),
-});
-
-/** @param {unknown} body */
 function parseCreateApartment(body) {
   return createApartmentSchema.parse(body);
 }
 
-/** @param {unknown} body */
 function parseUpdateApartment(body) {
   return updateApartmentSchema.parse(body);
-}
-
-/** @param {unknown} query */
-function parseApartmentListQuery(query) {
-  return listApartmentSchema.parse(query || {});
 }
 
 module.exports = {
   createApartmentSchema,
   updateApartmentSchema,
-  listApartmentSchema,
   parseCreateApartment,
   parseUpdateApartment,
-  parseApartmentListQuery,
 };
