@@ -5,7 +5,7 @@ const { AppError } = require("../../common/app-error");
 const { parseCreateUser, parseUpdateUser } = require("./user.request");
 const roleRepo = require("../roles/role.repository");
 
-const DEFAULT_ROLE_NAME = "user";
+const DEFAULT_ROLE_NAME = "Người Dùng";
 const SALT_ROUNDS = 10;
 
 const resolveRoleId = async (roleName) => {

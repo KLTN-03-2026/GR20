@@ -1,9 +1,20 @@
 const { pool } = require("../../configs/database.config");
+const { AppError } = require("../../common/app-error");
+
+const isUniqueViolation = (err) => err && err.code === "23505";
+const parseBool = (value) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (value === true || value === "true" || value === "1") return true;
+  if (value === false || value === "false" || value === "0") return false;
+  return undefined;
+};
 
 const createUser = async (user) => {
   const query = `
-    INSERT INTO users (username, password, email, full_name, gender, role_id, is_active, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())
+    INSERT INTO users (
+      username, password, email, phone, full_name, date_of_birth, gender, id_card, avatar_url, role_id, is_active, created_at, updated_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, NOW(), NOW())
     RETURNING id
   `;
 
@@ -11,13 +22,25 @@ const createUser = async (user) => {
     user.username,
     user.password,
     user.email,
+    user.phone,
     user.full_name,
+    user.date_of_birth,
     user.gender,
+    user.id_card,
+    user.avatar_url,
     user.role_id,
   ];
-
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new AppError(409, "Username or email already exists", {
+        constraint: err.constraint,
+      });
+    }
+    throw err;
+  }
 };
 
 const getUserById = async (id) => {
@@ -34,8 +57,28 @@ const getUserById = async (id) => {
   return result.rows[0];
 };
 
-const getAllUsers = async ({ page = 0, size = 10 }) => {
+const getAllUsers = async ({ page = 0, size = 10, role, search, isActive }) => {
   const offset = page * size;
+  const values = [];
+  const conditions = [];
+
+  if (role) {
+    values.push(role);
+    conditions.push(`LOWER(TRIM(r.name)) = LOWER(TRIM($${values.length}))`);
+  }
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(
+      `(u.username ILIKE $${values.length} OR u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length} OR u.phone ILIKE $${values.length})`
+    );
+  }
+  const active = parseBool(isActive);
+  if (active !== undefined) {
+    values.push(active);
+    conditions.push(`u.is_active = $${values.length}`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const dataQuery = `
     SELECT 
@@ -43,14 +86,20 @@ const getAllUsers = async ({ page = 0, size = 10 }) => {
       r.name AS role
     FROM users u
     LEFT JOIN roles r ON r.id = u.role_id
+    ${where}
     ORDER BY u.id ASC
-    LIMIT $1 OFFSET $2
+    LIMIT $${values.length + 1} OFFSET $${values.length + 2}
   `;
 
-  const countQuery = `SELECT COUNT(*) FROM users`;
+  const countQuery = `
+    SELECT COUNT(*)
+    FROM users u
+    LEFT JOIN roles r ON r.id = u.role_id
+    ${where}
+  `;
 
-  const data = await pool.query(dataQuery, [size, offset]);
-  const count = await pool.query(countQuery);
+  const data = await pool.query(dataQuery, [...values, size, offset]);
+  const count = await pool.query(countQuery, values);
 
   return {
     rows: data.rows,
@@ -63,6 +112,14 @@ const updateUser = async (id, user) => {
   const values = [];
   let index = 1;
 
+  if (user.username !== undefined) {
+    fields.push(`username = $${index++}`);
+    values.push(user.username);
+  }
+  if (user.password !== undefined) {
+    fields.push(`password = $${index++}`);
+    values.push(user.password);
+  }
   if (user.email !== undefined) {
     fields.push(`email = $${index++}`);
     values.push(user.email);
@@ -87,10 +144,18 @@ const updateUser = async (id, user) => {
     fields.push(`avatar_url = $${index++}`);
     values.push(user.avatar_url);
   }
-  // if (user.role_id !== undefined) {
-  //   fields.push(`role_id = $${index++}`);
-  //   values.push(user.role_id);
-  // }
+  if (user.id_card !== undefined) {
+    fields.push(`id_card = $${index++}`);
+    values.push(user.id_card);
+  }
+  if (user.role_id !== undefined) {
+    fields.push(`role_id = $${index++}`);
+    values.push(user.role_id);
+  }
+  if (user.is_active !== undefined) {
+    fields.push(`is_active = $${index++}`);
+    values.push(user.is_active);
+  }
 
   if (fields.length === 0) throw new Error("No fields to update");
 
@@ -104,8 +169,17 @@ const updateUser = async (id, user) => {
     RETURNING *
   `;
 
-  const result = await pool.query(query, values);
-  return result.rows[0];
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new AppError(409, "Username or email already exists", {
+        constraint: err.constraint,
+      });
+    }
+    throw err;
+  }
 };
 
 const deleteUser = async (id) => {

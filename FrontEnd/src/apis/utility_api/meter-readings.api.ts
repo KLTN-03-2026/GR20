@@ -8,11 +8,11 @@ export const meterReadingsApi = {
   getAll(params?: { page?: number; size?: number }) {
     return http.get<SuccessResponseApi<MeterReading[]>>(URL, { params })
   },
-  getById(id: string) {
+  getById(id: string | number) {
     return http.get<SuccessResponseApi<MeterReading>>(`${URL}/${id}`)
   },
   getByUserId(
-    userId: string,
+    userId: string | number,
     params?: {
       page?: number
       size?: number
@@ -22,8 +22,8 @@ export const meterReadingsApi = {
     return http.get<SuccessResponseApi<MeterReading[]>>(`${URL}/user/${userId}`, { params })
   },
   getByUserIdAndMeterId(
-    userId: string,
-    meterId: string,
+    userId: string | number,
+    meterId: string | number,
     params?: {
       page?: number
       size?: number
@@ -38,13 +38,13 @@ export const meterReadingsApi = {
   create(payload: Omit<MeterReading, 'id' | 'createdAt' | 'consumption'>) {
     return http.post(URL, payload)
   },
-  update(id: string, payload: Partial<Omit<MeterReading, 'id' | 'createdAt' | 'consumption'>>) {
+  update(id: string | number, payload: Partial<Omit<MeterReading, 'id' | 'createdAt' | 'consumption'>>) {
     return http.put(`${URL}/${id}`, payload)
   },
-  delete(id: string) {
+  delete(id: string | number) {
     return http.delete(`${URL}/${id}`)
   },
-  restore(id: string) {
+  restore(id: string | number) {
     return http.patch(`${URL}/${id}/restore`)
   }
 }

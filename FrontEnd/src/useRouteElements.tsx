@@ -3,6 +3,10 @@ import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 
 import Buildings from './pages/building management/Buildings'
+import Floors from './pages/building management/Floors'
+import Apartments from './pages/building management/Apartments'
+import BuildingAssignmentsManagement from './pages/building management/BuildingAssignmentsManagement'
+import BuildingDetailManagement from './pages/building management/BuildingDetailManagement'
 import BuildingImagesManagement from './pages/building management/BuildingImagesManagement'
 import UtilityMetersPage from './pages/utility/UtilityMetersPage'
 import UtilityPricingPage from './pages/utility/UtilityPricingPage'
@@ -28,6 +32,14 @@ import EmployeeManagement from './pages/employees/EmployeeManagement'
 import Getresidentlist from './pages/residentmanagement/Getresidentlist'
 import Addresident from './pages/residentmanagement/Addresident'
 import ResidentDetail from './pages/residentmanagement/Residentdetail'
+import RoleManagement from './pages/roles/RoleManagement'
+import UserManagement from './pages/users/UserManagement'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import MaintenanceRequestsAdminPage from './pages/maintenance/MaintenanceRequestsAdminPage'
+import MaintenanceAssignmentsAdminPage from './pages/maintenance/MaintenanceAssignmentsAdminPage'
+import VehiclesAdminPage from './pages/vehicles/VehiclesAdminPage'
+import VisitorsAdminPage from './pages/visitors/VisitorsAdminPage'
+import ContractsAdminPage from './pages/contracts/ContractsAdminPage'
 
 // QR code
 import QrcodeManagement from './pages/QRCODE_USER/QrcodeManagement'
@@ -42,22 +54,14 @@ import ViewAllHistoryQrcode from './pages/QrcodeAdmin/ViewAllHistoryQrcode'
 // kiểm tra login
 function ProtectedAdminRoute({ children }: { children?: React.ReactNode }) {
   const { isAuthenticated, user } = useContext(AppContext)
-  const hasPermission = user?.roles?.includes('ADMIN') || user?.roles?.includes('Quản lý')
+  const normalizedRoles = (user?.roles || []).map((role) => role.toLowerCase())
+  const hasPermission =
+    normalizedRoles.includes('admin') || normalizedRoles.includes('manager') || normalizedRoles.includes('quản lý')
 
   if (!isAuthenticated) return <Navigate to='/login' />
   if (!hasPermission) return <Navigate to='/' />
 
   return children || <Outlet />
-}
-
-function ProtecdRouter() {
-  const { isAuthenticated } = useContext(AppContext)
-  return isAuthenticated ? <Outlet /> : <Navigate to='/login' />
-}
-
-function RejectedRouter() {
-  const { isAuthenticated } = useContext(AppContext)
-  return !isAuthenticated ? <Outlet /> : <Navigate to='/' />
 }
 
 export default function useRouteElements() {
@@ -75,8 +79,24 @@ export default function useRouteElements() {
       element: <Buildings />
     },
     {
+      path: '/floors',
+      element: <Floors />
+    },
+    {
+      path: '/apartments',
+      element: <Apartments />
+    },
+    {
       path: '/building-images',
       element: <BuildingImagesManagement />
+    },
+    {
+      path: '/buildings/:id',
+      element: <BuildingDetailManagement />
+    },
+    {
+      path: '/building-assignments',
+      element: <BuildingAssignmentsManagement />
     },
     {
       path: '/utility-meters',
@@ -132,7 +152,11 @@ export default function useRouteElements() {
     },
     {
       path: '/admin/payments',
-      element: <PaymentsPage />
+      element: (
+        <DashboardLayoutProtect>
+          <PaymentsPage />
+        </DashboardLayoutProtect>
+      )
     },
     {
       path: '/billing-generate-cash',
@@ -158,6 +182,152 @@ export default function useRouteElements() {
             <EmployeeManagement />
           </DashboardLayoutProtect>
         </ProtectedAdminRoute>
+      )
+    },
+    {
+      path: '/roles',
+      element: (
+        <DashboardLayoutProtect>
+          <RoleManagement />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/users-test',
+      element: (
+        <DashboardLayoutProtect>
+          <UserManagement />
+        </DashboardLayoutProtect>
+      )
+    },
+
+    // ===== ADMIN (no permission for now) =====
+    {
+      path: '/admin',
+      element: (
+        <DashboardLayoutProtect>
+          <AdminDashboard />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/roles',
+      element: (
+        <DashboardLayoutProtect>
+          <RoleManagement />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/users',
+      element: (
+        <DashboardLayoutProtect>
+          <UserManagement />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/buildings',
+      element: (
+        <DashboardLayoutProtect>
+          <Buildings />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/floors',
+      element: (
+        <DashboardLayoutProtect>
+          <Floors />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/apartments',
+      element: (
+        <DashboardLayoutProtect>
+          <Apartments />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/utility-pricing',
+      element: (
+        <DashboardLayoutProtect>
+          <UtilityPricingPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/utility-meters',
+      element: (
+        <DashboardLayoutProtect>
+          <UtilityMetersPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/meter-readings',
+      element: (
+        <DashboardLayoutProtect>
+          <MeterReadingsPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/invoices',
+      element: (
+        <DashboardLayoutProtect>
+          <InvoicesPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/invoice-items',
+      element: (
+        <DashboardLayoutProtect>
+          <InvoiceItemsPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/maintenance-requests',
+      element: (
+        <DashboardLayoutProtect>
+          <MaintenanceRequestsAdminPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/maintenance-assignments',
+      element: (
+        <DashboardLayoutProtect>
+          <MaintenanceAssignmentsAdminPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/vehicles',
+      element: (
+        <DashboardLayoutProtect>
+          <VehiclesAdminPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/visitors',
+      element: (
+        <DashboardLayoutProtect>
+          <VisitorsAdminPage />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/admin/contracts',
+      element: (
+        <DashboardLayoutProtect>
+          <ContractsAdminPage />
+        </DashboardLayoutProtect>
       )
     },
 

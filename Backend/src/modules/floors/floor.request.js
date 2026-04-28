@@ -1,68 +1,78 @@
-const Joi = require("joi");
+const { z } = require("zod");
 
-// ===== COMMON =====
-const idSchema = Joi.number().integer().positive().required();
-
-// ===== CREATE =====
-const createFloorSchema = Joi.object({
-  building_id: Joi.number().integer().positive().required()
-    .messages({
-      "any.required": "building_id is required",
-      "number.base": "building_id must be a number"
-    }),
-
-  floor_number: Joi.number().integer().required()
-    .messages({
-      "any.required": "floor_number is required"
-    }),
-
-  name: Joi.string().max(255).allow(null, "")
+const createFloorSchema = z.object({
+  // Keep snake_case for FE/BE consistency with existing DB naming
+  building_id: z.coerce
+    .number({ error: "building_id must be a number" })
+    .int("building_id must be an integer")
+    .positive("building_id must be greater than 0"),
+  floor_number: z.coerce
+    .number({ error: "floor_number must be a number" })
+    .int("floor_number must be an integer"),
+  name: z
+    .string()
+    .trim()
+    .max(255, "name is too long")
+    .optional()
+    .nullable(),
 });
 
-// ===== UPDATE =====
-const updateFloorSchema = Joi.object({
-  building_id: Joi.number().integer().positive().optional(),
-  floor_number: Joi.number().integer().optional(),
-  name: Joi.string().max(255).allow(null, "")
-})
-.min(1) 
-.messages({
-  "object.min": "At least one field must be updated"
+const updateFloorSchema = z
+  .object({
+    building_id: z.coerce
+      .number({ error: "building_id must be a number" })
+      .int("building_id must be an integer")
+      .positive("building_id must be greater than 0")
+      .optional(),
+    floor_number: z.coerce
+      .number({ error: "floor_number must be a number" })
+      .int("floor_number must be an integer")
+      .optional(),
+    name: z
+      .string()
+      .trim()
+      .max(255, "name is too long")
+      .optional()
+      .nullable(),
+  })
+  .refine(
+    (data) => Object.keys(data).length > 0,
+    "At least one field is required for update",
+  );
+
+const paginationSchema = z.object({
+  page: z.coerce.number().int().min(0).default(0),
+  // FE dropdowns are requesting up to 500 items
+  size: z.coerce.number().int().min(1).max(1000).default(10),
+  search: z.string().trim().optional(),
+  buildingId: z.coerce.number().int().positive().optional(),
+  includeDeleted: z
+    .union([z.boolean(), z.enum(["true", "false"])])
+    .optional()
+    .transform((v) => (v === "true" ? true : v === "false" ? false : v)),
+  status: z.enum(["active", "deleted", "all"]).optional(),
 });
 
-// ===== VALIDATORS =====
-const validateCreate = (data) =>
-  createFloorSchema.validate(data, { abortEarly: false });
+/** @param {unknown} body */
+function parseCreateFloor(body) {
+  return createFloorSchema.parse(body);
+}
 
-const validateUpdate = (data) =>
-  updateFloorSchema.validate(data, { abortEarly: false });
+/** @param {unknown} body */
+function parseUpdateFloor(body) {
+  return updateFloorSchema.parse(body);
+}
 
-const validateId = (id) =>
-  idSchema.validate(id);
-
-
-const parseUpdateFloor = (data) => {
-  const { error, value } = updateFloorSchema.validate(data, {
-    abortEarly: false,
-  });
-
-  if (error) throw error;
-  return value;
-};
-
-const parseCreateFloor = (data) => {
-  const { error, value } = createFloorSchema.validate(data, {
-    abortEarly: false,
-  });
-
-  if (error) throw error;
-  return value;
-};
+/** @param {unknown} query */
+function parseFloorPagination(query) {
+  return paginationSchema.parse(query || {});
+}
 
 module.exports = {
-  validateCreate,
-  validateUpdate,
-  validateId,
+  createFloorSchema,
+  updateFloorSchema,
+  paginationSchema,
+  parseCreateFloor,
   parseUpdateFloor,
-  parseCreateFloor
+  parseFloorPagination,
 };

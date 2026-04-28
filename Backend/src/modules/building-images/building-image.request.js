@@ -26,10 +26,18 @@ const buildingIdSchema = z.coerce
 
 const parsePathId = (id) => pathIdSchema.parse(id);
 const parseBuildingId = (buildingId) => buildingIdSchema.parse(buildingId);
+const includeDeletedSchema = z.object({
+  includeDeleted: z
+    .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
+    .optional(),
+});
+
+const parseImageQuery = (query) => includeDeletedSchema.parse(query || {});
 
 module.exports = {
   createBuildingImageSchema,
   parseCreateBuildingImage,
   parsePathId,
   parseBuildingId,
+  parseImageQuery,
 };

@@ -7,6 +7,7 @@ const sendError = (res, err) => {
     return res.status(400).json({
       message: "Validation failed",
       errors: err.flatten().fieldErrors,
+      formErrors: err.flatten().formErrors,
     });
   }
 
@@ -68,12 +69,12 @@ const getContractById = async (req, res) => {
 // UPDATE
 const updateContract = async (req, res) => {
   try {
-    await service.updateContract(req.params.id, req.body);
+    const data = await service.updateContract(req.params.id, req.body);
     res.json({
       operationType: "Success",
       message: "Update contract successfully",
       code: "OK",
-      data: null,
+      data,
       timestamp: new Date(),
     });
   } catch (err) {
@@ -84,12 +85,12 @@ const updateContract = async (req, res) => {
 // DELETE
 const terminateContract = async (req, res) => {
   try {
-    await service.terminateContract(req.params.id);
+    const data = await service.terminateContract(req.params.id);
     res.json({
       operationType: "Success",
       message: "Terminate contract successfully",
       code: "OK",
-      data: null,
+      data,
       timestamp: new Date(),
     });
   } catch (err) {
@@ -100,12 +101,12 @@ const terminateContract = async (req, res) => {
 // RENEW
 const renewContract = async (req, res) => {
   try {
-    await service.renewContract(req.params.id, req.body);
+    const data = await service.renewContract(req.params.id, req.body);
     res.json({
       operationType: "Success",
       message: "Renew contract successfully",
       code: "OK",
-      data: null,
+      data,
       timestamp: new Date(),
     });
   } catch (err) {

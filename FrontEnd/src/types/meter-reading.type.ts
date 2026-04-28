@@ -1,5 +1,5 @@
 export interface MeterReading {
-  id: string
+  id: number
   meterId: number
   readingDate: string
   previousReading: number

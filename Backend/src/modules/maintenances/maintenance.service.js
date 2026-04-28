@@ -1,5 +1,13 @@
 const repo = require("./maintenance.repository");
 const mapper = require("./maintenance.mapper");
+const { AppError } = require("../../common/app-error");
+
+const normalizeStatus = (status) => {
+  if (!status) return status;
+  if (status === "PENDING") return "OPEN";
+  if (status === "COMPLETED") return "DONE";
+  return status;
+};
 const createMaintenanceRequest = async (reqBody) => {
   // Generate request code if not provided
   if (!reqBody.requestCode) {
@@ -20,7 +28,7 @@ const getAllMaintenanceRequests = async (query) => {
   const { 
     page = 0, 
     size = 10, 
-    status = null, 
+    status = null,
     priority = null,
     buildingId = null,
     search = null 
@@ -29,7 +37,7 @@ const getAllMaintenanceRequests = async (query) => {
   const result = await repo.getAllMaintenanceRequests({ 
     page: Number(page), 
     size: Number(size), 
-    status, 
+    status: normalizeStatus(status),
     priority,
     buildingId,
     search 
@@ -49,7 +57,7 @@ const getMaintenanceRequestById = async (id) => {
   const data = await repo.getMaintenanceRequestById(id);
 
   if (!data) {
-    throw new Error("Maintenance request not found");
+    throw new AppError(404, "Maintenance request not found");
   }
 
   return mapper.toResponse(data);
@@ -59,14 +67,14 @@ const updateMaintenanceRequest = async (id, reqBody) => {
   // Check if request exists
   const existing = await repo.getMaintenanceRequestById(id);
   if (!existing) {
-    throw new Error("Maintenance request not found");
+    throw new AppError(404, "Maintenance request not found");
   }
 
   const entity = mapper.toEntity(reqBody);
   const updated = await repo.updateMaintenanceRequest(id, entity);
 
   if (!updated) {
-    throw new Error("Update failed");
+    throw new AppError(400, "Update failed");
   }
 
   return mapper.toResponse(updated);
@@ -76,13 +84,13 @@ const deleteMaintenanceRequest = async (id) => {
   // Check if request exists
   const existing = await repo.getMaintenanceRequestById(id);
   if (!existing) {
-    throw new Error("Maintenance request not found");
+    throw new AppError(404, "Maintenance request not found");
   }
 
   const deleted = await repo.deleteMaintenanceRequest(id);
 
   if (!deleted) {
-    throw new Error("Delete failed");
+    throw new AppError(400, "Delete failed");
   }
 
   return { id: deleted.id };
@@ -92,18 +100,19 @@ const updateStatus = async (id, status) => {
   // Check if request exists
   const existing = await repo.getMaintenanceRequestById(id);
   if (!existing) {
-    throw new Error("Maintenance request not found");
+    throw new AppError(404, "Maintenance request not found");
   }
 
-  const validStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
-  if (!validStatuses.includes(status)) {
-    throw new Error("Invalid status");
+  const normalizedStatus = normalizeStatus(status);
+  const validStatuses = ["OPEN", "IN_PROGRESS", "DONE", "CANCELLED"];
+  if (!validStatuses.includes(normalizedStatus)) {
+    throw new AppError(400, "Invalid status");
   }
 
-  const updated = await repo.updateStatus(id, status);
+  const updated = await repo.updateStatus(id, normalizedStatus);
 
   if (!updated) {
-    throw new Error("Update status failed");
+    throw new AppError(400, "Update status failed");
   }
 
   return mapper.toResponse(updated);
@@ -113,17 +122,17 @@ const assignTechnician = async (id, technicianId, technicianName) => {
   // Check if request exists
   const existing = await repo.getMaintenanceRequestById(id);
   if (!existing) {
-    throw new Error("Maintenance request not found");
+    throw new AppError(404, "Maintenance request not found");
   }
 
   if (!technicianId || !technicianName) {
-    throw new Error("Technician ID and name are required");
+    throw new AppError(400, "Technician ID and name are required");
   }
 
   const updated = await repo.assignTechnician(id, technicianId, technicianName);
 
   if (!updated) {
-    throw new Error("Assign technician failed");
+    throw new AppError(400, "Assign technician failed");
   }
 
   return mapper.toResponse(updated);

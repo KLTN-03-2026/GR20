@@ -4,11 +4,19 @@ const { AppError } = require("../../common/app-error");
 const {
   parseCreateApartment,
   parseUpdateApartment,
+  parseApartmentListQuery,
 } = require("./apartment.request");
 
 // CREATE
 const createApartment = async (reqBody) => {
   const parsed = parseCreateApartment(reqBody);
+  const isValidFloor = await repo.floorBelongsToBuilding({
+    floorId: parsed.floorId,
+    buildingId: parsed.buildingId,
+  });
+  if (!isValidFloor) {
+    throw new AppError(400, "Selected floor does not belong to building");
+  }
   const entity = mapper.toEntity(parsed);
   const result = await repo.createApartment(entity);
 
@@ -19,9 +27,23 @@ const createApartment = async (reqBody) => {
 
 // GET ALL
 const getAllApartments = async (query) => {
-  const { page = 0, size = 10 } = query;
+  const {
+    page = 0,
+    size = 10,
+    search,
+    buildingId,
+    floorId,
+    status,
+  } = parseApartmentListQuery(query);
 
-  const result = await repo.getAllApartments({ page, size });
+  const result = await repo.getAllApartments({
+    page,
+    size,
+    search,
+    buildingId,
+    floorId,
+    status,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),
@@ -34,8 +56,14 @@ const getAllApartments = async (query) => {
 };
 
 const getApartmentsByBuilding = async (buildingId, query) => {
-  const { page = 0, size = 10 } = query;
-  const result = await repo.getApartmentsByBuilding({ buildingId, page, size });
+  const { page = 0, size = 10, search, status } = parseApartmentListQuery(query);
+  const result = await repo.getApartmentsByBuilding({
+    buildingId,
+    page,
+    size,
+    search,
+    status,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),
@@ -48,8 +76,14 @@ const getApartmentsByBuilding = async (buildingId, query) => {
 };
 
 const getApartmentsByFloor = async (floorId, query) => {
-  const { page = 0, size = 10 } = query;
-  const result = await repo.getApartmentsByFloor({ floorId, page, size });
+  const { page = 0, size = 10, search, status } = parseApartmentListQuery(query);
+  const result = await repo.getApartmentsByFloor({
+    floorId,
+    page,
+    size,
+    search,
+    status,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),
@@ -75,6 +109,21 @@ const getApartmentById = async (id) => {
 // UPDATE
 const updateApartment = async (id, reqBody) => {
   const parsed = parseUpdateApartment(reqBody);
+  const current = await repo.getApartmentById(id);
+  if (!current) {
+    throw new AppError(404, "Apartment not found");
+  }
+
+  const nextBuildingId = parsed.buildingId ?? current.building_id;
+  const nextFloorId = parsed.floorId ?? current.floor_id;
+  const isValidFloor = await repo.floorBelongsToBuilding({
+    floorId: nextFloorId,
+    buildingId: nextBuildingId,
+  });
+  if (!isValidFloor) {
+    throw new AppError(400, "Selected floor does not belong to building");
+  }
+
   const entity = mapper.toEntity(parsed);
 
   const updated = await repo.updateApartment(id, entity);

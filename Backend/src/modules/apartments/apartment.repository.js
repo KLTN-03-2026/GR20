@@ -2,6 +2,20 @@ const { pool } = require("../../configs/database.config");
 const { AppError } = require("../../common/app-error");
 
 const isUniqueViolation = (err) => err && err.code === "23505";
+const isForeignKeyViolation = (err) => err && err.code === "23503";
+
+const floorBelongsToBuilding = async ({ floorId, buildingId }) => {
+  const query = `
+    SELECT 1
+    FROM floors
+    WHERE id = $1
+      AND building_id = $2
+      AND deleted_at IS NULL
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [floorId, buildingId]);
+  return Boolean(result.rows[0]);
+};
 
 // CREATE
 const createApartment = async (apartment) => {
@@ -37,6 +51,12 @@ const createApartment = async (apartment) => {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
+    if (isForeignKeyViolation(err)) {
+      throw new AppError(
+        400,
+        "Invalid buildingId/floorId/ownerUserId (foreign key does not exist)"
+      );
+    }
     if (isUniqueViolation(err)) {
       throw new AppError(
         409,
@@ -49,19 +69,55 @@ const createApartment = async (apartment) => {
 };
 
 // GET ALL
-const getAllApartments = async ({ page = 0, size = 10 }) => {
+const getAllApartments = async ({
+  page = 0,
+  size = 10,
+  search,
+  buildingId,
+  floorId,
+  status,
+}) => {
   const offset = page * size;
+  const values = [];
+  const conditions = [];
+
+  if (search) {
+    values.push(`%${search}%`);
+    const p = values.length;
+    conditions.push(`(apartment_code ILIKE $${p} OR floor_id::text ILIKE $${p})`);
+  }
+  if (buildingId !== undefined) {
+    values.push(buildingId);
+    conditions.push(`building_id = $${values.length}`);
+  }
+  if (floorId !== undefined) {
+    values.push(floorId);
+    conditions.push(`floor_id = $${values.length}`);
+  }
+  if (status !== undefined) {
+    values.push(status);
+    conditions.push(`status = $${values.length}`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  values.push(size);
+  values.push(offset);
+  const limitParam = values.length - 1;
+  const offsetParam = values.length;
 
   const dataQuery = `
     SELECT * FROM apartments
+    ${where}
     ORDER BY id ASC
-    LIMIT $1 OFFSET $2
+    LIMIT $${limitParam} OFFSET $${offsetParam}
   `;
 
-  const countQuery = `SELECT COUNT(*) FROM apartments`;
+  const countQuery = `SELECT COUNT(*) FROM apartments ${where}`;
 
-  const data = await pool.query(dataQuery, [size, offset]);
-  const count = await pool.query(countQuery);
+  const data = await pool.query(dataQuery, values);
+  const countValues = values.slice(0, values.length - 2);
+  const count = await pool.query(countQuery, countValues);
 
   return {
     rows: data.rows,
@@ -69,23 +125,39 @@ const getAllApartments = async ({ page = 0, size = 10 }) => {
   };
 };
 
-const getApartmentsByBuilding = async ({ buildingId, page = 0, size = 10 }) => {
+const getApartmentsByBuilding = async ({
+  buildingId,
+  page = 0,
+  size = 10,
+  search,
+  status,
+}) => {
   const offset = page * size;
+  const values = [buildingId];
+  const conditions = [`building_id = $1`];
+
+  if (search) {
+    values.push(`%${search}%`);
+    const p = values.length;
+    conditions.push(`(apartment_code ILIKE $${p} OR floor_id::text ILIKE $${p})`);
+  }
+  if (status) {
+    values.push(status);
+    conditions.push(`status = $${values.length}`);
+  }
+  const where = `WHERE ${conditions.join(" AND ")}`;
 
   const dataQuery = `
     SELECT * FROM apartments
-    WHERE building_id = $1
+    ${where}
     ORDER BY id ASC
-    LIMIT $2 OFFSET $3
+    LIMIT $${values.length + 1} OFFSET $${values.length + 2}
   `;
 
-  const countQuery = `
-    SELECT COUNT(*) FROM apartments
-    WHERE building_id = $1
-  `;
+  const countQuery = `SELECT COUNT(*) FROM apartments ${where}`;
 
-  const data = await pool.query(dataQuery, [buildingId, size, offset]);
-  const count = await pool.query(countQuery, [buildingId]);
+  const data = await pool.query(dataQuery, [...values, size, offset]);
+  const count = await pool.query(countQuery, values);
 
   return {
     rows: data.rows,
@@ -93,23 +165,33 @@ const getApartmentsByBuilding = async ({ buildingId, page = 0, size = 10 }) => {
   };
 };
 
-const getApartmentsByFloor = async ({ floorId, page = 0, size = 10 }) => {
+const getApartmentsByFloor = async ({ floorId, page = 0, size = 10, search, status }) => {
   const offset = page * size;
+  const values = [floorId];
+  const conditions = [`floor_id = $1`];
+
+  if (search) {
+    values.push(`%${search}%`);
+    const p = values.length;
+    conditions.push(`(apartment_code ILIKE $${p} OR floor_id::text ILIKE $${p})`);
+  }
+  if (status) {
+    values.push(status);
+    conditions.push(`status = $${values.length}`);
+  }
+  const where = `WHERE ${conditions.join(" AND ")}`;
 
   const dataQuery = `
     SELECT * FROM apartments
-    WHERE floor_id = $1
+    ${where}
     ORDER BY id ASC
-    LIMIT $2 OFFSET $3
+    LIMIT $${values.length + 1} OFFSET $${values.length + 2}
   `;
 
-  const countQuery = `
-    SELECT COUNT(*) FROM apartments
-    WHERE floor_id = $1
-  `;
+  const countQuery = `SELECT COUNT(*) FROM apartments ${where}`;
 
-  const data = await pool.query(dataQuery, [floorId, size, offset]);
-  const count = await pool.query(countQuery, [floorId]);
+  const data = await pool.query(dataQuery, [...values, size, offset]);
+  const count = await pool.query(countQuery, values);
 
   return {
     rows: data.rows,
@@ -176,7 +258,7 @@ const updateApartment = async (id, apartment) => {
   }
 
   if (fields.length === 0) {
-    throw new Error("No fields to update");
+    throw new AppError(400, "No fields to update");
   }
 
   values.push(id);
@@ -192,6 +274,12 @@ const updateApartment = async (id, apartment) => {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
+    if (isForeignKeyViolation(err)) {
+      throw new AppError(
+        400,
+        "Invalid buildingId/floorId/ownerUserId (foreign key does not exist)"
+      );
+    }
     if (isUniqueViolation(err)) {
       throw new AppError(
         409,
@@ -224,4 +312,5 @@ module.exports = {
   getApartmentById,
   updateApartment,
   deleteApartment,
+  floorBelongsToBuilding,
 };

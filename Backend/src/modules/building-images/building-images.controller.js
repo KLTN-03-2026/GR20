@@ -67,7 +67,7 @@ const uploadBuildingImage = async (req, res) => {
 
 const getAllByBuildingId = async (req, res) => {
   try {
-    const result = await service.getAllByBuildingId(req.params.buildingId);
+    const result = await service.getAllByBuildingId(req.params.buildingId, req.query);
 
     res.json({
       operationType: "Success",

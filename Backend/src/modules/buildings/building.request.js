@@ -2,7 +2,7 @@ const { z } = require("zod");
 
 const currentYear = new Date().getFullYear();
 
-const buildingStatusSchema = z.enum(["ACTIVE", "CLOSED"]);
+const buildingStatusSchema = z.enum(["ACTIVE", "MAINTENANCE", "CLOSED"]);
 
 const codeSchema = z
   .string({ error: "Code is required" })
@@ -82,7 +82,9 @@ const pathIdSchema = z.coerce
 
 const paginationSchema = z.object({
   page: z.coerce.number().int().min(0).default(0),
-  size: z.coerce.number().int().min(1).max(100).default(10),
+  size: z.coerce.number().int().min(1).max(1000).default(10),
+  search: z.string().trim().optional(),
+  status: buildingStatusSchema.optional(),
 });
 
 /** @param {unknown} body */

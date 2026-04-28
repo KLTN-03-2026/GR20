@@ -1,5 +1,22 @@
+const { ZodError } = require("zod");
+const { AppError } = require("../../common/app-error");
 const service = require("./maintenance.service");
-console.log("🔥 maintenance controller NEW");
+
+const sendError = (res, err) => {
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      message: "Validation failed",
+      errors: err.flatten().fieldErrors,
+      formErrors: err.flatten().formErrors,
+    });
+  }
+  if (err instanceof AppError) {
+    const body = { message: err.message };
+    if (err.details !== undefined) body.details = err.details;
+    return res.status(err.statusCode).json(body);
+  }
+  return res.status(500).json({ message: err.message });
+};
 const createMaintenanceRequest = async (req, res) => {
   try {
     const data = await service.createMaintenanceRequest(req.body);
@@ -13,9 +30,7 @@ const createMaintenanceRequest = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -31,9 +46,7 @@ const getAllMaintenanceRequests = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -49,9 +62,7 @@ const getMaintenanceRequestById = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(404).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -67,9 +78,7 @@ const updateMaintenanceRequest = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -85,9 +94,7 @@ const deleteMaintenanceRequest = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -104,9 +111,7 @@ const updateStatus = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -123,9 +128,7 @@ const assignTechnician = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -142,9 +145,7 @@ const getStatistics = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 

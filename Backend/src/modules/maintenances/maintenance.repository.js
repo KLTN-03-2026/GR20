@@ -158,7 +158,7 @@ const deleteMaintenanceRequest = async (id) => {
 };
 
 const updateStatus = async (id, status) => {
-  const completedAt = status === 'COMPLETED' ? new Date() : null;
+  const completedAt = status === 'DONE' ? new Date() : null;
   
   const query = `
     UPDATE maintenance_requests
@@ -198,13 +198,14 @@ const getStatistics = async (buildingId = null) => {
   const query = `
     SELECT 
       COUNT(*) as total,
-      COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as pending,
+      COUNT(CASE WHEN status = 'OPEN' THEN 1 END) as pending,
       COUNT(CASE WHEN status = 'IN_PROGRESS' THEN 1 END) as in_progress,
-      COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed,
+      COUNT(CASE WHEN status = 'DONE' THEN 1 END) as completed,
       COUNT(CASE WHEN status = 'CANCELLED' THEN 1 END) as cancelled,
       COUNT(CASE WHEN priority = 'HIGH' THEN 1 END) as high_priority,
       COUNT(CASE WHEN priority = 'MEDIUM' THEN 1 END) as medium_priority,
-      COUNT(CASE WHEN priority = 'LOW' THEN 1 END) as low_priority
+      COUNT(CASE WHEN priority = 'LOW' THEN 1 END) as low_priority,
+      COUNT(CASE WHEN priority = 'URGENT' THEN 1 END) as urgent_priority
     FROM maintenance_requests
     ${whereClause}
   `;

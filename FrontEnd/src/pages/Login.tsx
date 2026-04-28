@@ -8,11 +8,34 @@ import { loginApi } from 'src/apis/Login/login.api'
 import Input from 'src/components/Input' // Đường dẫn tới component Input của bạn
 import { AppContext } from 'src/contexts/app.context'
 import type { ErrorResponseApi } from 'src/types/utils.type'
-import { isAxiosUnprocessableEntityError } from 'src/utils/utils'
+import { isAxiosError } from 'src/utils/utils'
 
 interface FormData {
   username: string
   password: string
+}
+
+const translateLoginError = (error: any, fallbackMessage: string) => {
+  const apiError = error?.response?.data
+  const firstFieldError = apiError?.errors ? Object.values(apiError.errors).flat()?.[0] : null
+  const rawMessage = firstFieldError || apiError?.formErrors?.[0] || apiError?.details || apiError?.message || fallbackMessage
+
+  if (typeof rawMessage !== 'string') {
+    return fallbackMessage
+  }
+
+  const translatedMessages: Array<[string, string]> = [
+    ['Validation failed', 'Dữ liệu không hợp lệ'],
+    ['Username is required', 'Tên đăng nhập là bắt buộc'],
+    ['Username cannot be empty', 'Tên đăng nhập không được để trống'],
+    ['Password is required', 'Mật khẩu là bắt buộc'],
+    ['Password cannot be empty', 'Mật khẩu không được để trống'],
+    ['Invalid username or password', 'Tên đăng nhập hoặc mật khẩu không đúng'],
+    ['Account is inactive', 'Tài khoản đã bị khóa']
+  ]
+
+  const matched = translatedMessages.find(([english]) => rawMessage.includes(english))
+  return matched?.[1] || rawMessage
 }
 
 export default function Login() {
@@ -44,19 +67,20 @@ export default function Login() {
         // navigate('/')
       },
       onError: (errors) => {
-        // Xử lý lỗi từ server
-        toast.error('Đăng nhập thất bại')
-        if (isAxiosUnprocessableEntityError<ErrorResponseApi<FormData>>(errors)) {
-          const formErrors = errors.response?.data.data
-          if (formErrors?.username) {
+        const translatedMessage = translateLoginError(errors, 'Đăng nhập thất bại')
+        toast.error(translatedMessage)
+
+        if (isAxiosError<ErrorResponseApi<FormData> & { errors?: Record<string, string[]> }>(errors)) {
+          const formErrors = errors.response?.data?.errors
+          if (formErrors?.username?.[0]) {
             setError('username', {
-              message: formErrors.username,
+              message: translateLoginError({ response: { data: { message: formErrors.username[0] } } }, translatedMessage),
               type: 'Server'
             })
           }
-          if (formErrors?.password) {
+          if (formErrors?.password?.[0]) {
             setError('password', {
-              message: formErrors.password,
+              message: translateLoginError({ response: { data: { message: formErrors.password[0] } } }, translatedMessage),
               type: 'Server'
             })
           }

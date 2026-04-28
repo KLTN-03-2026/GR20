@@ -5,6 +5,7 @@ const {
   parseCreateBuildingImage,
   parsePathId,
   parseBuildingId,
+  parseImageQuery,
 } = require("./building-image.request");
 
 const createBuildingImage = async (reqBody) => {
@@ -31,9 +32,14 @@ const createBuildingImageByFile = async ({ buildingId, file }) => {
   };
 };
 
-const getAllByBuildingId = async (buildingId) => {
+const getAllByBuildingId = async (buildingId, query) => {
   const parsedBuildingId = parseBuildingId(buildingId);
-  const images = await repo.getAllByBuildingId(parsedBuildingId);
+  const parsedQuery = parseImageQuery(query);
+  const includeDeleted =
+    parsedQuery.includeDeleted === true ||
+    parsedQuery.includeDeleted === "true" ||
+    parsedQuery.includeDeleted === "1";
+  const images = await repo.getAllByBuildingId(parsedBuildingId, includeDeleted);
 
   return {
     data: images.map(mapper.toResponse),

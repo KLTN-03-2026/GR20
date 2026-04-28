@@ -17,7 +17,7 @@ const getApiErrorMessage = (err: any, fallbackMessage: string) => {
     ['No active utility meters found for this apartment', 'Căn hộ chưa có đồng hồ đang hoạt động'],
     ['No active pricing found for meter type', 'Không tìm thấy giá tiện ích đang áp dụng cho loại đồng hồ'],
     ['No meter readings found for this billing period', 'Không có chỉ số công tơ cho kỳ hóa đơn này'],
-    ['Invoice not found or not cancelled', 'Không tìm thấy hóa đơn đã xóa mềm để khôi phục'],
+    ['Invoice not found or not cancelled', 'Không tìm thấy hóa đơn đã xóa để khôi phục'],
     ['Invoice not found', 'Không tìm thấy hóa đơn']
   ]
   const mapped = translatedMessages.find(([en]) => rawMessage.includes(en))
@@ -49,6 +49,7 @@ export default function InvoicesPage() {
   const [page, setPage] = useState(0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const { data, error, isLoading, isError } = useQuery({
     queryKey: ['invoices', page],
     queryFn: async () => {
@@ -100,7 +101,7 @@ export default function InvoicesPage() {
     },
     onError: (err: any) => {
       logApiError('Delete', err)
-      setErrorMsg(getApiErrorMessage(err, 'Xóa mềm hóa đơn thất bại'))
+      setErrorMsg(getApiErrorMessage(err, 'Xóa hóa đơn thất bại'))
     }
   })
   const restoreMutation = useMutation({
@@ -120,21 +121,56 @@ export default function InvoicesPage() {
   if (isError) {
     logApiError('GetAll', error)
   }
+  const summary = {
+    total: list.length,
+    pending: list.filter((item) => item.status === 'PENDING').length,
+    paid: list.filter((item) => item.status === 'PAID').length,
+    cancelled: list.filter((item) => item.status === 'CANCELLED').length
+  }
 
   return (
-    <div className='min-h-screen bg-slate-50 px-6 py-6 text-slate-900'>
+    <div className='min-h-screen bg-[#F8F9FA] p-8 font-sans text-slate-900'>
       <div className='mx-auto max-w-6xl'>
-        <div className='mb-6 flex items-end justify-between gap-4'>
+        <div className='mb-8 flex items-end justify-between gap-4'>
           <div>
-            <h2 className='text-3xl font-extrabold tracking-tight'>Danh sách hóa đơn</h2>
-            <p className='mt-1 text-sm text-slate-500'>Tạo hóa đơn tự động từ meter readings và utility pricing.</p>
+            <span className='rounded bg-[#DDE7FF] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0052CC]'>
+              Administration
+            </span>
+            <h1 className='mt-4 mb-2 text-3xl font-bold text-gray-900'>Quản lý hóa đơn</h1>
+            <p className='text-sm text-gray-500'>Tạo hóa đơn từ chỉ số đồng hồ và quản lý trạng thái thanh toán.</p>
+          </div>
+          <button
+            type='button'
+            onClick={() => setIsCreateOpen(true)}
+            className='rounded-lg bg-[#0052CC] px-5 py-2.5 font-semibold text-white transition hover:bg-blue-700'
+          >
+            + Tạo hóa đơn
+          </button>
+        </div>
+
+        <div className='mb-6 grid grid-cols-1 gap-4 md:grid-cols-4'>
+          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
+            <div className='text-sm text-gray-500'>Tổng trên trang</div>
+            <div className='mt-2 text-3xl font-bold text-gray-900'>{summary.total}</div>
+          </div>
+          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
+            <div className='text-sm text-gray-500'>PENDING</div>
+            <div className='mt-2 text-3xl font-bold text-amber-600'>{summary.pending}</div>
+          </div>
+          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
+            <div className='text-sm text-gray-500'>PAID</div>
+            <div className='mt-2 text-3xl font-bold text-emerald-600'>{summary.paid}</div>
+          </div>
+          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
+            <div className='text-sm text-gray-500'>CANCELLED</div>
+            <div className='mt-2 text-3xl font-bold text-red-500'>{summary.cancelled}</div>
           </div>
         </div>
 
         {errorMsg && <div className='mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600'>{errorMsg}</div>}
 
-        <form
-          className='mb-6 grid grid-cols-1 gap-2 rounded-xl bg-white p-4 shadow-sm md:grid-cols-6'
+        {isCreateOpen && <form
+          className='mb-6 grid grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm md:grid-cols-6'
           onSubmit={(e) => {
             e.preventDefault()
             setErrorMsg(null)
@@ -148,32 +184,40 @@ export default function InvoicesPage() {
               dueDate: (fd.get('dueDate') as string) || undefined
             })
             e.currentTarget.reset()
+            setIsCreateOpen(false)
           }}
         >
-          <input name='invoiceCode' placeholder='Invoice code' className='rounded border px-2 py-2' />
-          <input name='apartmentId' placeholder='Apartment ID' className='rounded border px-2 py-2' />
-          <input name='billingMonth' placeholder='Month' className='rounded border px-2 py-2' />
-          <input name='billingYear' placeholder='Year' className='rounded border px-2 py-2' />
-          <input name='dueDate' type='date' className='rounded border px-2 py-2' />
-          <select name='status' className='rounded border px-2 py-2 md:col-span-2'>
+          <input name='invoiceCode' placeholder='Mã hóa đơn (tuỳ chọn)' className='rounded-lg border border-gray-200 px-4 py-2.5' />
+          <input name='apartmentId' placeholder='Apartment ID' className='rounded-lg border border-gray-200 px-4 py-2.5' />
+          <input name='billingMonth' placeholder='Tháng' className='rounded-lg border border-gray-200 px-4 py-2.5' />
+          <input name='billingYear' placeholder='Năm' className='rounded-lg border border-gray-200 px-4 py-2.5' />
+          <input name='dueDate' type='date' className='rounded-lg border border-gray-200 px-4 py-2.5' />
+          <select name='status' className='rounded-lg border border-gray-200 px-4 py-2.5 md:col-span-2'>
             <option value='PENDING'>PENDING</option>
             <option value='PAID'>PAID</option>
             <option value='OVERDUE'>OVERDUE</option>
           </select>
-          <button className='rounded bg-blue-600 px-3 py-2 text-white md:col-span-2'>
-            {createMutation.isPending ? 'Saving...' : 'Create invoice'}
+          <button className='rounded-lg bg-[#0052CC] px-4 py-2.5 font-semibold text-white transition hover:bg-blue-700 md:col-span-2'>
+            {createMutation.isPending ? 'Đang lưu...' : 'Tạo hóa đơn'}
           </button>
-        </form>
+          <button
+            type='button'
+            className='rounded-lg bg-gray-100 px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-200 md:col-span-2'
+            onClick={() => setIsCreateOpen(false)}
+          >
+            Hủy
+          </button>
+        </form>}
 
-        <div className='overflow-hidden rounded-2xl bg-white shadow-sm'>
+        <div className='overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm'>
           <div className='overflow-x-auto'>
             <table className='w-full border-collapse text-left'>
               <thead>
-                <tr className='bg-slate-50'>
+                <tr className='border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-400'>
                   {['Mã hóa đơn', 'Căn hộ', 'Kỳ', 'Tổng tiền', 'Trạng thái', 'Thao tác'].map((h) => (
                     <th
                       key={h}
-                      className={`px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 ${
+                      className={`px-6 py-4 ${
                         h === 'Thao tác' ? 'text-right' : ''
                       }`}
                     >
@@ -182,7 +226,7 @@ export default function InvoicesPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className='divide-y divide-slate-100'>
+              <tbody className='text-sm text-gray-700'>
                 {isLoading && (
                   <tr>
                     <td className='px-6 py-6 text-sm text-slate-500' colSpan={6}>
@@ -214,17 +258,31 @@ export default function InvoicesPage() {
                         {item.billingMonth}/{item.billingYear}
                       </td>
                       <td className='px-6 py-4 text-sm font-semibold text-slate-800'>{item.totalAmount}</td>
-                      <td className='px-6 py-4 text-sm text-slate-700'>{item.status}</td>
+                      <td className='px-6 py-4 text-sm'>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            item.status === 'PAID'
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : item.status === 'PENDING'
+                                ? 'bg-amber-50 text-amber-700'
+                                : item.status === 'CANCELLED'
+                                  ? 'bg-red-50 text-red-700'
+                                  : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
                       <td className='px-6 py-4 text-right'>
                         <div className='inline-flex gap-2'>
                           <button
-                            className='rounded bg-blue-100 px-2 py-1 text-xs'
+                            className='rounded-lg bg-blue-100 px-3 py-1.5 text-xs text-blue-700'
                             onClick={() => setSelectedInvoiceId(Number(item.id))}
                           >
                             Xem chi tiết
                           </button>
                           <button
-                            className='rounded bg-red-100 px-2 py-1 text-xs'
+                            className='rounded-lg bg-red-100 px-3 py-1.5 text-xs text-red-700'
                             onClick={() => {
                               setErrorMsg(null)
                               if (item.status === 'CANCELLED') {
@@ -234,7 +292,7 @@ export default function InvoicesPage() {
                               deleteMutation.mutate(item.id)
                             }}
                           >
-                            {item.status === 'CANCELLED' ? 'Khôi phục' : 'Xóa mềm'}
+                            {item.status === 'CANCELLED' ? 'Khôi phục' : 'Xóa'}
                           </button>
                         </div>
                       </td>

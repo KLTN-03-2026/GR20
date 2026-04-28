@@ -4,6 +4,7 @@ class RoleResponse {
     this.name = role.name;
     this.description = role.description;
     this.createdAt = role.createdAt;
+    this.deletedAt = role.deletedAt;
   }
 }
 

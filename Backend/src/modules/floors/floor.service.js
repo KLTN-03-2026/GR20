@@ -4,6 +4,7 @@ const { AppError } = require("../../common/app-error");
 const {
   parseCreateFloor,
   parseUpdateFloor,
+  parseFloorPagination,
 } = require("./floor.request");
 
 
@@ -22,9 +23,24 @@ const createFloor = async (reqBody) => {
 
 // ================= GET ALL =================
 const getAllFloors = async (query) => {
-  const { page = 0, size = 10 } = query;
+  const parsed = parseFloorPagination(query);
+  const {
+    page = 0,
+    size = 10,
+    search,
+    buildingId,
+    includeDeleted = false,
+    status = "active",
+  } = parsed;
 
-  const result = await repo.getAllFloors({ page, size });
+  const result = await repo.getAllFloors({
+    page,
+    size,
+    search,
+    buildingId,
+    includeDeleted: Boolean(includeDeleted),
+    status,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),

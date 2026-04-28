@@ -35,19 +35,36 @@ const createBuilding = async (building) => {
   }
 };
 
-const getAllBuildings = async ({ page = 0, size = 10 }) => {
+const getAllBuildings = async ({ page = 0, size = 10, search, status }) => {
   const offset = page * size;
+  const values = [];
+  const conditions = [];
+
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(
+      `(name ILIKE $${values.length} OR code ILIKE $${values.length} OR address ILIKE $${values.length})`
+    );
+  }
+
+  if (status) {
+    values.push(status);
+    conditions.push(`status = $${values.length}`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const dataQuery = `
     SELECT * FROM buildings
+    ${where}
     ORDER BY id ASC
-    LIMIT $1 OFFSET $2
+    LIMIT $${values.length + 1} OFFSET $${values.length + 2}
   `;
 
-  const countQuery = `SELECT COUNT(*) FROM buildings`;
+  const countQuery = `SELECT COUNT(*) FROM buildings ${where}`;
 
-  const data = await pool.query(dataQuery, [size, offset]);
-  const count = await pool.query(countQuery);
+  const data = await pool.query(dataQuery, [...values, size, offset]);
+  const count = await pool.query(countQuery, values);
 
   return {
     rows: data.rows,
@@ -135,7 +152,7 @@ const deleteBuilding = async (id) => {
   const query = `
     UPDATE buildings
     SET status = 'CLOSED'
-    WHERE id = $1
+    WHERE id = $1 AND status <> 'CLOSED'
     RETURNING id
   `;
 

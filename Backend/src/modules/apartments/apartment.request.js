@@ -88,6 +88,15 @@ const updateApartmentSchema = z
     "At least one field is required for update"
   );
 
+const listApartmentSchema = z.object({
+  page: z.coerce.number().int().min(0).default(0),
+  size: z.coerce.number().int().min(1).max(1000).default(10),
+  search: z.string().trim().optional(),
+  buildingId: z.coerce.number().int().positive().optional(),
+  floorId: z.coerce.number().int().positive().optional(),
+  status: apartmentStatusSchema.optional(),
+});
+
 /** @param {unknown} body */
 function parseCreateApartment(body) {
   return createApartmentSchema.parse(body);
@@ -98,9 +107,16 @@ function parseUpdateApartment(body) {
   return updateApartmentSchema.parse(body);
 }
 
+/** @param {unknown} query */
+function parseApartmentListQuery(query) {
+  return listApartmentSchema.parse(query || {});
+}
+
 module.exports = {
   createApartmentSchema,
   updateApartmentSchema,
+  listApartmentSchema,
   parseCreateApartment,
   parseUpdateApartment,
+  parseApartmentListQuery,
 };

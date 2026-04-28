@@ -3,6 +3,11 @@ const { AppError } = require("../../common/app-error");
 
 // ================= HELPER =================
 const isForeignKeyViolation = (err) => err && err.code === "23503";
+const buildDeletedFilter = ({ includeDeleted = false, status }) => {
+  if (status === "deleted") return "deleted_at IS NOT NULL";
+  if (status === "all" || includeDeleted) return null;
+  return "deleted_at IS NULL";
+};
 
 // ================= CREATE =================
 const createFloor = async (floor) => {
@@ -34,23 +39,53 @@ const createFloor = async (floor) => {
 
 
 // ================= GET ALL (PAGINATION) =================
-const getAllFloors = async ({ page = 0, size = 10 }) => {
+const getAllFloors = async ({
+  page = 0,
+  size = 10,
+  search,
+  buildingId,
+  includeDeleted = false,
+  status,
+}) => {
   const offset = page * size;
+  const values = [];
+  const conditions = [];
+
+  const deletedFilter = buildDeletedFilter({ includeDeleted, status });
+  if (deletedFilter) conditions.push(deletedFilter);
+
+  if (buildingId !== undefined) {
+    values.push(buildingId);
+    conditions.push(`building_id = $${values.length}`);
+  }
+
+  if (search) {
+    values.push(`%${search}%`);
+    const p = values.length;
+    conditions.push(
+      `(COALESCE(name,'') ILIKE $${p} OR floor_number::text ILIKE $${p})`,
+    );
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  values.push(size);
+  values.push(offset);
+  const limitParam = values.length - 1;
+  const offsetParam = values.length;
 
   const dataQuery = `
     SELECT * FROM floors
-    WHERE deleted_at IS NULL
-    ORDER BY id ASC
-    LIMIT $1 OFFSET $2
+    ${where}
+    ORDER BY floor_number ASC, id ASC
+    LIMIT $${limitParam} OFFSET $${offsetParam}
   `;
 
-  const countQuery = `
-    SELECT COUNT(*) FROM floors
-    WHERE deleted_at IS NULL
-  `;
+  const countQuery = `SELECT COUNT(*) FROM floors ${where}`;
 
-  const data = await pool.query(dataQuery, [size, offset]);
-  const count = await pool.query(countQuery);
+  const data = await pool.query(dataQuery, values);
+  const countValues = values.slice(0, values.length - 2);
+  const count = await pool.query(countQuery, countValues);
 
   return {
     rows: data.rows,

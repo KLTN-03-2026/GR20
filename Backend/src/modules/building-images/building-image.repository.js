@@ -21,11 +21,12 @@ const createBuildingImage = async (image) => {
   }
 };
 
-const getAllByBuildingId = async (buildingId) => {
+const getAllByBuildingId = async (buildingId, includeDeleted = false) => {
   const query = `
     SELECT *
     FROM building_images
-    WHERE building_id = $1 AND deleted_at IS NULL
+    WHERE building_id = $1
+      ${includeDeleted ? "" : "AND deleted_at IS NULL"}
     ORDER BY id ASC
   `;
 

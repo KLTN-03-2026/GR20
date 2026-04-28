@@ -1,10 +1,16 @@
 const toEntity = (req) => {
+  const normalizedStatus =
+    req.status === "PENDING"
+      ? "OPEN"
+      : req.status === "COMPLETED"
+        ? "DONE"
+        : req.status;
   return {
     request_code: req.requestCode,
     title: req.title,
     description: req.description,
     priority: req.priority || "MEDIUM",
-    status: req.status || "PENDING",
+    status: normalizedStatus || "OPEN",
     building_id: req.buildingId,
     apartment_id: req.apartmentId,
     unit: req.unit,
@@ -24,6 +30,12 @@ const toEntity = (req) => {
 
 const toResponse = (row) => {
   if (!row) return null;
+  const responseStatus =
+    row.status === "OPEN"
+      ? "PENDING"
+      : row.status === "DONE"
+        ? "COMPLETED"
+        : row.status;
   
   return {
     id: row.id,
@@ -31,7 +43,7 @@ const toResponse = (row) => {
     title: row.title,
     description: row.description,
     priority: row.priority,
-    status: row.status,
+    status: responseStatus,
     buildingId: row.building_id,
     apartmentId: row.apartment_id,
     unit: row.unit,

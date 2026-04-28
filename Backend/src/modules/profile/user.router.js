@@ -13,6 +13,8 @@ router.post("/upload-avatar", verifyToken, upload.single('avatar'), controller.u
 router.get("/:id", controller.getUserById);
 router.post("/", controller.createUser);
 router.get("/", controller.getAllUsers);
+router.put("/:id", controller.updateUser);
+router.patch("/:id/role", controller.changeUserRole);
 router.delete("/:id", controller.deleteUser);
 
 module.exports = router;
