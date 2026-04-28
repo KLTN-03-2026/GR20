@@ -1,6 +1,7 @@
 const { ZodError } = require("zod");
 const { AppError } = require("../../common/app-error");
 const service = require("./apartment.service");
+const { pool } = require("../../configs/database.config");
 
 const sendError = (res, err) => {
   if (err instanceof ZodError) {
@@ -41,14 +42,11 @@ const createApartment = async (req, res) => {
 // GET ALL
 const getAllApartments = async (req, res) => {
   try {
-    const floorId = req.params.floorId;
-    const result = floorId
-      ? await service.getApartmentsByFloor(Number(floorId), req.query)
-      : await service.getAllApartments(req.query);
+    const result = await service.getAllApartments(req.query);
 
     res.json({
       operationType: "Success",
-      message: "success",
+      message: "Get apartments successfully",
       code: "OK",
       ...result,
       timestamp: new Date(),
@@ -147,6 +145,44 @@ const deleteApartment = async (req, res) => {
   }
 };
 
+// ADD Resident
+const addResident = async (req, res) => {
+  try {
+    const data = await service.addResident(req.params.id, req.body);
+    res.status(201).json({
+      operationType: "Success",
+      message: "Add resident successfully",
+      code: "CREATED",
+      data,
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+};
+
+// GET /api/apartments/stats
+const getStats = async (req, res) => {
+  try {
+    const total = await pool.query(`SELECT COUNT(*) FROM apartments WHERE status != 'MAINTENANCE'`);
+    const occupied = await pool.query(`SELECT COUNT(*) FROM apartments WHERE status = 'OCCUPIED'`);
+    const expiring = await pool.query(
+      `SELECT COUNT(*) FROM contracts WHERE status = 'ACTIVE' AND end_date <= NOW() + INTERVAL '30 days'`
+    );
+    
+    res.json({
+      operationType: "Success",
+      data: {
+        totalApartments: parseInt(total.rows[0].count),
+        occupiedApartments: parseInt(occupied.rows[0].count),
+        occupancyRate: Math.round((parseInt(occupied.rows[0].count) / parseInt(total.rows[0].count)) * 100),
+        expiringContracts: parseInt(expiring.rows[0].count),
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createApartment,
   getAllApartments,
@@ -155,4 +191,6 @@ module.exports = {
   getApartmentById,
   updateApartment,
   deleteApartment,
+  addResident,
+  getStats,
 };

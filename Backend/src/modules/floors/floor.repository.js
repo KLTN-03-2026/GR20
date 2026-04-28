@@ -119,10 +119,21 @@ const softDeleteFloor = async (id) => {
   return result.rows[0];
 };
 
+const getFloorsByBuilding = async (buildingId) => {
+  const query = `
+    SELECT * FROM floors 
+    WHERE building_id = $1 AND deleted_at IS NULL 
+    ORDER BY floor_number ASC
+  `;
+  const result = await pool.query(query, [buildingId]);
+  return { rows: result.rows };
+};
+
 module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
   updateFloor,
   softDeleteFloor,
+  getFloorsByBuilding,
 };

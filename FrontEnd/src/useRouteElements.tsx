@@ -3,6 +3,9 @@ import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 import Buildings from './pages/building management/Buildings'
 import EmployeeManagement from './pages/employees/EmployeeManagement'
+import Apartment from './pages/Apartments/Apartment'
+import ApartmentDetail from './pages/Apartments/ApartmentDetail'
+import Analytics from './pages/Analytics/Analytics';
 //tạo cái component để kiểm tra người dùng login chưa
 
 function ProtecdRouter() {
@@ -38,6 +41,18 @@ export default function useRouteElements() {
     {
       path: '/employees',
       element: <EmployeeManagement />
+    },
+    {
+      path: '/apartments',
+      element: <Apartment />
+    },
+    {
+      path: '/apartments/:id',
+      element: <ApartmentDetail />
+    },
+    {
+      path: '/analytics',
+      element: <Analytics />
     }
   ])
   return routeElements

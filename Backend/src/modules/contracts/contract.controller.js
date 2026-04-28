@@ -25,14 +25,20 @@ const createContract = async (req, res) => {
       operationType: "Success",
       message: "Create contract successfully",
       code: "CREATED",
-      data,
-      timestamp: new Date(),
+      data: {
+        id: data.id,
+        apartmentCode: req.body.apartmentCode || null, // Thêm thông tin
+        contractType: req.body.contractType,
+      },
+      size: 1,
+      timestamp: new Date().toISOString(),
     });
   } catch (err) {
     sendError(res, err);
   }
 };
 
+// GET LIST
 // GET LIST
 const getContracts = async (req, res) => {
   try {
@@ -41,7 +47,11 @@ const getContracts = async (req, res) => {
       operationType: "Success",
       message: "Get contract list successfully",
       code: "OK",
-      ...result,
+      data: result.data,
+      page: result.page,
+      size: result.size,
+      total: result.total,
+      totalPages: result.totalPages,
       timestamp: new Date(),
     });
   } catch (err) {

@@ -1,5 +1,7 @@
+// contract.service.js
 const repo = require("./contract.repository");
 const mapper = require("./contract.mapper");
+const { ContractListResponse } = require("./contract.response");
 const { AppError } = require("../../common/app-error");
 const {
   parseCreate,
@@ -30,12 +32,12 @@ const getContracts = async (query) => {
     size: Number(size),
   });
 
-  return {
-    data: result.rows.map(mapper.toResponse),
-    page: Number(page),
-    size: Number(size),
-    total: result.total,
-  };
+  return new ContractListResponse(
+    result.rows,
+    Number(page),
+    Number(size),
+    result.total
+  );
 };
 
 // GET DETAIL

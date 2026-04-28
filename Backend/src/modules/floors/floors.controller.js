@@ -109,10 +109,33 @@ const softDeleteFloor = async (req, res) => {
   }
 };
 
+const { pool } = require("../../configs/database.config");
+const getFloorsByBuilding = async (req, res) => {
+  try {
+    const buildingId = req.params.buildingId;
+    const query = `
+      SELECT * FROM floors 
+      WHERE building_id = $1 AND deleted_at IS NULL 
+      ORDER BY floor_number ASC
+    `;
+    const result = await pool.query(query, [buildingId]);
+    
+    res.json({
+      operationType: "Success",
+      message: "Get floors by building successfully",
+      code: "OK",
+      data: result.rows,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
   updateFloor,
   softDeleteFloor,
+  getFloorsByBuilding,
 };

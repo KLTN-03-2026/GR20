@@ -3,7 +3,7 @@ const { AppError } = require("../../common/app-error");
 
 const isUniqueViolation = (err) => err && err.code === "23505";
 
-// CREATE
+// ================= CREATE =================
 const createApartment = async (apartment) => {
   const query = `
     INSERT INTO apartments (
@@ -48,20 +48,72 @@ const createApartment = async (apartment) => {
   }
 };
 
-// GET ALL
-const getAllApartments = async ({ page = 0, size = 10 }) => {
+// ================= GET ALL (Chỉ lấy active) =================
+const getAllApartments = async ({ page = 0, size = 10, buildingId, floorId, search }) => {
   const offset = page * size;
+  const params = [];
+  let paramIndex = 1;
 
-  const dataQuery = `
-    SELECT * FROM apartments
-    ORDER BY id ASC
-    LIMIT $1 OFFSET $2
+  let dataQuery = `
+    SELECT 
+      a.*,
+      b.name as building_name,
+      f.floor_number,
+      u.full_name as owner_name
+    FROM apartments a
+    LEFT JOIN buildings b ON a.building_id = b.id
+    LEFT JOIN floors f ON a.floor_id = f.id
+    LEFT JOIN users u ON a.owner_user_id = u.id
+    WHERE a.status != 'MAINTENANCE'
   `;
 
-  const countQuery = `SELECT COUNT(*) FROM apartments`;
+  // Filter building
+  if (buildingId) {
+    dataQuery += ` AND a.building_id = $${paramIndex}`;
+    params.push(buildingId);
+    paramIndex++;
+  }
 
-  const data = await pool.query(dataQuery, [size, offset]);
-  const count = await pool.query(countQuery);
+  // Filter floor
+  if (floorId) {
+    dataQuery += ` AND a.floor_id = $${paramIndex}`;
+    params.push(floorId);
+    paramIndex++;
+  }
+
+  // Search
+  if (search) {
+    dataQuery += ` AND a.apartment_code ILIKE $${paramIndex}`;
+    params.push(`%${search}%`);
+    paramIndex++;
+  }
+
+  // Count query
+  let countQuery = `SELECT COUNT(*) FROM apartments a WHERE a.status != 'MAINTENANCE'`;
+  const countParams = [];
+  let countParamIndex = 1;
+
+  if (buildingId) {
+    countQuery += ` AND a.building_id = $${countParamIndex}`;
+    countParams.push(buildingId);
+    countParamIndex++;
+  }
+  if (floorId) {
+    countQuery += ` AND a.floor_id = $${countParamIndex}`;
+    countParams.push(floorId);
+    countParamIndex++;
+  }
+  if (search) {
+    countQuery += ` AND a.apartment_code ILIKE $${countParamIndex}`;
+    countParams.push(`%${search}%`);
+    countParamIndex++;
+  }
+
+  dataQuery += ` ORDER BY a.id ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  params.push(size, offset);
+
+  const data = await pool.query(dataQuery, params);
+  const count = await pool.query(countQuery, countParams);
 
   return {
     rows: data.rows,
@@ -69,19 +121,28 @@ const getAllApartments = async ({ page = 0, size = 10 }) => {
   };
 };
 
+// ================= GET BY BUILDING (Chỉ lấy active) =================
 const getApartmentsByBuilding = async ({ buildingId, page = 0, size = 10 }) => {
   const offset = page * size;
 
   const dataQuery = `
-    SELECT * FROM apartments
-    WHERE building_id = $1
+    SELECT 
+  a.*,
+  b.name as building_name,
+  f.floor_number,
+  u.full_name as owner_name
+  FROM apartments a
+  LEFT JOIN buildings b ON a.building_id = b.id
+  LEFT JOIN floors f ON a.floor_id = f.id
+  LEFT JOIN users u ON a.owner_user_id = u.id
+    WHERE building_id = $1 AND status != 'MAINTENANCE'
     ORDER BY id ASC
     LIMIT $2 OFFSET $3
   `;
 
   const countQuery = `
     SELECT COUNT(*) FROM apartments
-    WHERE building_id = $1
+    WHERE building_id = $1 AND status != 'MAINTENANCE'
   `;
 
   const data = await pool.query(dataQuery, [buildingId, size, offset]);
@@ -93,19 +154,28 @@ const getApartmentsByBuilding = async ({ buildingId, page = 0, size = 10 }) => {
   };
 };
 
+// ================= GET BY FLOOR (Chỉ lấy active) =================
 const getApartmentsByFloor = async ({ floorId, page = 0, size = 10 }) => {
   const offset = page * size;
 
   const dataQuery = `
-    SELECT * FROM apartments
-    WHERE floor_id = $1
+    SELECT 
+  a.*,
+  b.name as building_name,
+  f.floor_number,
+  u.full_name as owner_name
+  FROM apartments a
+  LEFT JOIN buildings b ON a.building_id = b.id
+  LEFT JOIN floors f ON a.floor_id = f.id
+  LEFT JOIN users u ON a.owner_user_id = u.id
+    WHERE floor_id = $1 AND status != 'MAINTENANCE'
     ORDER BY id ASC
     LIMIT $2 OFFSET $3
   `;
 
   const countQuery = `
     SELECT COUNT(*) FROM apartments
-    WHERE floor_id = $1
+    WHERE floor_id = $1 AND status != 'MAINTENANCE'
   `;
 
   const data = await pool.query(dataQuery, [floorId, size, offset]);
@@ -117,15 +187,66 @@ const getApartmentsByFloor = async ({ floorId, page = 0, size = 10 }) => {
   };
 };
 
-// GET BY ID
+// ================= GET BY ID =================
 const getApartmentById = async (id) => {
-  const query = `SELECT * FROM apartments WHERE id = $1`;
+  const query = `
+    SELECT 
+      a.*,
+      b.name as building_name,
+      f.floor_number,
+      -- Owner
+      json_build_object(
+        'id', owner.id,
+        'fullName', owner.full_name,
+        'phone', owner.phone,
+        'email', owner.email,
+        'avatarUrl', owner.avatar_url
+      ) as owner,
+      -- Residents
+      COALESCE(
+        (SELECT json_agg(json_build_object(
+          'id', rp.id,
+          'fullName', u.full_name,
+          'phone', u.phone,
+          'relationship', rp.relationship,
+          'moveInDate', rp.move_in_date
+        ))
+        FROM resident_profiles rp
+        JOIN users u ON rp.user_id = u.id
+        WHERE rp.apartment_id = a.id AND rp.status = 'ACTIVE'),
+        '[]'::json
+      ) as residents,
+      -- Current Contract
+      (SELECT json_build_object(
+        'id', c.id,
+        'contractType', c.contract_type,
+        'status', c.status,
+        'startDate', c.start_date,
+        'endDate', c.end_date,
+        'monthlyRent', c.monthly_rent
+      )
+      FROM contracts c
+      WHERE c.apartment_id = a.id AND c.status = 'ACTIVE'
+      LIMIT 1) as current_contract
+    FROM apartments a
+    LEFT JOIN buildings b ON a.building_id = b.id
+    LEFT JOIN floors f ON a.floor_id = f.id
+    LEFT JOIN users owner ON a.owner_user_id = owner.id
+    WHERE a.id = $1
+  `;
+  
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
 
-// UPDATE
+// ================= UPDATE =================
 const updateApartment = async (id, apartment) => {
+  // Kiểm tra apartment có tồn tại không
+  const existing = await getApartmentById(id);
+  if (!existing) {
+    throw new AppError(404, "Apartment not found");
+  }
+
   const fields = [];
   const values = [];
   let index = 1;
@@ -176,15 +297,16 @@ const updateApartment = async (id, apartment) => {
   }
 
   if (fields.length === 0) {
-    throw new Error("No fields to update");
+    throw new AppError(400, "No fields to update");
   }
 
+  fields.push(`updated_at = NOW()`);
   values.push(id);
 
   const query = `
     UPDATE apartments
     SET ${fields.join(", ")}
-    WHERE id = $${index}
+    WHERE id = $${index} AND status != 'MAINTENANCE'
     RETURNING *
   `;
 
@@ -203,17 +325,72 @@ const updateApartment = async (id, apartment) => {
   }
 };
 
-// DELETE (SOFT DELETE)
+// ================= DELETE (SOFT DELETE) =================
 const deleteApartment = async (id) => {
+  // Kiểm tra apartment có tồn tại và chưa bị xóa không
+  const existing = await getApartmentById(id);
+  if (!existing) {
+    throw new AppError(404, "Apartment not found or already deleted");
+  }
+
   const query = `
     UPDATE apartments
-    SET status = 'INACTIVE'
-    WHERE id = $1
+    SET status = 'MAINTENANCE', updated_at = NOW()
+    WHERE id = $1 AND status != 'MAINTENANCE'
     RETURNING id
   `;
 
   const result = await pool.query(query, [id]);
   return result.rows[0];
+};
+
+
+const addResident = async (apartmentId, data) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Tạo username từ SĐT
+    const username = data.phone || `user_${Date.now()}`;
+
+    // Tạo user mới
+    const newUser = await client.query(
+      `INSERT INTO users (username, password, full_name, phone, email, is_active)
+       VALUES ($1, $2, $3, $4, $5, true)
+       RETURNING id, full_name`,
+      [
+        username,           // username = SĐT
+        '123456',           // password mặc định
+        data.fullName,      // full_name
+        data.phone,         // phone
+        data.email || null, // email
+      ]
+    );
+    const userId = newUser.rows[0].id;
+
+    // Tạo resident_profile
+    const query = `
+      INSERT INTO resident_profiles (user_id, apartment_id, relationship, move_in_date, status)
+      VALUES ($1, $2, $3, $4, 'ACTIVE')
+      RETURNING id
+    `;
+    await client.query(query, [userId, apartmentId, data.relationship, data.moveInDate]);
+
+    await client.query('COMMIT');
+
+    return {
+      id: userId,
+      fullName: data.fullName,
+      username: username,
+      password: '123456',
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 module.exports = {
@@ -224,4 +401,5 @@ module.exports = {
   getApartmentById,
   updateApartment,
   deleteApartment,
+  addResident,
 };

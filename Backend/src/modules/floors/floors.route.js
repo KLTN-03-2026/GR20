@@ -5,6 +5,9 @@ const controller = require("./floors.controller");
 // import apartments route
 const apartmentRouter = require("../apartments/apartment.route");
 
+// 🆕 GET FLOORS BY BUILDING - Đặt TRƯỚC /:id
+router.get("/building/:buildingId", controller.getFloorsByBuilding);
+
 // CREATE
 router.post("/", controller.createFloor);
 
