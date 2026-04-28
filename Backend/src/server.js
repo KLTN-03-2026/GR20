@@ -25,7 +25,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
-
+app.set("io", io);
 //Truyền io vào hàm khởi tạo các sự kiện Socket
 initializeSockets(io);
 

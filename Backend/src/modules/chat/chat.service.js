@@ -101,9 +101,52 @@ const getOrCreatePrivateChat = async (currentUserId, targetUserId) => {
 
   return { roomId };
 };
+const handleUploadAttachment = async (userId, roomId, file) => {
+  if (!file) {
+    throw new Error("Không tìm thấy file tải lên");
+  }
+
+  // 1. Kiểm tra xem nó là Image hay File thường dựa vào mimetype
+  const isImage = file.mimetype.startsWith("image/");
+  const messageType = isImage ? "image" : "file";
+
+  // 2. Lưu tin nhắn gốc (Nội dung có thể để trống hoặc để tên file)
+  const savedMessage = await chatRepo.saveMessage(
+    roomId,
+    userId,
+    file.originalname,
+    messageType,
+  );
+
+  // 3. Tạo data để lưu attachment
+  const fileData = {
+    url: `/uploads/${file.filename}`, // Đường link để frontend hiển thị ảnh
+    fileName: file.originalname,
+    fileSize: file.size,
+    mimeType: file.mimetype,
+  };
+
+  // 4. Lưu vào bảng chat_message_attachments
+  const savedAttachment = await chatRepo.saveAttachment(
+    savedMessage.id,
+    fileData,
+  );
+
+  // Trả về dữ liệu gộp chung để phát qua Socket
+  return {
+    id: savedMessage.id,
+    roomId: savedMessage.roomId,
+    senderId: userId,
+    messageType: savedMessage.messageType,
+    content: savedMessage.content,
+    createdAt: savedMessage.createdAt,
+    attachment: savedAttachment,
+  };
+};
 module.exports = {
   setupInitialChat,
   getDirectory,
   handleSendMessage,
   getOrCreatePrivateChat,
+  handleUploadAttachment,
 };

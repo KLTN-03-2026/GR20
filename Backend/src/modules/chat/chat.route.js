@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-
+const { uploadAttachment } = require("../../middlewares/upload.middleware");
 const chatController = require("./chat.controller");
 const {
   initChatSchema,
@@ -32,5 +32,11 @@ router.post(
   verifyToken,
   validate(createPrivateChatSchema),
   chatController.initPrivateChat,
+);
+router.post(
+  "/message/file",
+  verifyToken,
+  uploadAttachment.single("file"), // Đổi thành tên mới
+  chatController.uploadFileMessage,
 );
 module.exports = router;

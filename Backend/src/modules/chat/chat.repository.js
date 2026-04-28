@@ -219,6 +219,21 @@ const createPrivateRoom = async (user1Id, user2Id) => {
 
   return roomId;
 };
+// 14. Lưu file đính kèm vào Database
+const saveAttachment = async (messageId, fileData) => {
+  const newAttachment = await db
+    .insert(schema.chatMessageAttachments)
+    .values({
+      messageId: messageId,
+      url: fileData.url,
+      fileName: fileData.fileName,
+      fileSize: fileData.fileSize,
+      mimeType: fileData.mimeType,
+    })
+    .returning();
+
+  return newAttachment[0];
+};
 module.exports = {
   getUserRole,
   getResidentInfo,
@@ -233,4 +248,5 @@ module.exports = {
   saveMessage,
   findPrivateRoom,
   createPrivateRoom,
+  saveAttachment,
 };

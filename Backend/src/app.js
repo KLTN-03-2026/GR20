@@ -9,7 +9,6 @@ const fs = require("fs");
 //Import routes
 const apiRoutes = require("./routes/index");
 
-
 const app = express();
 
 // ✅ CORS cấu hình đúng
@@ -21,7 +20,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }, // 👈 QUAN TRỌNG
