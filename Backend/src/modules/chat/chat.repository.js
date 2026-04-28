@@ -1,7 +1,6 @@
-const { eq, and } = require("drizzle-orm");
+const { eq, and, ilike, asc, inArray } = require("drizzle-orm");
 const { db } = require("../../configs/database.config");
 const schema = require("../../db/schema");
-
 // 1. Lấy Role của User
 const getUserRole = async (userId) => {
   const result = await db
@@ -102,7 +101,124 @@ const updateMemberNickname = async (memberId, nickname) => {
     .set({ nickname: nickname })
     .where(eq(schema.chatRoomMembers.id, memberId));
 };
+// 9. Tìm ID phòng chat tòa nhà mà user đang tham gia
+const getUserBuildingRoom = async (userId) => {
+  const result = await db
+    .select({ roomId: schema.chatRooms.id })
+    .from(schema.chatRooms)
+    .innerJoin(
+      schema.chatRoomMembers,
+      eq(schema.chatRooms.id, schema.chatRoomMembers.roomId),
+    )
+    .where(
+      and(
+        eq(schema.chatRoomMembers.userId, userId),
+        eq(schema.chatRooms.type, "building"),
+      ),
+    )
+    .limit(1);
+  return result.length > 0 ? result[0].roomId : null;
+};
 
+// 10. Lấy danh bạ thành viên trong phòng, có search và sắp xếp theo Role
+const getBuildingMembers = async (roomId, searchKeyword) => {
+  let query = db
+    .select({
+      userId: schema.users.id,
+      nickname: schema.chatRoomMembers.nickname,
+      avatarUrl: schema.users.avatarUrl,
+      roleName: schema.roles.name,
+      roleId: schema.users.roleId,
+    })
+    .from(schema.chatRoomMembers)
+    .innerJoin(schema.users, eq(schema.chatRoomMembers.userId, schema.users.id))
+    .leftJoin(schema.roles, eq(schema.users.roleId, schema.roles.id))
+    .where(
+      and(
+        eq(schema.chatRoomMembers.roomId, roomId),
+        // Nếu có truyền searchKeyword thì tìm kiếm (ilike không phân biệt hoa thường)
+        searchKeyword
+          ? ilike(schema.chatRoomMembers.nickname, `%${searchKeyword}%`)
+          : undefined,
+      ),
+    )
+    .orderBy(
+      // Sắp xếp ưu tiên theo ID của role: Admin(1) -> Quản lý(2) -> Nhân viên(3) -> Bảo vệ(4) -> Cư dân(5)
+      asc(schema.users.roleId),
+      // Nếu cùng Role thì sắp xếp theo tên chữ cái
+      asc(schema.chatRoomMembers.nickname),
+    );
+
+  return await query;
+};
+// 11. Lưu tin nhắn vào Database
+const saveMessage = async (roomId, senderId, content, messageType = "text") => {
+  const newMessage = await db
+    .insert(schema.chatMessages)
+    .values({
+      roomId: roomId,
+      senderId: senderId,
+      messageType: messageType,
+      content: content,
+    })
+    .returning(); // returning() để lấy lại data vừa lưu (có id và created_at)
+
+  return newMessage[0];
+};
+// 12. Tìm xem 2 user đã có phòng chat PRIVATE chung nào chưa
+const findPrivateRoom = async (user1Id, user2Id) => {
+  // Lấy tất cả ID phòng private của User 1
+  const user1PrivateRooms = db
+    .select({ roomId: schema.chatRoomMembers.roomId })
+    .from(schema.chatRoomMembers)
+    .innerJoin(
+      schema.chatRooms,
+      eq(schema.chatRoomMembers.roomId, schema.chatRooms.id),
+    )
+    .where(
+      and(
+        eq(schema.chatRoomMembers.userId, user1Id),
+        eq(schema.chatRooms.type, "private"),
+      ),
+    );
+
+  // Tìm xem User 2 có nằm trong danh sách phòng private của User 1 không
+  const commonRoom = await db
+    .select()
+    .from(schema.chatRoomMembers)
+    .where(
+      and(
+        eq(schema.chatRoomMembers.userId, user2Id),
+        inArray(schema.chatRoomMembers.roomId, user1PrivateRooms),
+      ),
+    )
+    .limit(1);
+
+  return commonRoom.length > 0 ? commonRoom[0].roomId : null;
+};
+
+// 13. Tạo phòng chat riêng 1-1
+const createPrivateRoom = async (user1Id, user2Id) => {
+  // B1: Tạo phòng type = 'private'
+  const newRoom = await db
+    .insert(schema.chatRooms)
+    .values({
+      type: "private",
+      createdBy: user1Id,
+      isActive: true,
+    })
+    .returning({ id: schema.chatRooms.id });
+
+  const roomId = newRoom[0].id;
+
+  // B2: Nhét cả 2 user vào phòng này
+  await db.insert(schema.chatRoomMembers).values([
+    { roomId: roomId, userId: user1Id, role: "member" },
+    { roomId: roomId, userId: user2Id, role: "member" },
+  ]);
+
+  return roomId;
+};
 module.exports = {
   getUserRole,
   getResidentInfo,
@@ -112,4 +228,9 @@ module.exports = {
   getRoomMember,
   addMemberToRoom,
   updateMemberNickname,
+  getUserBuildingRoom,
+  getBuildingMembers,
+  saveMessage,
+  findPrivateRoom,
+  createPrivateRoom,
 };

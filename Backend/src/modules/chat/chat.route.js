@@ -2,7 +2,11 @@ const express = require("express");
 const router = express.Router();
 
 const chatController = require("./chat.controller");
-const { initChatSchema } = require("./chat.request"); // Import schema vừa tạo
+const {
+  initChatSchema,
+  getDirectorySchema,
+  createPrivateChatSchema,
+} = require("./chat.request");
 
 // Import đúng tên middleware từ file của bạn
 const { verifyToken } = require("../../middlewares/auth.middleware");
@@ -15,5 +19,18 @@ router.post(
   validate(initChatSchema),
   chatController.initChatProfile,
 );
-
+// API 2: Lấy danh bạ (MỚI THÊM)
+// URL: GET /api/chat/directory hoặc /api/chat/directory?search=Nhat
+router.get(
+  "/directory",
+  verifyToken,
+  validate(getDirectorySchema),
+  chatController.getBuildingDirectory,
+);
+router.post(
+  "/private",
+  verifyToken,
+  validate(createPrivateChatSchema),
+  chatController.initPrivateChat,
+);
 module.exports = router;

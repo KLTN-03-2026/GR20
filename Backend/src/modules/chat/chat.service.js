@@ -52,5 +52,58 @@ const setupInitialChat = async (userId, prefixName) => {
     nickname: finalNickname,
   };
 };
+const getDirectory = async (userId, searchKeyword) => {
+  // 1. Tìm xem user này đang ở phòng chat tòa nhà nào
+  const roomId = await chatRepo.getUserBuildingRoom(userId);
 
-module.exports = { setupInitialChat };
+  if (!roomId) {
+    throw new Error(
+      "Bạn chưa tham gia phòng chat tòa nhà nào. Vui lòng khởi tạo chat trước.",
+    );
+  }
+
+  // 2. Lấy danh sách thành viên (đã được sắp xếp sẵn từ Repo)
+  const members = await chatRepo.getBuildingMembers(roomId, searchKeyword);
+
+  // 3. (Tùy chọn) Lọc bỏ chính bản thân User ra khỏi danh bạ nếu không muốn tự nhắn tin cho mình
+  const filteredMembers = members.filter((member) => member.userId !== userId);
+
+  return filteredMembers;
+};
+const handleSendMessage = async (userId, roomId, content) => {
+  if (!content || content.trim() === "") {
+    throw new Error("Tin nhắn không được để trống");
+  }
+
+  // Lưu xuống DB
+  const savedMessage = await chatRepo.saveMessage(
+    roomId,
+    userId,
+    content,
+    "text",
+  );
+
+  // Trả về kết quả để Socket mang đi phát loa
+  return savedMessage;
+};
+const getOrCreatePrivateChat = async (currentUserId, targetUserId) => {
+  if (currentUserId === targetUserId) {
+    throw new Error("Bạn không thể tự tạo phòng chat với chính mình.");
+  }
+
+  // Tìm xem có phòng chưa
+  let roomId = await chatRepo.findPrivateRoom(currentUserId, targetUserId);
+
+  // Nếu chưa có thì tạo mới
+  if (!roomId) {
+    roomId = await chatRepo.createPrivateRoom(currentUserId, targetUserId);
+  }
+
+  return { roomId };
+};
+module.exports = {
+  setupInitialChat,
+  getDirectory,
+  handleSendMessage,
+  getOrCreatePrivateChat,
+};

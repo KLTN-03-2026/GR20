@@ -28,10 +28,24 @@ const validateInitChat = (req, res, next) => {
     });
   }
 };
-
+const getDirectorySchema = z.object({
+  query: z.object({
+    search: z.string().optional(), // Search có thể có hoặc không
+  }),
+});
+const createPrivateChatSchema = z.object({
+  body: z.object({
+    targetUserId: z.number({
+      required_error: "Vui lòng cung cấp ID của người muốn nhắn tin",
+      invalid_type_error: "ID người dùng phải là một số",
+    }),
+  }),
+});
 module.exports = {
   validateInitChat,
 };
 module.exports = {
   initChatSchema,
+  getDirectorySchema,
+  createPrivateChatSchema,
 };
