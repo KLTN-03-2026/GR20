@@ -13,6 +13,8 @@ const contractRoute = require("../modules/contracts/contract.route");
 // 🆕    THÊM DÒNG NÀY
 // Sau này nhóm code chức năng khác thì import thêm: const residentRoute = require('../modules/residents/residents.route');
 
+router.use('/uploads', express.static('uploads'));
+
 // 2. Gắn tiền tố cho nó
 router.use("/buildings", buildingRoute);
 router.use("/contracts", contractRoute);

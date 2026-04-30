@@ -4,6 +4,7 @@ const service = require("./contract.service");
 
 const sendError = (res, err) => {
   if (err instanceof ZodError) {
+    console.log('❌ Zod errors:', err.flatten());
     return res.status(400).json({
       message: "Validation failed",
       errors: err.flatten().fieldErrors,

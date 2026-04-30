@@ -13,6 +13,7 @@ app.use(morgan("dev"));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static('uploads'));
 
 //Gắn đường dẫn gốc '/api' cho tất cả các route
 app.use("/api", apiRoutes);

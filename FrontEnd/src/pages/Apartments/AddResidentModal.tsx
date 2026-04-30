@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import http from 'src/utils/http';
 
@@ -7,6 +7,8 @@ interface AddResidentModalProps {
   apartmentCode: string;
   isOpen: boolean;
   onClose: () => void;
+  resident?: any; // 🆕 Truyền vào khi sửa
+  hasOwner?: boolean; // 🆕 Kiểm tra đã có OWNER chưa
 }
 
 interface FormData {
@@ -31,13 +33,61 @@ const initialFormData: FormData = {
   moveInDate: new Date().toISOString().split('T')[0],
 };
 
-export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, onClose }: AddResidentModalProps) {
+export default function AddResidentModal({ 
+  apartmentId, apartmentCode, isOpen, onClose, resident, hasOwner 
+}: AddResidentModalProps) {
   const queryClient = useQueryClient();
+  const isEdit = !!resident;
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 🆕 Load data khi sửa
+  useEffect(() => {
+    if (resident) {
+      setFormData({
+        fullName: resident.fullName || '',
+        phone: resident.phone || '',
+        email: resident.email || '',
+        relationship: resident.relationship || 'FAMILY',
+        moveInDate: resident.moveInDate?.split('T')[0] || new Date().toISOString().split('T')[0],
+      });
+    } else {
+      setFormData(initialFormData);
+      setErrors({});
+    }
+  }, [resident, isOpen]);
+
   const addMutation = useMutation({
     mutationFn: (data: any) => http.post(`/api/apartments/${apartmentId}/residents`, data),
+    onError: (err: any) => {
+      const message = err.response?.data?.message;
+      if (message) {
+        if (message.includes('Email')) setErrors({ email: message });
+        else if (message.includes('Số điện thoại') || message.includes('SDT')) setErrors({ phone: message });
+        else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message });
+        else setErrors({ fullName: message });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['apartments'] });
+      setFormData(initialFormData);
+      setErrors({});
+      onClose();
+    },
+  });
+
+  // 🆕 Update mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => http.put(`/api/apartments/residents/${resident?.id}`, data),
+    onError: (err: any) => {
+      const message = err.response?.data?.message;
+      if (message) {
+        if (message.includes('Email')) setErrors({ email: message });
+        else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message });
+        else setErrors({ fullName: message });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['apartments'] });
@@ -50,9 +100,7 @@ export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, o
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Vui lòng nhập họ tên';
-    }
+    if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên';
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Vui lòng nhập số điện thoại';
@@ -64,9 +112,7 @@ export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, o
       newErrors.email = 'Email không hợp lệ (VD: example@email.com)';
     }
 
-    if (!formData.moveInDate) {
-      newErrors.moveInDate = 'Vui lòng chọn ngày vào ở';
-    }
+    if (!formData.moveInDate) newErrors.moveInDate = 'Vui lòng chọn ngày vào ở';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -76,20 +122,30 @@ export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, o
     e.preventDefault();
     if (!validate()) return;
 
-    addMutation.mutate({
+    const payload = {
       fullName: formData.fullName.trim(),
       phone: formData.phone.trim(),
       email: formData.email.trim() || null,
       relationship: formData.relationship,
       moveInDate: formData.moveInDate,
-      status: 'ACTIVE',
-    });
+    };
+
+    if (isEdit) {
+      updateMutation.mutate(payload);
+    } else {
+      addMutation.mutate(payload);
+    }
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
+
+  // 🆕 Nếu đã có OWNER → ẩn option OWNER khi sửa
+  const availableRelationships = (isEdit && hasOwner && resident?.relationship !== 'OWNER') 
+    ? relationshipOptions.filter(r => r.value !== 'OWNER')
+    : relationshipOptions;
 
   if (!isOpen) return null;
 
@@ -103,14 +159,16 @@ export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, o
             <nav className="flex items-center gap-2 text-slate-400 text-[10px] font-semibold tracking-widest uppercase">
               <span>{apartmentCode}</span>
               <span className="material-symbols-outlined text-xs">chevron_right</span>
-              <span className="text-blue-500">Thêm cư dân</span>
+              <span className="text-blue-500">{isEdit ? 'Chỉnh sửa cư dân' : 'Thêm cư dân'}</span>
             </nav>
             <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
               <span className="material-symbols-outlined text-slate-400 text-lg">close</span>
             </button>
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Thêm cư dân mới</h2>
-          <p className="text-sm text-slate-500 mt-1">Thêm thành viên vào căn hộ {apartmentCode}</p>
+          <h2 className="text-xl font-bold text-slate-900">{isEdit ? 'Chỉnh sửa cư dân' : 'Thêm cư dân mới'}</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            {isEdit ? `Cập nhật thông tin cư dân tại ${apartmentCode}` : `Thêm thành viên vào căn hộ ${apartmentCode}`}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -175,7 +233,7 @@ export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, o
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-slate-300"
+                    className={`w-full bg-slate-50 border ${errors.email ? 'border-red-300' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-slate-300`}
                     placeholder="email@example.com"
                   />
                 </div>
@@ -197,12 +255,18 @@ export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, o
                 <select
                   value={formData.relationship}
                   onChange={(e) => handleChange('relationship', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                  className={`w-full bg-slate-50 border ${errors.relationship ? 'border-red-300' : 'border-slate-200'} rounded-xl px-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all`}
                 >
-                  {relationshipOptions.map(r => (
+                  {availableRelationships.map(r => (
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>
+                {errors.relationship && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">warning</span>
+                    {errors.relationship}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
@@ -224,30 +288,22 @@ export default function AddResidentModal({ apartmentId, apartmentCode, isOpen, o
             </div>
           </div>
 
-          {/* Footer - NẰM TRONG FORM */}
+          {/* Footer */}
           <div className="px-8 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-3 rounded-b-2xl">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-full transition-colors"
-            >
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-full transition-colors">
               Hủy bỏ
             </button>
             <button
               type="submit"
-              disabled={addMutation.isPending}
+              disabled={addMutation.isPending || updateMutation.isPending}
               className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-slate-200 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
             >
-              {addMutation.isPending ? (
-                <>
-                  <span className="material-symbols-outlined animate-spin text-sm">sync</span>
-                  Đang thêm...
-                </>
+              {(addMutation.isPending || updateMutation.isPending) ? (
+                <><span className="material-symbols-outlined animate-spin text-sm">sync</span> Đang lưu...</>
+              ) : isEdit ? (
+                <><span className="material-symbols-outlined text-lg">save</span> Cập nhật</>
               ) : (
-                <>
-                  <span className="material-symbols-outlined text-lg">person_add</span>
-                  Thêm cư dân
-                </>
+                <><span className="material-symbols-outlined text-lg">person_add</span> Thêm cư dân</>
               )}
             </button>
           </div>

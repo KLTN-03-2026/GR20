@@ -50,7 +50,9 @@ const getContractById = async (id) => {
 
 // UPDATE
 const updateContract = async (id, body) => {
+  console.log('🔧 UPDATE BODY:', JSON.stringify(body)); 
   const parsed = parseUpdate(body);
+  console.log('🔧 PARSED:', JSON.stringify(parsed)); 
   await repo.updateContract(id, parsed);
   return null;
 };

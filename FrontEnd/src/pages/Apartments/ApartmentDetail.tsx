@@ -4,106 +4,150 @@ import { apartmentApi } from 'src/apis/apartment_api/apartment_api';
 import { useState } from 'react';
 import ApartmentForm from './ApartmentForm';
 import AddResidentModal from './AddResidentModal';
+import http from 'src/utils/http';
+import { useQueryClient } from '@tanstack/react-query';
 // Types
 interface Owner {
-  id: number;
-  fullName: string;
-  phone: string;
-  email: string;
-  avatarUrl: string;
+  id: number
+  fullName: string
+  phone: string
+  email: string
+  avatarUrl: string
 }
 
 interface Resident {
-  id: number;
-  fullName: string;
-  phone: string;
-  relationship?: string;
-  moveInDate?: string;
+  id: number
+  fullName: string
+  phone: string
+  relationship?: string
+  moveInDate?: string
 }
 
 interface CurrentContract {
-  id: number;
-  contractType: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-  monthlyRent: number;
+  id: number
+  contractType: string
+  status: string
+  startDate: string
+  endDate: string
+  monthlyRent: number
 }
 
 interface ApartmentDetail {
-  id: number;
-  apartmentCode: string;
-  buildingName: string;
-  floorNumber: number;
-  area: number;
-  bedrooms: number;
-  bathrooms: number;
-  status: string;
-  imageUrl: string;
-  owner: Owner | null;
-  ownerName?: string;
-  residents: Resident[];
-  currentContract: CurrentContract | null;
+  id: number
+  apartmentCode: string
+  buildingName: string
+  floorNumber: number
+  area: number
+  bedrooms: number
+  bathrooms: number
+  status: string
+  imageUrl: string
+  owner: Owner | null
+  ownerName?: string
+  residents: Resident[]
+  currentContract: CurrentContract | null
 }
 
 // Status config
 const statusConfig: Record<string, { label: string; className: string }> = {
   OCCUPIED: { label: 'Đã cho thuê', className: 'bg-blue-100 text-blue-700' },
   AVAILABLE: { label: 'Còn trống', className: 'bg-emerald-100 text-emerald-700' },
-  MAINTENANCE: { label: 'Bảo trì', className: 'bg-orange-100 text-orange-700' },
-};
+  MAINTENANCE: { label: 'Bảo trì', className: 'bg-orange-100 text-orange-700' }
+}
 
 const getInitials = (name: string): string => {
-  if (!name) return '';
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-};
+  if (!name) return ''
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
 
 const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-};
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
+}
 
 const formatDate = (dateStr: string): string => {
-  return new Date(dateStr).toLocaleDateString('vi-VN');
-};
+  return new Date(dateStr).toLocaleDateString('vi-VN')
+}
 
 export default function ApartmentDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [showForm, setShowForm] = useState(false);
-  const [showAddResident, setShowAddResident] = useState(false);
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [editingResident, setEditingResident] = useState<any>(null)
+  const [showAddResident, setShowAddResident] = useState(false)
+  const queryClient = useQueryClient()
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['apartment', id],
     queryFn: () => apartmentApi.getApartmentById(Number(id)),
-    enabled: !!id,
-  });
+    enabled: !!id
+  })
 
-  const apartment = data?.data?.data || data?.data || null;
-  const status = apartment ? (statusConfig[apartment.status] || statusConfig.AVAILABLE) : null;
+  const handleDeleteResident = async (residentId: number) => {
+    if (window.confirm('Bạn có chắc muốn xóa cư dân này?')) {
+      try {
+        await http.patch(`/api/apartments/residents/${residentId}/move-out`)
+        // Refresh data
+        queryClient.invalidateQueries({ queryKey: ['apartment', id] })
+        queryClient.invalidateQueries({ queryKey: ['apartments'] })
+      } catch (err) {
+        console.error('Delete error:', err)
+      }
+    }
+  }
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    try {
+      setUploading(true)
+      const res = await http.post(`/api/apartments/${id}/upload-image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['apartment', id] })
+    } catch (err) {
+      console.error('Upload error:', err)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const apartment = data?.data?.data || data?.data || null
+  const status = apartment ? statusConfig[apartment.status] || statusConfig.AVAILABLE : null
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen ml-64">
-        <div className="flex items-center gap-3 text-slate-400">
-          <span className="material-symbols-outlined animate-spin">sync</span>
-          <span className="text-sm">Đang tải dữ liệu...</span>
-        </div>  
+      <div className='flex items-center justify-center min-h-screen ml-64'>
+        <div className='flex items-center gap-3 text-slate-400'>
+          <span className='material-symbols-outlined animate-spin'>sync</span>
+          <span className='text-sm'>Đang tải dữ liệu...</span>
+        </div>
       </div>
-    );
+    )
   }
 
   if (!apartment) {
     return (
-      <div className="flex items-center justify-center min-h-screen ml-64">
-        <div className="text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">error_outline</span>
-          <p className="text-slate-500 font-semibold">Không tìm thấy căn hộ</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-blue-600 text-sm font-bold hover:underline">
+      <div className='flex items-center justify-center min-h-screen ml-64'>
+        <div className='text-center'>
+          <span className='material-symbols-outlined text-4xl text-slate-300 mb-2'>error_outline</span>
+          <p className='text-slate-500 font-semibold'>Không tìm thấy căn hộ</p>
+          <button onClick={() => navigate(-1)} className='mt-4 text-blue-600 text-sm font-bold hover:underline'>
             Quay lại
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -127,19 +171,6 @@ export default function ApartmentDetail() {
             <span className='text-slate-600 font-medium'>{apartment.apartmentCode}</span>
           </div>
         </div>
-        <div className='flex items-center gap-3'>
-          <button
-            onClick={() => setShowForm(true)}
-            className='px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-full transition-all'
-          >
-            <span className='material-symbols-outlined text-lg mr-1 align-middle'>edit</span>
-            Chỉnh sửa
-          </button>
-          <button className='px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-all shadow-sm'>
-            <span className='material-symbols-outlined text-lg mr-1 align-middle'>add</span>
-            Thêm cư dân
-          </button>
-        </div>
       </header>
 
       <main className='px-8 py-8 pb-20'>
@@ -156,12 +187,31 @@ export default function ApartmentDetail() {
             {/* Left Column */}
             <div className='lg:col-span-2 space-y-6'>
               {/* Image */}
-              <div className='relative rounded-2xl overflow-hidden aspect-video bg-slate-200'>
+              {/* Image Section */}
+              <div className='relative rounded-2xl overflow-hidden aspect-video bg-slate-200 group'>
                 <img
                   alt={apartment.apartmentCode}
                   className='w-full h-full object-cover'
-                  src={apartment.imageUrl || 'https://via.placeholder.com/800x450?text=No+Image'}
+                  crossOrigin="anonymous"
+                  src={(import.meta.env.VITE_DOMAIN_API + apartment.imageUrl) || 'https://via.placeholder.com/800x450?text=No+Image'}
                 />
+
+                {/* Upload overlay */}
+                <label className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer'>
+                  <div className='text-center text-white'>
+                    <span className='material-symbols-outlined text-3xl mb-2'>add_photo_alternate</span>
+                    <p className='text-sm font-medium'>{uploading ? 'Đang tải lên...' : 'Thay đổi ảnh'}</p>
+                  </div>
+                  <input
+                    type='file'
+                    accept='image/*'
+                    className='hidden'
+                    onChange={handleImageUpload}
+                    disabled={uploading}
+                  />
+                </label>
+
+                {/* Status badge */}
                 <div className='absolute top-4 right-4'>
                   <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${status?.className}`}>
                     {status?.label}
@@ -202,12 +252,50 @@ export default function ApartmentDetail() {
                           </div>
                         </div>
                         <div className='flex gap-1'>
-                          <button className='p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all'>
+                          <a
+                            href={`tel:${resident.phone}`}
+                            className='p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all'
+                          >
                             <span className='material-symbols-outlined text-lg'>call</span>
-                          </button>
-                          <button className='p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-all'>
-                            <span className='material-symbols-outlined text-lg'>more_vert</span>
-                          </button>
+                          </a>
+
+                          {/* Dropdown Menu */}
+                          <div className='relative'>
+                            <button
+                              onClick={() => setOpenMenuId(openMenuId === resident.id ? null : resident.id)}
+                              className='p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-all'
+                            >
+                              <span className='material-symbols-outlined text-lg'>more_vert</span>
+                            </button>
+
+                            {openMenuId === resident.id && (
+                              <>
+                                <div className='fixed inset-0 z-10' onClick={() => setOpenMenuId(null)}></div>
+                                <div className='absolute right-0 top-full mt-1 w-36 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-20'>
+                                  <button
+                                    onClick={() => {
+                                      setEditingResident(resident)
+                                      setShowAddResident(true)
+                                    }}
+                                    className='w-full px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors'
+                                  >
+                                    <span className='material-symbols-outlined text-lg'>edit</span>
+                                    Chỉnh sửa
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setOpenMenuId(null)
+                                      handleDeleteResident(resident.id)
+                                    }}
+                                    className='w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors'
+                                  >
+                                    <span className='material-symbols-outlined text-lg'>delete</span>
+                                    Xóa
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -357,6 +445,18 @@ export default function ApartmentDetail() {
         apartmentCode={apartment.apartmentCode}
         isOpen={showAddResident}
         onClose={() => setShowAddResident(false)}
+      />
+
+      <AddResidentModal
+        apartmentId={Number(id)}
+        apartmentCode={apartment.apartmentCode}
+        isOpen={showAddResident}
+        onClose={() => {
+          setShowAddResident(false)
+          setEditingResident(null)
+        }}
+        resident={editingResident}
+        hasOwner={apartment.residents?.some((r: any) => r.relationship === 'OWNER')}
       />
     </div>
   )

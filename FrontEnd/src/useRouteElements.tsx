@@ -6,6 +6,8 @@ import EmployeeManagement from './pages/employees/EmployeeManagement'
 import Apartment from './pages/Apartments/Apartment'
 import ApartmentDetail from './pages/Apartments/ApartmentDetail'
 import Analytics from './pages/Analytics/Analytics';
+import ContractList from './pages/Contracts/ContractList';
+import ContractDetail from './pages/Contracts/ContractDetail';
 //tạo cái component để kiểm tra người dùng login chưa
 
 function ProtecdRouter() {
@@ -53,6 +55,14 @@ export default function useRouteElements() {
     {
       path: '/analytics',
       element: <Analytics />
+    },
+    {
+      path: '/contracts',
+      element: <ContractList />
+    },
+    {
+      path: '/contracts/:id',
+      element: <ContractDetail />
     }
   ])
   return routeElements

@@ -35,6 +35,8 @@ const createApartment = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
+    console.log('❌ ERROR:', err.message);
+    console.log('❌ DETAILS:', err.details || err);
     sendError(res, err);
   }
 };
@@ -163,21 +165,114 @@ const addResident = async (req, res) => {
 // GET /api/apartments/stats
 const getStats = async (req, res) => {
   try {
-    const total = await pool.query(`SELECT COUNT(*) FROM apartments WHERE status != 'MAINTENANCE'`);
-    const occupied = await pool.query(`SELECT COUNT(*) FROM apartments WHERE status = 'OCCUPIED'`);
-    const expiring = await pool.query(
-      `SELECT COUNT(*) FROM contracts WHERE status = 'ACTIVE' AND end_date <= NOW() + INTERVAL '30 days'`
+    const total = await pool.query(
+      `SELECT COUNT(*) FROM apartments WHERE status != 'MAINTENANCE'`,
     );
-    
+    const occupied = await pool.query(
+      `SELECT COUNT(*) FROM apartments WHERE status = 'OCCUPIED'`,
+    );
+    const expiring = await pool.query(
+      `SELECT COUNT(*) FROM contracts WHERE status = 'ACTIVE' AND end_date <= NOW() + INTERVAL '30 days'`,
+    );
+
     res.json({
       operationType: "Success",
       data: {
         totalApartments: parseInt(total.rows[0].count),
         occupiedApartments: parseInt(occupied.rows[0].count),
-        occupancyRate: Math.round((parseInt(occupied.rows[0].count) / parseInt(total.rows[0].count)) * 100),
+        occupancyRate: Math.round(
+          (parseInt(occupied.rows[0].count) / parseInt(total.rows[0].count)) *
+            100,
+        ),
         expiringContracts: parseInt(expiring.rows[0].count),
-      }
+      },
     });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+//Available Apartment
+const getAvailableApartments = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT a.*, b.name as building_name 
+      FROM apartments a
+      LEFT JOIN buildings b ON a.building_id = b.id
+      WHERE a.status != 'AVAILABLE'
+      AND a.id NOT IN (
+        SELECT apartment_id FROM contracts WHERE status = 'ACTIVE'
+        UNION
+        SELECT apartment_id FROM contracts WHERE status = 'PENDING'
+        UNION
+        SELECT apartment_id FROM contracts WHERE status = 'EXPIRED'
+      )
+      ORDER BY a.id
+    `);
+    res.json({ operationType: "Success", data: result.rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const moveOutResident = async (req, res) => {
+  try {
+    // 1. Lấy thông tin resident
+    const resident = await pool.query(
+      `SELECT user_id, apartment_id, relationship FROM resident_profiles WHERE id = $1`,
+      [req.params.id],
+    );
+
+    if (resident.rows.length === 0) {
+      return res.status(404).json({ message: "Resident not found" });
+    }
+
+    const { user_id, apartment_id, relationship } = resident.rows[0];
+
+    // 2. Update resident_profile
+    await pool.query(
+      `UPDATE resident_profiles SET status = 'MOVED_OUT', move_out_date = NOW() WHERE id = $1`,
+      [req.params.id],
+    );
+
+    // 3. Nếu là OWNER → chuyển căn hộ về AVAILABLE
+    if (relationship === "OWNER") {
+      await pool.query(
+        `UPDATE apartments SET owner_user_id = NULL, status = 'AVAILABLE', updated_at = NOW() WHERE id = $1`,
+        [apartment_id],
+      );
+    }
+
+    res.json({ operationType: "Success", message: "Resident moved out" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// UPDATE Resident
+const updateResident = async (req, res) => {
+  try {
+    const { relationship, moveInDate } = req.body;
+
+    // 1. Update resident_profile
+    const result = await pool.query(
+      `UPDATE resident_profiles SET relationship = $1, move_in_date = $2 WHERE id = $3 RETURNING user_id, apartment_id`,
+      [relationship, moveInDate, req.params.id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Resident not found" });
+    }
+
+    // 2. Nếu chuyển thành OWNER → update apartments
+    if (relationship === "OWNER") {
+      await pool.query(
+        `UPDATE apartments SET owner_user_id = $1, status = 'OCCUPIED', updated_at = NOW() WHERE id = $2`,
+        [result.rows[0].user_id, result.rows[0].apartment_id],
+      );
+    }
+
+    res.json({ operationType: "Success", message: "Resident updated" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -193,4 +288,7 @@ module.exports = {
   deleteApartment,
   addResident,
   getStats,
+  getAvailableApartments,
+  moveOutResident,
+  updateResident,
 };

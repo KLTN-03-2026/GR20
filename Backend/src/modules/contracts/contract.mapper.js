@@ -10,6 +10,7 @@ const toEntity = (data) => {
     resident_id: data.residentId,
     apartment_id: data.apartmentId,
     contract_type: data.contractType,
+     status: data.status,
     start_date: data.startDate,
     end_date: data.endDate,
     monthly_rent: data.monthlyRent,
