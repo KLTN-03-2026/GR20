@@ -32,34 +32,30 @@ export const updateQrSchema = yup.object({
     .min(9, 'CMND/CCCD phải có ít nhất 9 số')
     .max(12, 'CMND/CCCD tối đa 12 số'),
 
-  validFrom: yup
-    .string()
-    .required('Vui lòng chọn ngày bắt đầu')
-    .test('valid-from', 'Ngày bắt đầu không hợp lệ', function (value) {
-      if (!value) return false
-      const fromDate = new Date(value)
-      const now = new Date()
-      return fromDate >= now
-    }),
+  validFrom: yup.string().required('Vui lòng chọn ngày bắt đầu'),
+  // .test('valid-from', 'Ngày bắt đầu không hợp lệ', function (value) {
+  //   if (!value) return false
+  //   const fromDate = new Date(value)
+  //   const now = new Date()
+  //   return fromDate >= now
+  // }),
 
-  validTo: yup
-    .string()
-    .required('Vui lòng chọn ngày kết thúc')
-    .test('valid-to', 'Ngày kết thúc phải sau ngày bắt đầu', function (value) {
-      const { validFrom } = this.parent
-      if (!value || !validFrom) return false
-      const fromDate = new Date(validFrom)
-      const toDate = new Date(value)
-      return toDate > fromDate
-    })
-    .test('max-duration', 'Thời gian hiệu lực không quá 30 ngày', function (value) {
-      const { validFrom } = this.parent
-      if (!value || !validFrom) return false
-      const fromDate = new Date(validFrom)
-      const toDate = new Date(value)
-      const daysDiff = (toDate.getTime() - fromDate.getTime()) / (1000 * 3600 * 24)
-      return daysDiff <= 30
-    }),
+  validTo: yup.string().required('Vui lòng chọn ngày kết thúc'),
+  // .test('valid-to', 'Ngày kết thúc phải sau ngày bắt đầu', function (value) {
+  //   const { validFrom } = this.parent
+  //   if (!value || !validFrom) return false
+  //   const fromDate = new Date(validFrom)
+  //   const toDate = new Date(value)
+  //   return toDate > fromDate
+  // })
+  // .test('max-duration', 'Thời gian hiệu lực không quá 30 ngày', function (value) {
+  //   const { validFrom } = this.parent
+  //   if (!value || !validFrom) return false
+  //   const fromDate = new Date(validFrom)
+  //   const toDate = new Date(value)
+  //   const daysDiff = (toDate.getTime() - fromDate.getTime()) / (1000 * 3600 * 24)
+  //   return daysDiff <= 30
+  // }),
 
   maxEntries: yup
     .number()

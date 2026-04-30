@@ -10,6 +10,8 @@ import type {
 } from 'src/types/qrcode.type'
 
 export const QRCodeApi = {
+  // ==================== GUEST QR (Cư dân) ====================
+
   getGuestQrList(params?: {
     page?: number
     limit?: number
@@ -18,31 +20,55 @@ export const QRCodeApi = {
     fromDate?: string
     toDate?: string
   }) {
-    return http.get<SuccessResponseApi<Qrcodes[]>>('api/qr/guest/list', { params })
+    return http.get<SuccessResponseApi<Qrcodes[]>>('api/qr/resident/guest/list', { params })
   },
+
   updateGuestQr(id: string, body: BodyCreateQrcode) {
-    return http.put<SuccessResponseApi<Qrcodes>>(`api/qr/guest/${id}`, body)
+    return http.put<SuccessResponseApi<Qrcodes>>(`api/qr/resident/guest/${id}`, body)
   },
-  // Tạo guest QR
+
   createGuestQr(body: BodyCreateQrcode) {
-    return http.post<SuccessResponseApi<Qrcodes>>('api/qr/guest', body)
+    return http.post<SuccessResponseApi<Qrcodes>>('api/qr/resident/guest', body)
   },
 
-  // Thu hồi guest QR
   deleteGuestQr(id: string) {
-    return http.delete(`api/qr/guest/${id}`)
+    return http.delete(`api/qr/resident/guest/${id}`)
   },
 
-  // Lấy chi tiết guest QR
   getGuestQrDetail(id: string) {
-    return http.get<SuccessResponseApi<Qrcodes>>(`api/qr/guest/${id}`)
+    return http.get<SuccessResponseApi<Qrcodes>>(`api/qr/resident/guest/${id}`)
   },
-  scanPersonalQr(qrCode: string) {
-    return http.get<SuccessResponseApi<ResultQrcode1>>(`api/qr/guest/scan/${qrCode}`)
+
+  // ==================== PERSONAL QR (Cư dân) ====================
+
+  getQrcodeMe() {
+    return http.get<SuccessResponseApi<QrcodeMe>>('api/qr/resident/me')
   },
-  scanGuestQr(qrCode: string) {
-    return http.get<SuccessResponseApi<ResultQrcode>>(`api/qr/guest/scan/${qrCode}`)
+
+  // ==================== GUARD (Bảo vệ) ====================
+
+  scanGuestQr(
+    qrCode: string,
+    params?: {
+      direction?: string
+      gate?: string
+      building_id?: number
+    }
+  ) {
+    return http.get<SuccessResponseApi<ResultQrcode>>(`api/qr/guard/scan/${qrCode}`, { params })
   },
+
+  scanPersonalQr(
+    qrCode: string,
+    params?: {
+      direction?: string
+      gate?: string
+      building_id?: number
+    }
+  ) {
+    return http.get<SuccessResponseApi<ResultQrcode1>>(`api/qr/guard/scan/${qrCode}`, { params })
+  },
+
   getGuestQrHistory(params?: {
     page?: number
     limit?: number
@@ -52,9 +78,6 @@ export const QRCodeApi = {
     result?: string
     qrType?: string
   }) {
-    return http.get<SuccessResponseApi<historyQrcode[]>>('api/qr/guest/history', { params })
-  },
-  getQrcodeMe() {
-    return http.get<SuccessResponseApi<QrcodeMe>>('api/qr/personal/me')
+    return http.get<SuccessResponseApi<historyQrcode[]>>('api/qr/guard/history', { params })
   }
 }

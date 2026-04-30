@@ -44,16 +44,6 @@ export default function SidebarProtect() {
             <span className='material-symbols-outlined'>person_search</span>
             <span className='text-sm font-manrope'>Tra cứu cư dân</span>
           </NavLink>
-
-          {/* <NavLink to='/vehicle-lookup' className={getNavClass}>
-            <span className='material-symbols-outlined'>directions_car</span>
-            <span className='text-sm font-manrope'>Tra cứu phương tiện</span>
-          </NavLink> */}
-
-          <NavLink to='/incident-report' className={getNavClass}>
-            <span className='material-symbols-outlined'>report_problem</span>
-            <span className='text-sm font-manrope'>Báo cáo sự cố</span>
-          </NavLink>
         </nav>
       </div>
 

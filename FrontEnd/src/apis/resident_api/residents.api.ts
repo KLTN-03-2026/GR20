@@ -1,10 +1,13 @@
-import type { Resident, ResidentDetail, UserApartment } from "src/types/resident.type";
-import type { SuccessResponseApi } from "src/types/utils.type";
-import http from "src/utils/http";
+import type { Resident, ResidentDetail } from 'src/types/resident.type'
+import type { SuccessResponseApi } from 'src/types/utils.type'
+import http from 'src/utils/http'
 
 const URL = '/api/residents'
 
-type ResidentListResponse = Omit<SuccessResponseApi<Resident[]>, 'size' | 'totalElements' | 'totalPages' | 'page' | 'pageSize'> & {
+type ResidentListResponse = Omit<
+  SuccessResponseApi<Resident[]>,
+  'size' | 'totalElements' | 'totalPages' | 'page' | 'pageSize'
+> & {
   data: Resident[]
   size: number
   totalElements: number
@@ -13,10 +16,7 @@ type ResidentListResponse = Omit<SuccessResponseApi<Resident[]>, 'size' | 'total
   pageSize: number
 }
 
-type ResidentSingleResponse<T> = Omit<
-  SuccessResponseApi<T>,
-  'totalElements' | 'totalPages' | 'page' | 'pageSize'
-> & {
+type ResidentSingleResponse<T> = Omit<SuccessResponseApi<T>, 'totalElements' | 'totalPages' | 'page' | 'pageSize'> & {
   data: T
 }
 
@@ -32,17 +32,15 @@ export const residentApi = {
   },
 
   // Thêm cư dân mới
-  createResident(data: {
-    userId: number
-    apartmentId: number
-    relationship: string
-    moveInDate: string
-  }) {
+  createResident(data: { userId: number; apartmentId: number; relationship: string; moveInDate: string }) {
     return http.post<ResidentSingleResponse<{ id: string }>>(URL, data)
   },
 
   // Cập nhật cư dân
-  updateResident(id: string, data: { relationship?: string; status?: string; moveInDate?: string; moveOutDate?: string }) {
+  updateResident(
+    id: string,
+    data: { relationship?: string; status?: string; moveInDate?: string; moveOutDate?: string }
+  ) {
     return http.put<ResidentSingleResponse<{ id: string }>>(`${URL}/${id}`, data)
   },
 

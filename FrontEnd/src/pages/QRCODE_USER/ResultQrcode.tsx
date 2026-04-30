@@ -1,18 +1,18 @@
-import React, { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
-import type { QrScanResult, ResultQrcode, ResultQrcode1 } from 'src/types/qrcode.type'
-import { toast } from 'react-toastify'
+import type { QrScanResult } from 'src/types/qrcode.type'
 
 export default function ResultQrcodePage() {
-  const location = useLocation()
+  // const location = useLocation()
   const navigate = useNavigate()
-  const { qrCode: qrCodeFromUrl } = useParams<{ qrCode: string }>()
-  const qrCode = qrCodeFromUrl || location.state?.qrCode
+  // const { qrCode: qrCodeFromUrl } = useParams<{ qrCode: string }>()
 
-  const [showHistory, setShowHistory] = useState(false)
-  const [historyData, setHistoryData] = useState<any[]>([])
+  const { qrcode } = useParams()
+
+  const qrCode = qrcode
+  // const [showHistory, setShowHistory] = useState(false)
+  // const [historyData, setHistoryData] = useState<any[]>([])
 
   // Phân biệt loại QR dựa vào prefix
   const isGuestQrType = qrCode?.startsWith('GUEST_')
@@ -21,8 +21,8 @@ export default function ResultQrcodePage() {
   // Lấy thông tin QR từ API dựa vào loại QR
   const {
     data: qrDetailData,
-    isLoading,
-    refetch
+    isLoading
+    // refetch
   } = useQuery({
     queryKey: ['qr-scan-result', qrCode, isGuestQrType],
     queryFn: async () => {
@@ -35,24 +35,6 @@ export default function ResultQrcodePage() {
     },
     enabled: !!qrCode,
     retry: false
-  })
-
-  // Lấy lịch sử quét
-  const { refetch: refetchHistory } = useQuery({
-    queryKey: ['qr-history'],
-    queryFn: () => QRCodeApi.getGuestQrHistory(),
-    enabled: false
-  })
-
-  const revokeMutation = useMutation({
-    mutationFn: (id: string) => QRCodeApi.deleteGuestQr(id),
-    onSuccess: () => {
-      toast.success('Đã thu hồi mã QR thành công')
-      refetch()
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Thu hồi thất bại')
-    }
   })
 
   const scanResult = qrDetailData?.data?.data as QrScanResult | undefined
@@ -133,25 +115,25 @@ export default function ResultQrcodePage() {
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
   }
 
-  const handleLoadHistory = async () => {
-    setShowHistory(true)
-    const result = await QRCodeApi.getGuestQrHistory()
-    setHistoryData(result?.data?.data || [])
-    refetchHistory()
-  }
+  // const handleLoadHistory = async () => {
+  //   setShowHistory(true)
+  //   const result = await QRCodeApi.getGuestQrHistory()
+  //   setHistoryData(result?.data?.data || [])
+  //   refetchHistory()
+  // }
 
-  const handleAllowEntry = async () => {
-    if (!scanResult) return
-    toast.success(`Đã mở cổng cho ${getDisplayName()}`)
-    await refetch()
-  }
+  // const handleAllowEntry = async () => {
+  //   if (!scanResult) return
+  //   toast.success(`Đã mở cổng cho ${getDisplayName()}`)
+  //   await refetch()
+  // }
 
-  const handleRevokeQR = () => {
-    if (!scanResult) return
-    if (window.confirm(`Bạn có chắc muốn thu hồi mã QR của ${getDisplayName()}?`)) {
-      revokeMutation.mutate(scanResult.id)
-    }
-  }
+  // const handleRevokeQR = () => {
+  //   if (!scanResult) return
+  //   if (window.confirm(`Bạn có chắc muốn thu hồi mã QR của ${getDisplayName()}?`)) {
+  //     revokeMutation.mutate(scanResult.id)
+  //   }
+  // }
 
   if (!qrCode) {
     return (
@@ -203,7 +185,7 @@ export default function ResultQrcodePage() {
         <div className='grid grid-cols-1 lg:grid-cols-12 gap-8'>
           <div className='lg:col-span-8 space-y-8'>
             {/* Status Card */}
-            <div
+            {/* <div
               className={`relative overflow-hidden rounded-[2rem] p-8 text-white shadow-2xl shadow-blue-900/20 ${
                 isSuccess && scanResult?.status === 'ACTIVE'
                   ? 'bg-gradient-to-br from-primary to-primary-container'
@@ -253,8 +235,58 @@ export default function ResultQrcodePage() {
                 )}
               </div>
               <div className='absolute -bottom-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl'></div>
+            </div> */}
+            <div
+              className={`relative overflow-hidden rounded-[2rem] p-8 text-white shadow-2xl shadow-blue-900/20 ${
+                isSuccess
+                  ? 'bg-gradient-to-br from-primary to-primary-container'
+                  : 'bg-gradient-to-br from-error to-red-700'
+              }`}
+            >
+              <div className='relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6'>
+                <div>
+                  <div className='inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-4'>
+                    <span
+                      className='material-symbols-outlined text-[14px]'
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      {isSuccess ? 'verified' : 'error'}
+                    </span>
+                    {isSuccess ? 'Đã xác thực' : 'Xác thực thất bại'}
+                  </div>
+                  <h2 className='text-4xl md:text-5xl font-black tracking-tighter mb-2'>
+                    {isSuccess ? 'QR hợp lệ' : 'QR không hợp lệ'}
+                  </h2>
+                  <p className='text-blue-100 text-lg opacity-90'>
+                    {isSuccess
+                      ? `${isGuestQR() ? 'Khách' : 'Cư dân'} đã xác minh • Hoạt động`
+                      : scanResult?.status === 'EXPIRED'
+                        ? 'QR đã hết hạn'
+                        : scanResult?.status === 'REVOKED'
+                          ? 'QR đã bị thu hồi'
+                          : qrDetailData?.data?.message || 'QR không tồn tại trong hệ thống'}
+                  </p>
+                </div>
+                {isSuccess && isGuestQR() && (
+                  <div className='bg-white/10 backdrop-blur-xl p-6 rounded-3xl border border-white/20 text-center min-w-[160px]'>
+                    <p className='text-[10px] uppercase tracking-[0.2em] font-bold text-blue-100 mb-2'>
+                      Số lượt còn lại
+                    </p>
+                    <p className='text-5xl font-black'>{getRemainingEntries()}</p>
+                    <p className='text-xs mt-2 text-blue-200'>
+                      Đã dùng: {getUsedEntries()}/{getMaxEntries()}
+                    </p>
+                    <div className='mt-2 w-full h-1 bg-white/20 rounded-full overflow-hidden'>
+                      <div
+                        className='h-full bg-white rounded-full transition-all'
+                        style={{ width: `${getUsagePercent()}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className='absolute -bottom-20 -right-20 w-80 h-80 bg-white/10 rounded-full blur-3xl'></div>
             </div>
-
             {/* Profile Info */}
             {isSuccess && scanResult && (
               <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
@@ -460,7 +492,7 @@ export default function ResultQrcodePage() {
       </main>
 
       {/* History Modal */}
-      {showHistory && (
+      {/* {showHistory && (
         <div className='fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
           <div className='bg-white rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden'>
             <div className='p-6 border-b border-gray-100 flex justify-between items-center'>
@@ -505,7 +537,7 @@ export default function ResultQrcodePage() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Bottom Navigation */}
       <nav className='md:hidden fixed bottom-0 left-0 w-full flex justify-around items-end pb-6 px-4 bg-white/80 backdrop-blur-2xl z-50 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-slate-100'>
@@ -516,13 +548,13 @@ export default function ResultQrcodePage() {
           <span className='material-symbols-outlined'>qr_code_2</span>
           <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>Quét</span>
         </button>
-        <button
+        {/* <button
           onClick={handleLoadHistory}
           className='flex flex-col items-center justify-center text-slate-400 p-2 active:scale-90 duration-150'
         >
           <span className='material-symbols-outlined'>receipt_long</span>
           <span className='text-[10px] uppercase tracking-widest font-bold mt-1'>Lịch sử</span>
-        </button>
+        </button> */}
         <button
           onClick={() => navigate('/qr-management')}
           className='flex flex-col items-center justify-center text-slate-400 p-2 active:scale-90 duration-150'

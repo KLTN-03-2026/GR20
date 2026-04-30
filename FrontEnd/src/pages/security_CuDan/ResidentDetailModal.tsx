@@ -1,17 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { toast } from 'react-toastify'
 import { SecurityApi } from 'src/apis/Security_api/security.api'
 
 export default function ResidentDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const {
-    data: residentResponse,
-    isLoading,
-    refetch
-  } = useQuery({
+  const { data: residentResponse, isLoading } = useQuery({
     queryKey: ['residentDetail', id],
     queryFn: () => SecurityApi.getResidentDetail(id),
     enabled: !!id
@@ -42,20 +37,6 @@ export default function ResidentDetailPage() {
   const getAvatarUrl = () => {
     if (resident?.personalInfo.avatarUrl) return resident.personalInfo.avatarUrl
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(resident?.personalInfo?.fullName || 'User')}&background=005ab7&color=fff&size=200`
-  }
-
-  const handleGrantAccess = async () => {
-    try {
-      const response = await SecurityApi.verifyResident(id)
-      if (response.data.data.isValid) {
-        toast.success(response.data.data.message)
-        refetch() // Refresh để cập nhật access history
-      } else {
-        toast.error('Cư dân không hợp lệ, không thể cho vào!')
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra')
-    }
   }
 
   if (isLoading) {
@@ -362,14 +343,6 @@ export default function ResidentDetailPage() {
                 </div>
               ))}
             </div>
-            <button
-              onClick={() => {
-                /* Xem thêm lịch sử */
-              }}
-              className='mt-8 w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest hover:brightness-125 transition-all'
-            >
-              Xem toàn bộ lịch sử
-            </button>
           </div>
         </div>
 

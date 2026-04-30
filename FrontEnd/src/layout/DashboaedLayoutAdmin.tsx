@@ -1,6 +1,7 @@
 import React from 'react'
 import HeaderMainUser from 'src/components/HeaderMainUser/HeaderMainUser'
-import SideBarAdmin from 'src/components/SidebarAdmin/SidebarAdmin'
+import SidebarOwner from 'src/components/SidebarAdmin/SidebarAdmin'
+// import SideBarAdmin from 'src/components/SidebarAdmin/SidebarAdmin'
 
 interface Props {
   children?: React.ReactNode
@@ -9,7 +10,7 @@ interface Props {
 export default function DashboaedLayoutAdmin({ children }: Props) {
   return (
     <div className='bg-surface text-on-surface min-h-screen flex'>
-      <SideBarAdmin />
+      <SidebarOwner />
       <div className='flex-1 lg:ml-64 w-full'>
         <HeaderMainUser />
         <main className='px-6 py-4 max-w-screen-2xl mx-auto'>{children}</main>

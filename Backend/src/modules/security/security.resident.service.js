@@ -63,9 +63,9 @@ const getResidentDetail = async (residentId) => {
   
   // 6. Lịch sử ra vào
   const lastAccessLog = await repo.getLastAccessLog(residentId);
-  const todayAccessCount = await repo.getTodayAccessCount(residentId);
+  // const todayAccessCount = await repo.getTodayAccessCount(residentId);
+  // const recentAccessLogs = await repo.getRecentAccessLogs(residentId);
   const recentAccessLogs = await repo.getRecentAccessLogs(residentId);
-  
   // 7. Map sang response
   return mapper.toDetailResponse(
     personalInfo,
@@ -73,7 +73,7 @@ const getResidentDetail = async (residentId) => {
     contracts,
     familyMembers,
     lastAccessLog,
-    todayAccessCount,
+    // todayAccessCount,
     recentAccessLogs
   );
 };

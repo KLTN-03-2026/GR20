@@ -21,7 +21,7 @@ const toFrontendUserShape = (row) => {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     avatarUrl: row.avatar_url || null,
-    dateOfBirth: row.date_of_birth   || null
+    dateOfBirth: row.date_of_birth || null,
   };
 };
 
@@ -41,10 +41,21 @@ const login = async (reqBody) => {
   //   throw new AppError(401, "Invalid username or password");
   // }
 
-  if (password !== userRow.password) {
-  throw new AppError(401, "Invalid username or password");
-  }
+  // Kiểm tra password có được hash chưa
+  const isHashed = userRow.password.startsWith("$2b$");
 
+  if (isHashed) {
+    // Tài khoản đã hash → dùng bcrypt
+    const ok = await bcrypt.compare(password, userRow.password);
+    if (!ok) {
+      throw new AppError(401, "Invalid username or password");
+    }
+  } else {
+    // Tài khoản chưa hash → so sánh plain text
+    if (password !== userRow.password) {
+      throw new AppError(401, "Invalid username or password");
+    }
+  }
   const now = Math.floor(Date.now() / 1000);
   const accessExp = now + ACCESS_TOKEN_TTL_SECONDS;
   const refreshExp = now + REFRESH_TOKEN_TTL_SECONDS;
@@ -71,8 +82,4 @@ const login = async (reqBody) => {
   };
 };
 
-
-
-
 module.exports = { login };
-

@@ -126,15 +126,19 @@ const toListResponse = (row) => {
 };
 
 // Map chi tiết đầy đủ
+
 const toDetailResponse = (
   personalInfo,
   residenceInfo,
   contracts,
   familyMembers,
   lastAccessLog,
-  todayAccessCount,
   recentAccessLogs
 ) => {
+  // Debug log
+  console.log('recentAccessLogs length:', recentAccessLogs?.length);
+  console.log('recentAccessLogs data:', recentAccessLogs);
+
   return {
     personalInfo: {
       id: personalInfo?.id,
@@ -180,17 +184,13 @@ const toDetailResponse = (
     })),
     accessHistory: {
       lastAccessTime: lastAccessLog?.scan_time || null,
-      lastAccessGate: lastAccessLog?.gate || null,
-      todayAccessCount: todayAccessCount || 0,
       recentLogs: (recentAccessLogs || []).map((log) => ({
         scanTime: log.scan_time,
         result: log.result,
-        gateName: log.gate,
       })),
     },
   };
 };
-
 // Map cho response danh sách đơn giản
 const toResidentResponse = (row) => {
   return {

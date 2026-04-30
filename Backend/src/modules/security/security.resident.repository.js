@@ -1,70 +1,5 @@
 const { pool } = require("../../../src/configs/database.config");
 
-// Lấy danh sách cư dân
-// const getResidentList = async (options = {}) => {
-//   const {
-//     page = 0,
-//     size = 20,
-//     keyword = ''
-//   } = options;
-
-//   const offset = page * size;
-//   let conditions = [`u.role_id = 5`, `rp.status = 'ACTIVE'`];
-//   let params = [];
-//   let paramIndex = 1;
-
-//   // Tìm kiếm theo keyword
-//   if (keyword && keyword.trim()) {
-//     conditions.push(`(u.full_name ILIKE $${paramIndex} OR u.phone ILIKE $${paramIndex} OR a.apartment_code ILIKE $${paramIndex})`);
-//     params.push(`%${keyword.trim()}%`);
-//     paramIndex++;
-//   }
-
-//   const whereClause = conditions.length > 0 
-//     ? `WHERE ${conditions.join(' AND ')}` 
-//     : '';
-
-//   // Query lấy dữ liệu với phân trang
-//   const dataQuery = `
-//     SELECT DISTINCT ON (u.id)
-//       u.id,
-//       u.full_name,
-//       u.email,
-//       u.phone,
-//       u.avatar_url,
-//       u.is_active,
-//       u.created_at,
-//       rp.status AS resident_status,
-//       a.apartment_code,
-//       b.name AS building_name,
-//       f.floor_number
-//     FROM users u
-//     INNER JOIN resident_profiles rp ON rp.user_id = u.id
-//     INNER JOIN apartments a ON a.id = rp.apartment_id
-//     LEFT JOIN floors f ON f.id = a.floor_id
-//     LEFT JOIN buildings b ON b.id = f.building_id
-//     ${whereClause}
-//     ORDER BY u.id, rp.created_at DESC
-//     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-//   `;
-
-//   const dataResult = await pool.query(dataQuery, [...params, size, offset]);
-
-//   // Query lấy tổng số
-//   let countQuery = `
-//     SELECT COUNT(DISTINCT u.id) as total
-//     FROM users u
-//     INNER JOIN resident_profiles rp ON rp.user_id = u.id
-//     ${whereClause}
-//   `;
-
-//   const countResult = await pool.query(countQuery, params);
-
-//   return {
-//     rows: dataResult.rows,
-//     total: parseInt(countResult.rows[0]?.total || 0)
-//   };
-// };
 
 // src/modules/security/security.resident.repository.js
 const getResidentList = async (options = {}) => {
@@ -258,30 +193,14 @@ const getLastAccessLog = async (residentId) => {
   return result.rows[0];
 };
 
-// Lấy số lần quét hôm nay
-const getTodayAccessCount = async (residentId) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const query = `
-    SELECT COUNT(*) as count
-    FROM access_logs
-    WHERE user_id = $1 
-      AND scan_time >= $2
-      AND result = 'GRANTED'
-  `;
-
-  const result = await pool.query(query, [residentId, today]);
-  return parseInt(result.rows[0]?.count || 0);
-};
-
 // Lấy lịch sử quét gần đây (7 ngày)
+
 const getRecentAccessLogs = async (residentId) => {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const query = `
-    SELECT scan_time, result, gate
+    SELECT scan_time, result
     FROM access_logs
     WHERE user_id = $1 AND scan_time >= $2
     ORDER BY scan_time DESC
@@ -289,9 +208,9 @@ const getRecentAccessLogs = async (residentId) => {
   `;
 
   const result = await pool.query(query, [residentId, sevenDaysAgo]);
+  console.log('Recent logs found:', result.rows.length); // Debug
   return result.rows;
 };
-
 module.exports = {
   getResidentList,
   getPersonalInfo,
@@ -300,6 +219,5 @@ module.exports = {
   getContracts,
   getFamilyMembers,
   getLastAccessLog,
-  getTodayAccessCount,
   getRecentAccessLogs,
 };

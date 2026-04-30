@@ -55,7 +55,7 @@ export default function QrcodeManagementAdmin() {
       },
       { replace: true }
     )
-  }, [debouncedSearch, debouncedStatus])
+  }, [debouncedSearch, debouncedStatus, limitFromUrl, location.pathname, navigate])
 
   // Modal history states
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
@@ -79,10 +79,10 @@ export default function QrcodeManagementAdmin() {
   const queryClient = useQueryClient()
 
   // Query danh sách chính với phân trang
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['personal/list', pageFromUrl, limitFromUrl, debouncedSearch, debouncedStatus],
     queryFn: () =>
-      qrApiAdmin.getAllQrcodd({
+      qrApiAdmin.getAllQrcode({
         page: Number(pageFromUrl),
         limit: Number(limitFromUrl),
         search: debouncedSearch || undefined,
@@ -91,6 +91,8 @@ export default function QrcodeManagementAdmin() {
     placeholderData: keepPreviousData,
     staleTime: 3000 * 60
   })
+
+  // console.log(data?.data?.data?.data)
 
   const dataListQr: historyQrcodeAdmin[] = data?.data?.data || []
 
@@ -115,7 +117,7 @@ export default function QrcodeManagementAdmin() {
       historyToDate
     ],
     queryFn: () =>
-      qrApiAdmin.getAllHistoryQrCodeId(selectedResident!.id, {
+      qrApiAdmin.getHistoryQrcodeByUserId(selectedResident!.id, {
         page: historyCurrentPage,
         limit: historyPageSize,
         search: debouncedHistorySearch || undefined,
@@ -155,22 +157,20 @@ export default function QrcodeManagementAdmin() {
       setIsUpdateModalOpen(false)
       setSelectedItem(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Cập nhật thất bại')
+    onError: (error) => toast.error(error.message || 'Cập nhật thất bại')
   })
 
   const createMutation = useMutation({
     mutationFn: (body: PostQRcode) => {
-      console.log('📤 Dữ liệu gửi:', body) // 👈 Log ra xem
       return qrApiAdmin.postQrcodeAdmin(body)
     },
-    // mutationFn: (body: PostQRcode) => qrApiAdmin.postQrcodeAdmin(body),
     onSuccess: () => {
       toast.success('Tạo mã QR thành công')
       queryClient.invalidateQueries({ queryKey: ['personal/list'] })
       setIsCreateModalOpen(false)
       setSelectedUserForCreate(null)
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || 'Tạo QR thất bại')
+    onError: (error) => toast.error(error.message || 'Tạo QR thất bại')
   })
 
   // Format functions
@@ -278,7 +278,7 @@ export default function QrcodeManagementAdmin() {
   return (
     <div className="bg-surface text-on-surface min-h-screen font-['Manrope',sans-serif] antialiased overflow-x-hidden">
       <main className='min-h-screen'>
-        <div className='max-w-7xl mx-auto space-y-12'>
+        <div className='max-w-[1200px] mx-auto space-y-12'>
           {/* Header Section */}
           <section className='flex flex-col md:flex-row md:items-end justify-between gap-6'>
             <div className='max-w-xl'>
@@ -369,10 +369,10 @@ export default function QrcodeManagementAdmin() {
           {/* Table */}
           <div className='bg-surface-container-lowest rounded-[2rem] overflow-hidden'>
             <div className='overflow-x-auto'>
-              <table className='w-full text-left border-collapse min-w-[1000px]'>
+              <table className='w-full text-left border-collapse'>
                 <thead>
                   <tr className='bg-surface-container-low/50'>
-                    <th className='px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest'>STT</th>
+                    {/* <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>STT</th> */}
                     <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Người dùng</th>
                     <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Liên hệ</th>
                     <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Căn hộ</th>
@@ -396,16 +396,17 @@ export default function QrcodeManagementAdmin() {
                       </td>
                     </tr>
                   ) : (
-                    dataListQr.map((item, index) => {
+                    dataListQr.map((item) => {
                       const statusBadge = getStatusBadge(item.qr_status)
-                      const rowNumber = (currentPage - 1) * currentPageSize + index + 1
+                      // const rowNumber = (currentPage - 1) * currentPageSize + index + 1
                       return (
                         <tr key={item.user_id} className='group hover:bg-surface-container-low/20'>
-                          <td className='px-8 py-6'>{rowNumber}</td>
+                          {/* <td className='px-6 py-6'>{rowNumber}</td> */}
+
                           <td className='px-6 py-6 font-bold'>{item.user_name}</td>
                           <td className='px-6 py-6 text-sm'>
                             <div>{item.user_email}</div>
-                            <div className='text-xs opacity-70'>{item.user_phone || 'Chưa có SĐT'}</div>
+                            <div className='text-xs opacity-70 '>{item.user_phone || 'Chưa có SĐT'}</div>
                           </td>
                           <td className='px-6 py-6'>
                             {item.apartment_code ? (
@@ -440,7 +441,7 @@ export default function QrcodeManagementAdmin() {
                               {statusBadge.text}
                             </span>
                           </td>
-                          <td className='px-8 py-6 text-right'>
+                          <td className='px-6 py-6 text-right'>
                             <p className='text-sm font-bold'>{formatDate(item.expires_at)}</p>
                             <p className='text-[10px] opacity-70'>
                               {item.qr_status === 'ACTIVE'
@@ -450,8 +451,15 @@ export default function QrcodeManagementAdmin() {
                                   : 'Đã thu hồi'}
                             </p>
                           </td>
-                          <td className='px-8 py-6 text-right'>
+                          <td className='px-6 py-6 text-right'>
                             <div className='flex justify-end gap-2'>
+                              <button
+                                onClick={() => navigate(`/admin/viewDetailResident/${item.user_id}`)}
+                                className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
+                                title='Xem chi tiết'
+                              >
+                                <span className='material-symbols-outlined text-sm'>visibility</span>
+                              </button>
                               <button
                                 onClick={() => handleViewHistory(item.user_id, item.user_name)}
                                 className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
@@ -459,42 +467,7 @@ export default function QrcodeManagementAdmin() {
                               >
                                 <span className='material-symbols-outlined text-sm'>history</span>
                               </button>
-                              {/* {item.qr_id ? (
-                                <>
-                                  <button
-                                    onClick={() => handleEdit(item)}
-                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
-                                  >
-                                    <span className='material-symbols-outlined text-sm'>edit</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleRevoke(item)}
-                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-red-500 hover:text-white'
-                                  >
-                                    <span className='material-symbols-outlined text-sm'>block</span>
-                                  </button>
-                                </>
-                              ) : item.apartment_code ? (
-                                <button
-                                  onClick={() =>
-                                    setSelectedUserForCreate({
-                                      userId: item.user_id,
-                                      apartmentId: String(item.apartment_id),
-                                      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-                                    })
-                                  }
-                                  className='p-2 bg-green-500 text-white rounded-lg hover:bg-green-600'
-                                >
-                                  <span className='material-symbols-outlined text-sm'>add</span>
-                                </button>
-                              ) : (
-                                <button
-                                  disabled
-                                  className='p-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed'
-                                >
-                                  <span className='material-symbols-outlined text-sm'>add</span>
-                                </button>
-                              )} */}
+
                               {item.qr_id ? (
                                 <>
                                   <button
@@ -518,7 +491,7 @@ export default function QrcodeManagementAdmin() {
                                       apartmentId: String(item.apartment_id),
                                       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
                                     })
-                                    setIsCreateModalOpen(true) // 👈 QUAN TRỌNG: phải set state này
+                                    setIsCreateModalOpen(true)
                                   }}
                                   className='p-2 bg-green-500 text-white rounded-lg hover:bg-green-600'
                                   title='Tạo mã QR'

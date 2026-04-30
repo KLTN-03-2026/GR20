@@ -8,7 +8,7 @@ const { requireRole } = require("../../middlewares/role.middleware");
 router.use(verifyToken);
 router.use(requireRole(['ADMIN', 'Quản lý', 'Bảo vệ']));
 
-// ✅ ĐẢM BẢO: Route GET "/" phải khai báo TRƯỚC route "/:id"
+
 router.get("/residents", controller.getResidentList);  // Phải ở trước
 router.get("/residents/:id", controller.getResidentDetail);  // Ở sau
 

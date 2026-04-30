@@ -104,6 +104,7 @@ export default function HistoryQrcode() {
     placeholderData: keepPreviousData,
     staleTime: 3000 * 60
   })
+  console.log(historyResponse)
 
   const historyData = historyResponse?.data?.data || []
   const totalElements = historyResponse?.data?.totalElements || 0

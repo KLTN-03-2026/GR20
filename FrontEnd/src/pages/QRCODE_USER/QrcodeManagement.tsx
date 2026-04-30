@@ -13,8 +13,6 @@ import Paginate from 'src/components/Paginate/Paginate'
 import useQueryParams from 'src/hooks/useQueryParams'
 import { createQrSchema, updateQrSchema, type CreateQrFormData, type UpdateQrFormData } from 'src/utils/rules'
 
-// Schema validation
-
 export default function QrcodeManagement() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isMultipleEntries, setIsMultipleEntries] = useState(false)
@@ -22,23 +20,15 @@ export default function QrcodeManagement() {
   const [selectedQr, setSelectedQr] = useState<Qrcodes | null>(null)
   const { user } = useContext(AppContext)
   const navigate = useNavigate()
-  // const location = useLocation()
 
-  // Lấy params từ URL
   const queryParams = useQueryParams()
-  // const searchParams = new URLSearchParams(location.search)
-  // const pageFromUrl = searchParams.get('page') || '1'
   const pageFromUrl = queryParams.page || '1'
-  // const limitFromUrl = searchParams.get('limit') || '10'
   const limitFromUrl = queryParams.limit || '10'
-  // const searchFromUrl = searchParams.get('search') || ''
   const searchFromUrl = queryParams.search || ''
-  // const onlyValidFromUrl = searchParams.get('onlyValid') || ''
   const onlyValidFromUrl = queryParams.onlyValid || ''
-  // const fromDateFromUrl = searchParams.get('fromDate') || ''
-  const fromDateFromUrl = queryParams.formDate || ''
-  // const toDateFromUrl = searchParams.get('toDate') || ''
+  const fromDateFromUrl = queryParams.fromDate || ''
   const toDateFromUrl = queryParams.toDate || ''
+
   const [searchInput, setSearchInput] = useState(searchFromUrl)
   const [fromDate, setFromDate] = useState(fromDateFromUrl)
   const [toDate, setToDate] = useState(toDateFromUrl)
@@ -48,7 +38,6 @@ export default function QrcodeManagement() {
   const debouncedFromDate = useDebounce(fromDate, 500)
   const debouncedToDate = useDebounce(toDate, 500)
 
-  // Dùng useRef để lưu giá trị hiện tại
   const pageRef = useRef(pageFromUrl)
   const limitRef = useRef(limitFromUrl)
   const searchRef = useRef(searchFromUrl)
@@ -56,7 +45,6 @@ export default function QrcodeManagement() {
   const fromDateRef = useRef(fromDateFromUrl)
   const toDateRef = useRef(toDateFromUrl)
 
-  // Cập nhật ref khi URL thay đổi
   useEffect(() => {
     pageRef.current = pageFromUrl
     limitRef.current = limitFromUrl
@@ -66,10 +54,6 @@ export default function QrcodeManagement() {
     toDateRef.current = toDateFromUrl
   }, [pageFromUrl, limitFromUrl, searchFromUrl, onlyValidFromUrl, fromDateFromUrl, toDateFromUrl])
 
-  // const savedPageRef = useRef(pageFromUrl)
-  // const savedLimitRef = useRef(limitFromUrl)
-
-  // Update URL khi filter thay đổi
   useEffect(() => {
     const newParams: Record<string, string> = {
       page: '1',
@@ -107,18 +91,21 @@ export default function QrcodeManagement() {
     }
   })
 
+  // ✅ FIX: Thêm watchUpdate để theo dõi thay đổi status
   const {
     register: registerUpdate,
     handleSubmit: handleSubmitUpdate,
     formState: { errors: updateErrors },
-    reset: resetUpdate
+    reset: resetUpdate,
+    watch: watchUpdate
   } = useForm<UpdateQrFormData>({
     resolver: yupResolver(updateQrSchema) as Resolver<UpdateQrFormData>
   })
 
+  const statusWatch = watchUpdate('status')
+
   const maxEntries = watch('maxEntries')
 
-  // Lấy danh sách guest QR
   const {
     data: qrListData,
     refetch,
@@ -150,7 +137,6 @@ export default function QrcodeManagement() {
   const totalElements = qrListData?.data?.totalElements || 0
   const totalPages = qrListData?.data?.totalPages || 1
 
-  // Thống kê
   const activeCount = displayData.filter((qr: Qrcodes) => qr.isActive && qr.maxEntries !== qr.usedEntries).length
   const expiredToday = displayData.filter((qr: Qrcodes) => {
     const daynow = new Date()
@@ -158,7 +144,6 @@ export default function QrcodeManagement() {
     return daynow >= day
   }).length
 
-  // Mutations
   const updateQrMutation = useMutation({
     mutationFn: ({ id, body }: { id: string; body: BodyCreateQrcode }) => QRCodeApi.updateGuestQr(id, body),
     onSuccess: () => {
@@ -225,8 +210,10 @@ export default function QrcodeManagement() {
     return date.toISOString().slice(0, 16)
   }
 
+  // ✅ FIX: Cập nhật onSubmitUpdate - xử lý status REVOKED
   const onSubmitUpdate = (data: UpdateQrFormData) => {
     if (!selectedQr) return
+
     const updateData = {
       visitorName: data.visitorName,
       visitorPhone: data.visitorPhone,
@@ -234,7 +221,9 @@ export default function QrcodeManagement() {
       validFrom: new Date(data.validFrom).toISOString(),
       validTo: new Date(data.validTo).toISOString(),
       maxEntries: data.maxEntries,
-      status: data.status
+      status: data.status,
+      // ✅ Gửi flag revoke nếu backend hỗ trợ
+      isRevoked: data.status === 'REVOKED'
     }
     updateQrMutation.mutate({ id: selectedQr.id, body: updateData })
   }
@@ -267,28 +256,45 @@ export default function QrcodeManagement() {
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} - ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
   }
 
+  // ✅ FIX: Cập nhật getStatusBadge - kiểm tra đúng thứ tự
   const getStatusBadge = (qr: Qrcodes) => {
     const currentDate = new Date()
     const validToDate = new Date(qr.validTo)
 
+    // ✅ Kiểm tra REVOKED trước
     if (qr.isRevoked) {
       return (
-        <span className='px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-700'>
+        <span className='px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-700 flex items-center gap-1'>
+          <span className='material-symbols-outlined text-xs'>block</span>
           REVOKED
         </span>
       )
     }
 
-    if (qr.usedEntries >= qr.maxEntries && currentDate <= validToDate) {
+    // ✅ Kiểm tra hết hạn
+    if (currentDate > validToDate) {
       return (
-        <span className='px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-500'>
+        <span className='px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-orange-100 text-orange-700 flex items-center gap-1'>
+          <span className='material-symbols-outlined text-xs'>schedule</span>
           EXPIRED
         </span>
       )
     }
 
+    // ✅ Kiểm tra lượt vào hết
+    if (qr.usedEntries >= qr.maxEntries) {
+      return (
+        <span className='px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 flex items-center gap-1'>
+          <span className='material-symbols-outlined text-xs'>done_all</span>
+          FULL
+        </span>
+      )
+    }
+
+    // ✅ ACTIVE
     return (
-      <span className='px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-700'>
+      <span className='px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-700 flex items-center gap-1'>
+        <span className='material-symbols-outlined text-xs'>check_circle</span>
         ACTIVE
       </span>
     )
@@ -299,7 +305,6 @@ export default function QrcodeManagement() {
     return (qr.usedEntries / qr.maxEntries) * 100
   }
 
-  // Reset filters
   const handleResetFilters = () => {
     setSearchInput('')
     setOnlyValidFilter(false)
@@ -364,7 +369,6 @@ export default function QrcodeManagement() {
         {/* QR List Section */}
         <section className='bg-surface-container-lowest rounded-[2rem] overflow-hidden shadow-sm'>
           <div className='p-6 border-b border-surface-container'>
-            {/* Hàng 1: Tiêu đề và nút xóa bộ lọc */}
             <div className='flex flex-wrap items-center justify-between gap-4 mb-4'>
               <h3 className='text-xl font-bold text-on-surface'>Danh sách mã QR khách</h3>
               <button
@@ -376,9 +380,7 @@ export default function QrcodeManagement() {
               </button>
             </div>
 
-            {/* Hàng 2: Các bộ lọc */}
             <div className='flex flex-wrap items-center gap-3'>
-              {/* Search */}
               <div className='flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full flex-1 min-w-[200px]'>
                 <span className='material-symbols-outlined text-slate-400 text-lg'>search</span>
                 <input
@@ -395,7 +397,6 @@ export default function QrcodeManagement() {
                 )}
               </div>
 
-              {/* OnlyValid filter */}
               <label className='flex items-center gap-2 cursor-pointer px-3 py-2 bg-surface-container-low rounded-full'>
                 <input
                   type='checkbox'
@@ -733,7 +734,6 @@ export default function QrcodeManagement() {
       {isUpdateModalOpen && selectedQr && (
         <div className='fixed inset-0 bg-on-secondary-container/10 backdrop-blur-sm z-[60] flex items-center justify-center p-4'>
           <div className='w-full max-w-lg bg-surface-container-lowest rounded-xl overflow-hidden shadow-[0_32px_64px_0_rgba(68,93,128,0.08)] relative'>
-            {/* Header - giảm padding */}
             <div className='px-5 pt-4 pb-2 border-b border-outline-variant/10'>
               <div className='flex justify-between items-center'>
                 <h3 className='text-xl font-extrabold text-on-surface tracking-tight'>Cập nhật mã QR</h3>
@@ -791,7 +791,6 @@ export default function QrcodeManagement() {
                     />
                   </div>
 
-                  {/* Thời gian hiệu lực */}
                   <div className='col-span-2'>
                     <div className='bg-surface-container-low rounded-xl p-3 border border-outline-variant/5'>
                       <label className='block text-[10px] font-bold tracking-widest text-on-surface-variant uppercase mb-2'>
@@ -835,24 +834,62 @@ export default function QrcodeManagement() {
                     />
                   </div>
 
+                  {/* ✅ FIX: Status dropdown với warning/info messages */}
                   <div className='col-span-2'>
-                    <label className='block text-[10px] font-bold tracking-widest text-on-surface-variant uppercase mb-1'>
+                    <label className='block text-[10px] font-bold tracking-widest text-on-surface-variant uppercase mb-2'>
                       Trạng thái
                     </label>
-                    <select
-                      {...registerUpdate('status')}
-                      className='w-full bg-surface-container-low border-none rounded-lg px-3 py-2 text-sm focus:ring-1 '
-                    >
-                      <option value='ACTIVE'>✅ Đang hoạt động</option>
-                      <option value='EXPIRED'>⏰ Đã hết hạn</option>
-                      <option value='REVOKED'>🔒 Đã thu hồi</option>
-                    </select>
-                    {updateErrors.status && <p className='text-red-500 text-xs mt-1'>{updateErrors.status.message}</p>}
+                    <div className='relative'>
+                      <select
+                        {...registerUpdate('status')}
+                        className='w-full bg-surface-container-low border-none rounded-lg px-3 py-3 text-sm focus:ring-1 focus:ring-primary appearance-none cursor-pointer'
+                      >
+                        <option value='ACTIVE'>✅ Đang hoạt động</option>
+                        <option value='EXPIRED'>⏰ Đã hết hạn</option>
+                        <option value='REVOKED'>🔒 Đã thu hồi</option>
+                      </select>
+                      <span className='material-symbols-outlined absolute right-3 top-3 text-on-surface-variant pointer-events-none text-lg'>
+                        arrow_drop_down
+                      </span>
+                    </div>
+
+                    {/* ✅ Warning khi chọn REVOKED */}
+                    {statusWatch === 'REVOKED' && (
+                      <div className='mt-2 p-3 bg-red-100/50 border border-red-200 rounded-lg flex items-start gap-2'>
+                        <span className='material-symbols-outlined text-red-600 text-base flex-shrink-0'>warning</span>
+                        <p className='text-xs text-red-700'>
+                          ⚠️ Sau khi thu hồi, mã QR này sẽ không còn hoạt động. Ảnh QR cũ sẽ bị từ chối khi quét.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* ✅ Info khi chọn EXPIRED */}
+                    {statusWatch === 'EXPIRED' && (
+                      <div className='mt-2 p-3 bg-orange-100/50 border border-orange-200 rounded-lg flex items-start gap-2'>
+                        <span className='material-symbols-outlined text-orange-600 text-base flex-shrink-0'>info</span>
+                        <p className='text-xs text-orange-700'>
+                          ℹ️ Mã QR đã hết hạn. Khách không thể truy cập bằng mã này. Tạo mã QR mới để cấp quyền tiếp.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* ✅ Info khi chọn ACTIVE */}
+                    {statusWatch === 'ACTIVE' && (
+                      <div className='mt-2 p-3 bg-green-100/50 border border-green-200 rounded-lg flex items-start gap-2'>
+                        <span className='material-symbols-outlined text-green-600 text-base flex-shrink-0'>
+                          check_circle
+                        </span>
+                        <p className='text-xs text-green-700'>
+                          ✓ Mã QR đang hoạt động bình thường. Khách có thể truy cập.
+                        </p>
+                      </div>
+                    )}
+
+                    {updateErrors.status && <p className='text-red-500 text-xs mt-2'>{updateErrors.status.message}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Footer */}
               <div className='px-5 pb-5 pt-3 flex items-center justify-end gap-3 border-t border-outline-variant/10'>
                 <button
                   type='button'
@@ -875,7 +912,6 @@ export default function QrcodeManagement() {
               </div>
             </form>
 
-            {/* Decoration - nhỏ hơn */}
             <div className='absolute -top-20 -right-20 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none' />
             <div className='absolute -bottom-20 -left-20 w-32 h-32 bg-secondary-fixed/10 rounded-full blur-3xl pointer-events-none' />
           </div>
