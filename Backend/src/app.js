@@ -23,4 +23,10 @@ app.get("/", (req, res) => {
   res.status(200).json({ message: "Chào mừng đến với API của HOMELINK AI" });
 });
 
+app.use('/uploads', (req, res, next) => {
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Access-Control-Allow-Origin', '*');
+  next();
+}, express.static('uploads'));
+
 module.exports = app;

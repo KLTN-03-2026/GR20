@@ -11,7 +11,13 @@ export default defineConfig((mode : any) => {
       __APP_ENV__: JSON.stringify(env.APP_ENV),
     },
     server: {
-      port: 3000
+      port: 3000,
+      proxy: {
+        '/uploads': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        }
+      }
     },
     css: {
       devSourcemap: true

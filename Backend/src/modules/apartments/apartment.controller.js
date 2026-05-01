@@ -278,6 +278,39 @@ const updateResident = async (req, res) => {
   }
 };
 
+// GET MY APARTMENT - Cư dân xem căn hộ cá nhân
+const getMyApartment = async (req, res) => {
+  try {
+    const userId = req.user?.id || 1; // Tạm dùng user 1, sau lấy từ JWT
+    
+    const result = await pool.query(`
+      SELECT a.*, b.name as building_name, f.floor_number,
+        json_build_object('id', owner.id, 'fullName', owner.full_name, 'phone', owner.phone, 'email', owner.email, 'avatarUrl', owner.avatar_url) as owner,
+        COALESCE((SELECT json_agg(json_build_object('id', rp.id, 'fullName', u.full_name, 'phone', u.phone, 'relationship', rp.relationship, 'moveInDate', rp.move_in_date))
+          FROM resident_profiles rp JOIN users u ON rp.user_id = u.id
+          WHERE rp.apartment_id = a.id AND rp.status = 'ACTIVE'), '[]'::json) as residents,
+        (SELECT json_build_object('id', c.id, 'contractType', c.contract_type, 'status', c.status, 'startDate', c.start_date, 'endDate', c.end_date, 'monthlyRent', c.monthly_rent)
+          FROM contracts c WHERE c.apartment_id = a.id AND c.status = 'ACTIVE' LIMIT 1) as "currentContract"
+      FROM apartments a
+      LEFT JOIN buildings b ON a.building_id = b.id
+      LEFT JOIN floors f ON a.floor_id = f.id
+      LEFT JOIN users owner ON a.owner_user_id = owner.id
+      WHERE a.id = (
+        SELECT apartment_id FROM resident_profiles WHERE user_id = $1 AND status = 'ACTIVE' LIMIT 1
+      )
+    `, [userId]);
+
+    if (result.rows.length === 0) {
+      return res.json({ operationType: "Success", data: null });
+    }
+
+    res.json({ operationType: "Success", data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 module.exports = {
   createApartment,
   getAllApartments,
@@ -291,4 +324,5 @@ module.exports = {
   getAvailableApartments,
   moveOutResident,
   updateResident,
+  getMyApartment,
 };

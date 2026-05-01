@@ -35,6 +35,8 @@ router.get("/", controller.getAllApartments);
 router.get('/stats', controller.getStats);
 router.get('/available', controller.getAvailableApartments);
 router.post('/:id/residents', controller.addResident);
+// 🆕 API cho cư dân xem căn hộ của mình
+router.get('/my', controller.getMyApartment);
 
 // Filter
 router.get("/building/:buildingId", controller.getByBuilding);

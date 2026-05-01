@@ -8,6 +8,8 @@ import ApartmentDetail from './pages/Apartments/ApartmentDetail'
 import Analytics from './pages/Analytics/Analytics';
 import ContractList from './pages/Contracts/ContractList';
 import ContractDetail from './pages/Contracts/ContractDetail';
+import MyApartment from './pages/MyApartment/MyApartment';
+import MyContract from './pages/MyApartment/MyContract';
 //tạo cái component để kiểm tra người dùng login chưa
 
 function ProtecdRouter() {
@@ -63,7 +65,15 @@ export default function useRouteElements() {
     {
       path: '/contracts/:id',
       element: <ContractDetail />
-    }
+    },
+    {
+      path: '/my-apartment', 
+      element: <MyApartment /> 
+    },
+    { 
+      path: '/my-contract', 
+      element: <MyContract /> 
+    },
   ])
   return routeElements
 }
