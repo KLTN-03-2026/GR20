@@ -50,6 +50,9 @@ export const residentApi = {
 
 // Dùng cho luồng user payment (nhẹ hơn)
 export const residentsApi = {
+  getMyApartments() {
+    return http.get<SuccessResponseApi<UserApartment[]>>(`${URL}/me/apartments`)
+  },
   getUserApartments(userId: string | number) {
     return http.get<SuccessResponseApi<UserApartment[]>>(`${URL}/user/${userId}/apartments`)
   }

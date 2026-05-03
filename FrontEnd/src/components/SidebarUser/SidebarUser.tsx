@@ -27,13 +27,37 @@ export default function SidebarUser() {
           </Link>
           <Link
             className='flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            to='/my-apartment'
+          >
+            <span className='material-symbols-outlined'>apartment</span>
+            <span className='text-sm font-manrope'>My Apartment</span>
+          </Link>
+          <Link
+            className='flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            to='/my-contract'
+          >
+            <span className='material-symbols-outlined'>description</span>
+            <span className='text-sm font-manrope'>Hợp đồng</span>
+          </Link>
+          <Link
+            className='flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
             to='/maintenance'
           >
             <span className='material-symbols-outlined'>build</span>
             <span className='text-sm font-manrope'>Maintenance</span>
           </Link>
+          <div className='px-4 pt-4'>
+            <p className='text-[10px] font-bold uppercase tracking-widest text-slate-400'>Billing &amp; Finance</p>
+          </div>
           <Link
-            className='flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            className='flex items-center space-x-3 px-8 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            to='/invoices'
+          >
+            <span className='material-symbols-outlined'>receipt_long</span>
+            <span className='text-sm font-manrope'>Invoices</span>
+          </Link>
+          <Link
+            className='flex items-center space-x-3 px-8 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
             to='/payments'
           >
             <span className='material-symbols-outlined'>payments</span>
@@ -46,12 +70,29 @@ export default function SidebarUser() {
             <span className='material-symbols-outlined'>qr_code_2</span>
             <span className='text-sm font-manrope'>Access</span>
           </Link>
+          <div className='px-4 pt-4'>
+            <p className='text-[10px] font-bold uppercase tracking-widest text-slate-400'>Utilities</p>
+          </div>
           <Link
-            className='flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
-            to='/utilities'
+            className='flex items-center space-x-3 px-8 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            to='/my-utility-meters'
           >
-            <span className='material-symbols-outlined'>apartment</span>
-            <span className='text-sm font-manrope'>Utilities</span>
+            <span className='material-symbols-outlined'>speed</span>
+            <span className='text-sm font-manrope'>Meters</span>
+          </Link>
+          <Link
+            className='flex items-center space-x-3 px-8 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            to='/my-meter-readings'
+          >
+            <span className='material-symbols-outlined'>insights</span>
+            <span className='text-sm font-manrope'>Meter Readings</span>
+          </Link>
+          <Link
+            className='flex items-center space-x-3 px-8 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            to='/utility-pricing'
+          >
+            <span className='material-symbols-outlined'>sell</span>
+            <span className='text-sm font-manrope'>Pricing</span>
           </Link>
           <Link
             className='flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'

@@ -70,6 +70,16 @@ const getFloorById = async (id) => {
   return result.rows[0];
 };
 
+const getFloorsByBuildingId = async (buildingId) => {
+  const query = `
+    SELECT * FROM floors
+    WHERE building_id = $1 AND deleted_at IS NULL
+    ORDER BY floor_number ASC NULLS LAST, id ASC
+  `;
+  const result = await pool.query(query, [buildingId]);
+  return result.rows;
+};
+
 
 // ================= UPDATE =================
 const updateFloor = async (id, floor) => {
@@ -138,6 +148,7 @@ module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
+  getFloorsByBuildingId,
   updateFloor,
   deleteFloor,
 };

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import HeaderProtect from 'src/components/HeaderProtect/HeaderProtect'
 import SidebarProtect from 'src/components/SidebarProtect.tsx/SidebarProtect'
 
@@ -7,11 +7,14 @@ interface Props {
 }
 
 export default function DashboardLayoutProtect({ children }: Props) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const sidebarWidthClass = isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
+
   return (
     <div className='bg-surface text-on-surface min-h-screen flex'>
-      <SidebarProtect />
-      <div className='flex-1 lg:ml-64 w-full'>
-        <HeaderProtect />
+      <SidebarProtect collapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed((v) => !v)} />
+      <div className={`flex-1 w-full ${sidebarWidthClass}`}>
+        <HeaderProtect sidebarCollapsed={isSidebarCollapsed} />
         <main className='mt-20 px-6 py-4 max-w-screen-2xl mx-auto'>{children}</main>
       </div>
     </div>

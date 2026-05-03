@@ -80,6 +80,25 @@ const getFloorById = async (req, res) => {
 };
 
 
+// ================= GET BY BUILDING =================
+const getFloorsByBuildingId = async (req, res) => {
+  try {
+    const data = await service.getFloorsByBuildingId(req.params.buildingId);
+
+    res.json({
+      operationType: "Success",
+      message: "success",
+      code: "OK",
+      data,
+      size: data.length,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+};
+
+
 // ================= UPDATE =================
 const updateFloor = async (req, res) => {
   try {
@@ -120,6 +139,7 @@ module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
+  getFloorsByBuildingId,
   updateFloor,
   deleteFloor,
 };

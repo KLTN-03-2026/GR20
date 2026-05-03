@@ -1,5 +1,3 @@
-console.log("🔥 ĐANG CHẠY FILE SERVICE NÀY");
-
 const repo = require("./building.repository");
 const mapper = require("./building.mapper");
 const { AppError } = require("../../common/app-error");
@@ -21,9 +19,9 @@ const createBuilding = async (reqBody) => {
 };
 
 const getAllBuildings = async (query) => {
-  const { page, size } = parseBuildingPagination(query);
+  const { page, size, search, status } = parseBuildingPagination(query);
 
-  const result = await repo.getAllBuildings({ page, size });
+  const result = await repo.getAllBuildings({ page, size, search, status });
 
   return {
     data: result.rows.map(mapper.toResponse),

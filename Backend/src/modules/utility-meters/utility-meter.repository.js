@@ -57,7 +57,11 @@ const getUtilityMeterById = async (id) => {
 };
 
 const getUtilityMetersByUserId = async ({ userId, page = 0, size = 10, meterType, status } = {}) => {
-  const conditions = [`rp.user_id = $1`, `rp.move_out_date IS NULL`];
+  const conditions = [
+    `rp.user_id = $1`,
+    `rp.move_out_date IS NULL`,
+    `COALESCE(NULLIF(trim(um.status::text), ''), 'ACTIVE') <> 'INACTIVE'`,
+  ];
   const values = [userId];
   let index = 2;
 
@@ -84,9 +88,14 @@ const getUtilityMetersByUserId = async ({ userId, page = 0, size = 10, meterType
   const offset = page * size;
   const result = await pool.query(
     `
-      SELECT um.*
+      SELECT
+        um.*,
+        a.apartment_code AS apartment_code,
+        b.name AS building_name
       FROM utility_meters um
       JOIN resident_profiles rp ON rp.apartment_id = um.apartment_id
+      LEFT JOIN apartments a ON a.id = um.apartment_id
+      LEFT JOIN buildings b ON b.id = a.building_id
       ${whereClause}
       ORDER BY um.id DESC
       LIMIT $${index++} OFFSET $${index++}
@@ -99,12 +108,18 @@ const getUtilityMetersByUserId = async ({ userId, page = 0, size = 10, meterType
 const getUtilityMeterByUserAndId = async ({ userId, meterId }) => {
   const result = await pool.query(
     `
-      SELECT um.*
+      SELECT
+        um.*,
+        a.apartment_code AS apartment_code,
+        b.name AS building_name
       FROM utility_meters um
       JOIN resident_profiles rp ON rp.apartment_id = um.apartment_id
+      LEFT JOIN apartments a ON a.id = um.apartment_id
+      LEFT JOIN buildings b ON b.id = a.building_id
       WHERE rp.user_id = $1
         AND rp.move_out_date IS NULL
         AND um.id = $2
+        AND COALESCE(NULLIF(trim(um.status::text), ''), 'ACTIVE') <> 'INACTIVE'
       LIMIT 1
     `,
     [userId, meterId]

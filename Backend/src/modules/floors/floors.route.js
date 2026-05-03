@@ -11,6 +11,9 @@ router.post("/", controller.createFloor);
 // GET ALL (có pagination: ?page=0&size=10)
 router.get("/", controller.getAllFloors);
 
+// Phải khai báo TRƯỚC "/:id" để không bị coi là id
+router.get("/building/:buildingId", controller.getFloorsByBuildingId);
+
 // GET BY ID
 router.get("/:id", controller.getFloorById);
 

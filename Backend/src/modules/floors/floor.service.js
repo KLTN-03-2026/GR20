@@ -49,6 +49,16 @@ const getFloorById = async (id) => {
 };
 
 
+const getFloorsByBuildingId = async (buildingId) => {
+  const Bid = Number(buildingId);
+  if (!Number.isFinite(Bid)) {
+    throw new AppError(400, "Invalid building id");
+  }
+  const rows = await repo.getFloorsByBuildingId(Bid);
+  return mapper.toListResponse(rows);
+};
+
+
 // ================= UPDATE =================
 const updateFloor = async (id, reqBody) => {
   const parsed = parseUpdateFloor(reqBody);
@@ -82,6 +92,7 @@ module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
+  getFloorsByBuildingId,
   updateFloor,
   deleteFloor,
 };

@@ -1,6 +1,6 @@
 'use client'
 import { useMutation } from '@tanstack/react-query'
-import { useContext, useState } from 'react'
+import { useContext } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -8,6 +8,7 @@ import { loginApi } from 'src/apis/Login/login.api'
 import Input from 'src/components/Input' // Đường dẫn tới component Input của bạn
 import { AppContext } from 'src/contexts/app.context'
 import type { ErrorResponseApi } from 'src/types/utils.type'
+import { getPostLoginRedirectPath } from 'src/utils/postLoginRedirect'
 import { isAxiosUnprocessableEntityError } from 'src/utils/utils'
 
 interface FormData {
@@ -32,16 +33,12 @@ export default function Login() {
 
   const onSubmit = handleSubmit((data) => {
     loginAccountMutation.mutate(data, {
-      onSuccess: (data) => {
+      onSuccess: (res) => {
         toast.success('Đăng nhập thành công')
         SetIsAuthenticated(true)
-        setUser(data.data.data.user)
-        navigate('/')
-
-        // Xử lý sau khi đăng nhập thành công
-        // localStorage.setItem('access_token', data.data?.data?.access_token)
-        // setProfile(data.data.data.user)
-        // navigate('/')
+        const user = res.data.data.user
+        setUser(user)
+        navigate(getPostLoginRedirectPath(user))
       },
       onError: (errors) => {
         // Xử lý lỗi từ server
