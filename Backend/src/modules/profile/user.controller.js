@@ -1,4 +1,16 @@
 const service = require("./user.service");
+const { AppError } = require("../../common/app-error");
+
+const sendError = (res, err, fallbackStatus = 500) => {
+  if (err instanceof AppError) {
+    const body = { message: err.message };
+    if (err.details !== undefined) {
+      body.details = err.details;
+    }
+    return res.status(err.statusCode).json(body);
+  }
+  return res.status(fallbackStatus).json({ message: err.message });
+};
 
 const getUserById = async (req, res) => {
   try {
@@ -12,9 +24,7 @@ const getUserById = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(404).json({
-      message: err.message,
-    });
+    sendError(res, err, 404);
   }
 };
 
@@ -30,9 +40,7 @@ const createUser = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -44,14 +52,11 @@ const getAllUsers = async (req, res) => {
       operationType: "Success",
       message: "Get user list successfully",
       code: "OK",
-      data:result.data,
-      pagination:result.pagination,
+      ...result,
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 
@@ -67,7 +72,23 @@ const updateUser = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
+  }
+};
+
+const changeUserRole = async (req, res) => {
+  try {
+    const data = await service.changeUserRole(req.params.id, req.body.roleName);
+
+    res.json({
+      operationType: "Success",
+      message: "Change user role successfully",
+      code: "OK",
+      data,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    sendError(res, err);
   }
 };
 
@@ -83,7 +104,7 @@ const deleteUser = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(404).json({ message: err.message });
+    sendError(res, err, 404);
   }
 };
 
@@ -101,9 +122,7 @@ const getMe = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(404).json({
-      message: err.message,
-    });
+    sendError(res, err, 404);
   }
 };
 
@@ -121,9 +140,7 @@ const updateMe = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(400).json({
-      message: err.message,
-    });
+    sendError(res, err, 400);
   }
 };
 
@@ -190,9 +207,7 @@ const changePassword = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(400).json({
-      message: err.message,
-    });
+    sendError(res, err, 400);
   }
 };
 
@@ -217,10 +232,8 @@ const uploadAvatar = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(400).json({
-      message: err.message,
-    });
+    sendError(res, err, 400);
   }
 };
 
-module.exports = { getMe,getUserById,createUser,getAllUsers,updateUser,deleteUser,updateMe,changePassword,uploadAvatar };
+module.exports = { getMe,getUserById,createUser,getAllUsers,updateUser,changeUserRole,deleteUser,updateMe,changePassword,uploadAvatar };

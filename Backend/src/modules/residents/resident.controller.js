@@ -95,6 +95,31 @@ const getUserApartments = async (req, res) => {
   }
 };
 
+const getMyApartments = async (req, res) => {
+  try {
+    const userId = req.user?.sub;
+    if (!userId) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+    const data = await service.getUserApartments(String(userId));
+
+    res.json({
+      operationType: "Success",
+      message: "Get user apartments successfully",
+      code: "OK",
+      data,
+      size: data.length,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
 const updateResident = async (req, res) => {
   try {
     const data = await service.updateResident(req.params.id, req.body);
@@ -139,6 +164,7 @@ module.exports = {
   getResidentById,
   getResidentsByApartmentId,
   getUserApartments,
+  getMyApartments,
   updateResident,
   deleteResident,
 };

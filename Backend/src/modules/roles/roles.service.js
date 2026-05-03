@@ -11,14 +11,26 @@ const saveRole = async (reqBody) => {
 };
 
 const getAllRoles = async (query) => {
-  const { page = 0, size = 10, search } = query;
-  const result = await repo.getAllRoles({ page, size, search });
+  const {
+    page = 0,
+    size = 10,
+    search,
+    includeDeleted = "false",
+    status = "active",
+  } = query;
+  const result = await repo.getAllRoles({
+    page: Number(page),
+    size: Number(size),
+    search,
+    includeDeleted: includeDeleted === "true",
+    status,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),
     size: result.rows.length,
     totalElements: result.total,
-    totalPages: Math.ceil(result.total / size),
+    totalPages: Math.ceil(result.total / Number(size || 10)),
     page: Number(page),
     pageSize: Number(size),
   };
@@ -30,7 +42,7 @@ const seedDefaultRoles = async () => {
     { name: "manager", description: "Quản lí" },
     { name: "employee", description: "Nhân viên" },
     { name: "security", description: "Bảo vệ" },
-    { name: "user", description: "Người dùng" },
+    { name: "Người Dùng", description: "Người dùng" },
   ];
 
   const created = [];

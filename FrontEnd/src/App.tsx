@@ -4,7 +4,7 @@ import useRouteElements from './useRouteElements'
 import { useContext, useEffect } from 'react'
 import { localStorageEventTarget } from './utils/auth'
 import { AppContext } from './contexts/app.context'
-
+import 'material-symbols';
 function App() {
   const routeElements = useRouteElements()
   const { reset } = useContext(AppContext)

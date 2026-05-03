@@ -1,11 +1,7 @@
 const repo = require("./floor.repository");
 const mapper = require("./floor.mapper");
 const { AppError } = require("../../common/app-error");
-const {
-  parseCreateFloor,
-  parseUpdateFloor,
-} = require("./floor.request");
-
+const { parseCreateFloor, parseUpdateFloor } = require("./floor.request");
 
 // ================= CREATE =================
 const createFloor = async (reqBody) => {
@@ -18,7 +14,6 @@ const createFloor = async (reqBody) => {
     id: result.id,
   };
 };
-
 
 // ================= GET ALL =================
 const getAllFloors = async (query) => {
@@ -36,7 +31,6 @@ const getAllFloors = async (query) => {
   };
 };
 
-
 // ================= GET BY ID =================
 const getFloorById = async (id) => {
   const data = await repo.getFloorById(id);
@@ -47,7 +41,6 @@ const getFloorById = async (id) => {
 
   return mapper.toResponse(data);
 };
-
 
 // ================= UPDATE =================
 const updateFloor = async (id, reqBody) => {
@@ -63,10 +56,9 @@ const updateFloor = async (id, reqBody) => {
   return mapper.toResponse(updated);
 };
 
-
 // ================= DELETE (SOFT) =================
-const deleteFloor = async (id) => {
-  const deleted = await repo.deleteFloor(id);
+const softDeleteFloor = async (id) => {
+  const deleted = await repo.softDeleteFloor(id);
 
   if (!deleted) {
     throw new AppError(404, "Floor not found");
@@ -74,14 +66,14 @@ const deleteFloor = async (id) => {
 
   return {
     id: deleted.id,
+    isDeleted: deleted.is_deleted,
   };
 };
-
 
 module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
   updateFloor,
-  deleteFloor,
+  softDeleteFloor,
 };

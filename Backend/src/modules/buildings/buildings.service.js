@@ -1,11 +1,11 @@
-console.log("🔥 ĐANG CHẠY FILE SERVICE NÀY");
-
 const repo = require("./building.repository");
 const mapper = require("./building.mapper");
 const { AppError } = require("../../common/app-error");
 const {
   parseCreateBuilding,
   parseUpdateBuilding,
+  parsePathId,
+  parseBuildingPagination,
 } = require("./building.request");
 
 const createBuilding = async (reqBody) => {
@@ -19,9 +19,9 @@ const createBuilding = async (reqBody) => {
 };
 
 const getAllBuildings = async (query) => {
-  const { page = 0, size = 10 } = query;
+  const { page, size, search, status } = parseBuildingPagination(query);
 
-  const result = await repo.getAllBuildings({ page, size });
+  const result = await repo.getAllBuildings({ page, size, search, status });
 
   return {
     data: result.rows.map(mapper.toResponse),
@@ -34,7 +34,8 @@ const getAllBuildings = async (query) => {
 };
 
 const getBuildingById = async (id) => {
-  const data = await repo.getBuildingById(id);
+  const parsedId = parsePathId(id);
+  const data = await repo.getBuildingById(parsedId);
 
   if (!data) {
     throw new AppError(404, "Building not found");
@@ -45,10 +46,11 @@ const getBuildingById = async (id) => {
 
 // UPDATE
 const updateBuilding = async (id, reqBody) => {
+  const parsedId = parsePathId(id);
   const parsed = parseUpdateBuilding(reqBody);
   const entity = mapper.toEntity(parsed);
 
-  const updated = await repo.updateBuilding(id, entity);
+  const updated = await repo.updateBuilding(parsedId, entity);
 
   if (!updated) {
     throw new AppError(404, "Building not found");
@@ -59,7 +61,8 @@ const updateBuilding = async (id, reqBody) => {
 
 // DELETE
 const deleteBuilding = async (id) => {
-  const deleted = await repo.deleteBuilding(id);
+  const parsedId = parsePathId(id);
+  const deleted = await repo.deleteBuilding(parsedId);
 
   if (!deleted) {
     throw new AppError(404, "Building not found");

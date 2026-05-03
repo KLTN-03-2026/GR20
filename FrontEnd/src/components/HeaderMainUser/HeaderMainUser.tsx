@@ -1,14 +1,19 @@
 import { useContext } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AppContext } from 'src/contexts/app.context'
 
 export default function HeaderMainUser() {
+  const concac = useNavigate()
+  const concac2 = () => {
+    concac('/notifications')
+  }
+
   const { user } = useContext(AppContext)
   return (
     <header className='w-full top-0 sticky z-40 bg-surface/80 backdrop-blur-md'>
       <div className='flex justify-between items-center w-full px-6 py-4 max-w-screen-2xl mx-auto'>
         <div className='flex flex-col'>
-          <h2 className='text-xl font-bold font-manrope tracking-tight text-primary'>Chào mừng, {user.name}</h2>
+          <h2 className='text-xl font-bold font-manrope tracking-tight text-primary'>Chào mừng, {user?.name}</h2>
           {/* <p className='text-xs text-on-surface-variant font-medium'>Căn hộ PB23-1505 • Diamond Precinct</p> */}
         </div>
         <div className='flex items-center space-x-4'>
@@ -21,7 +26,10 @@ export default function HeaderMainUser() {
             />
           </div>
 
-          <button className='w-10 h-10 flex items-center justify-center rounded-full hover:bg-secondary-container/20 transition-colors relative'>
+          <button
+            onClick={concac2}
+            className='w-10 h-10 flex items-center justify-center rounded-full hover:bg-secondary-container/20 transition-colors relative'
+          >
             <span className='material-symbols-outlined text-slate-600'>notifications</span>
             <span className='absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface'></span>
           </button>

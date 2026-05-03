@@ -42,6 +42,9 @@ import HomePageSecurity from './pages/HomePageScurity/HomePageScurity'
 import HomePageAdmin from './pages/HomePageAdmin/HomePageAdmin'
 import HomePageStaff from './pages/HomePageStaff/HomePageStaff'
 import HomePageManager from './pages/HomePageManager/HomePageManager'
+import InvoicesPage from './pages/billing/InvoicesPage'
+import UserInvoicesPage from './pages/billing/UserInvoicesPage'
+import UserPaymentsPage from './pages/billing/UserPaymentsPage'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -125,9 +128,9 @@ export default function useRouteElements() {
         {
           index: true,
           element: (
-            <DashboaedLayoutStaff>
+            <DashboardLayoutProtect>
               <Buildings />
-            </DashboaedLayoutStaff>
+            </DashboardLayoutProtect>
           )
         }
       ]
@@ -363,6 +366,34 @@ export default function useRouteElements() {
             <DashboardLayoutProtect>
               <HistoryQrcode />
             </DashboardLayoutProtect>
+          )
+        }
+      ]
+    },
+    {
+      path: '/UserInvoicesPage',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <UserInvoicesPage />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
+    },
+    {
+      path: '/UserPaymentsPage',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <UserPaymentsPage />
+            </DashboardLayoutUser>
           )
         }
       ]

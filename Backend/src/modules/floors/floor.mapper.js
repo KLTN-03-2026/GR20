@@ -9,7 +9,6 @@ const toEntity = (req) => {
   };
 };
 
-
 // ================= RESPONSE (DB → API RESPONSE) =================
 const toResponse = (row) => {
   if (!row) return null;
@@ -20,16 +19,14 @@ const toResponse = (row) => {
     floorNumber: row.floor_number,
     name: row.name,
     createdAt: row.created_at,
-    deletedAt: row.deleted_at || null,
+    isDeleted: row.is_deleted,
   };
 };
-
 
 // ================= LIST RESPONSE =================
 const toListResponse = (rows) => {
   return rows.map(toResponse);
 };
-
 
 module.exports = {
   toEntity,
