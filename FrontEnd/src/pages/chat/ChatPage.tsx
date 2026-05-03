@@ -4,21 +4,28 @@ import { chatApi } from '../../apis/chat_api/chat.api'
 import { AppContext } from '../../contexts/app.context'
 import { useChatSocket } from '../../hooks/useChatSocket'
 import { toast } from 'react-toastify'
+import config from '../../contexts/config'
 
 export default function ChatPage() {
   const { user } = useContext(AppContext)
   const currentUserId = Number(user?._id || user?.id)
   const socket = useChatSocket(currentUserId)
-  const queryClient = useQueryClient() // Dùng để refresh data
+  const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<'chats' | 'directory'>('chats')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentRoomId, setCurrentRoomId] = useState<number | null>(null)
   const [currentChatUser, setCurrentChatUser] = useState<any>(null)
+  const [selectedModalImage, setSelectedModalImage] = useState<string | null>(null)
 
   const [messages, setMessages] = useState<any[]>([])
   const [messageContent, setMessageContent] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // --- STATE MỚI CHO SỬA/XÓA ---
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
+  const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -28,136 +35,174 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // Lắng nghe tin nhắn mới
+  // Lắng nghe các sự kiện Socket
   useEffect(() => {
-    if (socket) {
-      socket.on('receive_message', (newMessage) => {
-        if (Number(newMessage.roomId) === Number(currentRoomId)) {
-          setMessages((prev) => [...prev, newMessage])
-        }
-        // Refresh lại danh sách Inbox bên trái để nó đẩy người vừa nhắn lên đầu
-        queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
-      })
-    }
+    if (!socket) return
+
+    socket.on('receive_message', (newMessage) => {
+      if (Number(newMessage.roomId) === Number(currentRoomId)) {
+        setMessages((prev) => [...prev, newMessage])
+      }
+      queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
+    })
+
+    // SỰ KIỆN: Cập nhật tin nhắn (Sửa)
+    socket.on('message_updated', (updatedMsg) => {
+      if (Number(updatedMsg.roomId) === Number(currentRoomId)) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === updatedMsg.id ? { ...msg, content: updatedMsg.content, updatedAt: updatedMsg.updatedAt } : msg
+          )
+        )
+      }
+    })
+
+    // SỰ KIỆN: Xóa tin nhắn (Thu hồi)
+    socket.on('message_deleted', (deletedMsg) => {
+      if (Number(deletedMsg.roomId) === Number(currentRoomId)) {
+        setMessages((prev) => prev.map((msg) => (msg.id === deletedMsg.id ? { ...msg, isDeleted: true } : msg)))
+      }
+    })
+
     return () => {
-      socket?.off('receive_message')
+      socket.off('receive_message')
+      socket.off('message_updated')
+      socket.off('message_deleted')
     }
   }, [socket, currentRoomId, queryClient])
 
-  // API 1: Lấy danh bạ (Giữ nguyên)
+  // API Calls
   const { data: directoryData, isLoading: isLoadingDirectory } = useQuery({
     queryKey: ['chatDirectory', searchQuery],
     queryFn: () => chatApi.getDirectory(searchQuery),
     enabled: activeTab === 'directory'
   })
 
-  // --- API MỚI 1: Lấy danh sách Inbox (Cuộc trò chuyện cũ) ---
   const { data: inboxData, isLoading: isLoadingInbox } = useQuery({
     queryKey: ['chatInbox'],
     queryFn: chatApi.getInboxList,
-    enabled: activeTab === 'chats' // Chỉ gọi khi ở tab Cuộc trò chuyện
+    enabled: activeTab === 'chats'
   })
 
-  // --- API MỚI 2: Lấy Lịch sử tin nhắn khi click vào 1 phòng ---
   const { data: historyData, isLoading: isLoadingHistory } = useQuery({
     queryKey: ['chatHistory', currentRoomId],
     queryFn: () => chatApi.getMessageHistory(currentRoomId!),
     enabled: !!currentRoomId
   })
 
-  // Dùng useEffect để cập nhật messages khi lấy được lịch sử chat
   useEffect(() => {
-    if (historyData) {
-      setMessages(historyData)
-    }
+    if (historyData) setMessages(historyData)
   }, [historyData])
 
-  // API: Bấm vào danh bạ để tạo/mở phòng chat 1-1
   const initPrivateChatMutation = useMutation({
     mutationFn: chatApi.initPrivateChat,
     onSuccess: (res, variables) => {
       const roomId = res.roomId
       setCurrentRoomId(roomId)
       setActiveTab('chats')
-
       const targetUser = directoryData?.find((u: any) => Number(u.userId) === Number(variables))
       if (targetUser) setCurrentChatUser(targetUser)
-
       if (socket) socket.emit('join_room', roomId)
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Lỗi tạo phòng')
-    }
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Lỗi kết nối phòng chat')
   })
 
-  // Xử lý khi click vào 1 người trong Danh bạ
   const handleStartChatFromDirectory = (targetUserId: any) => {
     const targetIdNum = Number(targetUserId)
     if (targetIdNum === currentUserId) return
     initPrivateChatMutation.mutate(targetIdNum)
   }
 
-  // Xử lý khi click vào 1 phòng chat có sẵn trong Inbox
   const handleSelectInboxRoom = (room: any) => {
     setCurrentRoomId(room.roomId)
-
     if (room.type === 'building' || room.type === 'group') {
-      // Nếu là nhóm chung, tự tạo object ảo để UI hiển thị được Header
       setCurrentChatUser({
-        userId: 'group', // ID ảo
+        userId: 'group',
         nickname: room.name,
-        roleName: 'Nhóm cư dân chung',
+        roleName: 'Nhóm cộng đồng',
         avatarUrl: room.avatar,
-        isGroup: true // Cờ đánh dấu đây là chat nhóm
+        isGroup: true
       })
     } else {
-      // Nếu là 1-1 thì lấy thông tin người kia như bình thường
       setCurrentChatUser(room.chatWithUser)
     }
-
     if (socket) socket.emit('join_room', room.roomId)
   }
+
+  // --- NÂNG CẤP HÀM GỬI/SỬA TIN NHẮN ---
   const handleSendMessage = () => {
     if (!socket || !currentRoomId || !messageContent.trim()) return
 
-    const data = {
-      roomId: currentRoomId,
-      content: messageContent
+    if (editingMessageId) {
+      // Đang ở chế độ SỬA
+      socket.emit('edit_message', {
+        roomId: currentRoomId,
+        messageId: editingMessageId,
+        newContent: messageContent
+      })
+      setEditingMessageId(null) // Tắt chế độ sửa
+    } else {
+      // Chế độ GỬI MỚI
+      socket.emit('send_message', {
+        roomId: currentRoomId,
+        content: messageContent
+      })
     }
 
-    socket.emit('send_message', data)
     setMessageContent('')
-    // Gửi xong thì refresh lại inbox để cái chat này nhảy lên đầu
     queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
   }
 
-  const getInitials = (name: string) => {
-    if (!name) return 'UN'
-    const words = name.split(' ')
-    return words.length >= 2
-      ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
-      : name.substring(0, 2).toUpperCase()
+  // --- HÀM THU HỒI TIN NHẮN ---
+  const handleDeleteMessage = (messageId: number) => {
+    if (window.confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) {
+      if (socket) socket.emit('delete_message', { roomId: currentRoomId, messageId })
+    }
   }
 
-  // Format giờ đẹp để hiển thị tin nhắn cuối (VD: 14:30)
+  // Khởi động chế độ sửa tin nhắn
+  const handleStartEdit = (msg: any) => {
+    setEditingMessageId(msg.id)
+    setMessageContent(msg.content)
+  }
+
+  const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentRoomId) return
+    try {
+      toast.info('Đang tải ảnh lên...')
+      await chatApi.uploadFileMessage(currentRoomId, file)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Lỗi gửi hình ảnh')
+    }
+  }
+
+  const getInitials = (name: string) => {
+    if (!name) return '?'
+    const words = name.split(' ')
+    return words.length >= 2 ? (words[0][0] + words[words.length - 1][0]).toUpperCase() : name.slice(0, 2).toUpperCase()
+  }
+
   const formatTime = (dateString: string) => {
     if (!dateString) return ''
     return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
-    <div className='min-h-screen bg-[#F8F9FA] p-8 font-sans'>
+    <div className='min-h-screen bg-[#F8F9FA] p-8 font-sans relative'>
       <div className='flex justify-between items-start mb-6'>
         <div>
-          <span className='bg-[#DDE7FF] text-[#0052CC] px-3 py-1 rounded text-xs font-bold tracking-wider uppercase'>
+          <span className='bg-[#DDE7FF] text-[#0052CC] px-3 py-1 rounded text-xs font-bold uppercase tracking-wider'>
             Communication
           </span>
           <h1 className='text-3xl font-bold text-gray-900 mt-4 mb-2'>Trò chuyện trực tuyến</h1>
-          <p className='text-gray-500 text-sm'>Kết nối và trao đổi công việc theo thời gian thực.</p>
+          <p className='text-gray-500 text-sm'>Dự án quản lý tòa nhà Homelink AI.</p>
         </div>
       </div>
 
-      <div className='flex h-[75vh] bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden'>
+      <div className='flex h-[75vh] bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative'>
         {/* CỘT TRÁI */}
         <div className='w-1/3 border-r border-gray-100 flex flex-col bg-white'>
           <div className='flex p-4 border-b border-gray-100 shrink-0'>
@@ -177,47 +222,39 @@ export default function ChatPage() {
 
           <div className='flex-1 overflow-hidden p-4 flex flex-col'>
             {activeTab === 'chats' ? (
-              // HIỂN THỊ DANH SÁCH INBOX
               <div className='flex-1 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar'>
                 {isLoadingInbox ? (
                   <div className='flex justify-center py-8'>
                     <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-[#0052CC]'></div>
                   </div>
-                ) : inboxData?.length === 0 ? (
-                  <p className='text-sm text-center text-gray-400 mt-4'>Bạn chưa có cuộc trò chuyện nào.</p>
                 ) : (
                   inboxData?.map((room: any) => (
                     <div
                       key={room.roomId}
-                      className={`flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition border ${currentRoomId === room.roomId ? 'border-[#0052CC] bg-[#F8F9FA]' : 'border-transparent hover:border-gray-100'}`}
                       onClick={() => handleSelectInboxRoom(room)}
+                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition border ${currentRoomId === room.roomId ? 'border-[#0052CC] bg-[#F8F9FA]' : 'border-transparent hover:bg-gray-50'}`}
                     >
-                      {room.avatar ? (
-                        <img src={room.avatar} alt='avatar' className='w-11 h-11 rounded-full object-cover shadow-sm' />
-                      ) : (
-                        <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shrink-0 shadow-sm'>
-                          {getInitials(room.name)}
-                        </div>
-                      )}
+                      <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shrink-0 shadow-sm'>
+                        {getInitials(room.name)}
+                      </div>
                       <div className='overflow-hidden flex-1'>
-                        <div className='flex justify-between items-center mb-0.5'>
+                        <div className='flex justify-between items-center'>
                           <h4 className='font-bold text-gray-900 text-sm truncate'>{room.name}</h4>
                           <span className='text-[10px] text-gray-400'>{formatTime(room.lastMessageAt)}</span>
                         </div>
-                        <p className='text-xs text-gray-500 truncate'>{room.lastMessage || 'Chưa có tin nhắn'}</p>
+                        <p className='text-xs text-gray-500 truncate'>{room.lastMessage || 'Bắt đầu trò chuyện...'}</p>
                       </div>
                     </div>
                   ))
                 )}
               </div>
             ) : (
-              // HIỂN THỊ DANH BẠ
               <div className='flex flex-col h-full space-y-4'>
                 <div className='relative shrink-0 text-gray-400'>
                   <input
                     type='text'
-                    placeholder='Tìm kiếm cư dân, nhân viên...'
-                    className='w-full bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#0052CC]/50 text-sm font-medium transition text-gray-900'
+                    placeholder='Tìm kiếm...'
+                    className='w-full bg-gray-50 border border-gray-200 rounded-lg pl-10 pr-4 py-2.5 text-sm'
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -235,7 +272,6 @@ export default function ChatPage() {
                     ></path>
                   </svg>
                 </div>
-
                 <div className='flex-1 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar'>
                   {isLoadingDirectory ? (
                     <div className='flex justify-center py-8'>
@@ -245,23 +281,15 @@ export default function ChatPage() {
                     directoryData?.map((u: any) => (
                       <div
                         key={u.userId}
-                        className={`flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer transition border ${Number(currentChatUser?.userId) === Number(u.userId) ? 'border-[#0052CC] bg-[#F8F9FA]' : 'border-transparent hover:border-gray-100'}`}
                         onClick={() => handleStartChatFromDirectory(u.userId)}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition border ${Number(currentChatUser?.userId) === Number(u.userId) ? 'border-[#0052CC] bg-[#F8F9FA]' : 'border-transparent hover:bg-gray-50'}`}
                       >
-                        {u.avatarUrl ? (
-                          <img
-                            src={u.avatarUrl}
-                            alt='avatar'
-                            className='w-11 h-11 rounded-full object-cover shadow-sm'
-                          />
-                        ) : (
-                          <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shrink-0 shadow-sm'>
-                            {getInitials(u.nickname)}
-                          </div>
-                        )}
+                        <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shrink-0 shadow-sm'>
+                          {getInitials(u.nickname)}
+                        </div>
                         <div className='overflow-hidden flex-1'>
                           <h4 className='font-bold text-gray-900 text-sm truncate'>{u.nickname}</h4>
-                          <p className='text-xs text-gray-500 truncate mt-0.5'>{u.roleName || 'Cư dân'}</p>
+                          <p className='text-xs text-gray-500 truncate'>{u.roleName}</p>
                         </div>
                       </div>
                     ))
@@ -273,63 +301,106 @@ export default function ChatPage() {
         </div>
 
         {/* CỘT PHẢI */}
-        <div className='w-2/3 flex flex-col bg-[#F8F9FA]/30 relative'>
+        <div className='w-2/3 flex flex-col bg-[#F8F9FA]/30 relative overflow-hidden'>
           {currentRoomId && currentChatUser ? (
             <div className='flex-1 flex flex-col overflow-hidden'>
-              <div className='px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between shrink-0'>
-                <div className='flex items-center gap-3'>
-                  {currentChatUser.avatarUrl || currentChatUser.avatar ? (
-                    <img
-                      src={currentChatUser.avatarUrl || currentChatUser.avatar}
-                      alt='avatar'
-                      className='w-10 h-10 rounded-full object-cover shadow-sm'
-                    />
-                  ) : (
-                    <div className='w-10 h-10 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shadow-sm'>
-                      {getInitials(currentChatUser.nickname || currentChatUser.name)}
-                    </div>
-                  )}
-                  <div>
-                    <h3 className='font-bold text-gray-900'>{currentChatUser.nickname || currentChatUser.name}</h3>
-                    <div className='flex items-center gap-1.5 mt-0.5'>
-                      <span className='w-2 h-2 rounded-full bg-green-500 animate-pulse'></span>
-                      <span className='text-xs text-gray-500'>Đang tham gia</span>
-                    </div>
-                  </div>
+              <div className='px-6 py-4 border-b border-gray-100 bg-white flex items-center gap-3 shrink-0 relative z-10'>
+                <div className='w-10 h-10 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shadow-sm'>
+                  {getInitials(currentChatUser.nickname || currentChatUser.name)}
+                </div>
+                <div>
+                  <h3 className='font-bold text-gray-900'>{currentChatUser.nickname || currentChatUser.name}</h3>
+                  <span className='text-[10px] text-green-500 font-bold uppercase'>Online</span>
                 </div>
               </div>
 
-              <div className='flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 custom-scrollbar'>
+              {/* KHUNG TIN NHẮN */}
+              <div className='flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 custom-scrollbar relative z-0'>
                 {isLoadingHistory ? (
-                  <div className='h-full flex flex-col items-center justify-center'>
+                  <div className='h-full flex items-center justify-center'>
                     <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-[#0052CC]'></div>
                   </div>
-                ) : messages.length === 0 ? (
-                  <div className='h-full flex flex-col items-center justify-center text-gray-400'>
-                    <p className='text-xs bg-white px-4 py-1.5 rounded-full shadow-sm border border-gray-100'>
-                      Bắt đầu cuộc trò chuyện mới
-                    </p>
-                  </div>
                 ) : (
-                  messages.map((msg, index) => {
+                  messages.map((msg, idx) => {
                     const isMe = Number(msg.senderId) === currentUserId
+                    const imageUrl = `${config.BASEURL}${msg.attachmentUrl || msg.attachment?.url}`
+
                     return (
-                      <div key={index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <div
-                          className={`max-w-[70%] p-3.5 rounded-2xl text-sm shadow-sm ${
+                          onMouseEnter={() => setHoveredMessageId(msg.id)}
+                          onMouseLeave={() => setHoveredMessageId(null)}
+                          className={`relative max-w-[70%] p-3.5 rounded-2xl text-sm shadow-sm ${
                             isMe
-                              ? 'bg-[#0052CC] text-white rounded-tr-none'
-                              : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
+                              ? msg.isDeleted
+                                ? 'bg-gray-100 text-gray-400 border border-gray-200'
+                                : 'bg-[#0052CC] text-white rounded-tr-none'
+                              : msg.isDeleted
+                                ? 'bg-gray-100 text-gray-400 border border-gray-200'
+                                : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
                           }`}
                         >
-                          {/* NẾU LÀ CHAT NHÓM VÀ KHÔNG PHẢI MÌNH GỬI -> HIỂN THỊ TÊN NGƯỜI ĐÓ */}
-                          {!isMe && currentChatUser?.isGroup && (
-                            <div className='text-xs font-bold text-[#0052CC] mb-1'>
-                              {msg.senderName || msg.senderUsername || 'Thành viên'}
+                          {/* Hiện menu SỬA/XÓA nếu là tin nhắn của mình, chưa bị xóa và đang được hover */}
+                          {isMe && !msg.isDeleted && hoveredMessageId === msg.id && (
+                            <div className='absolute top-2 -left-[76px] flex items-center gap-1 bg-white shadow-md border border-gray-100 rounded-lg p-1 before:absolute before:content-[""] before:inset-y-0 before:-right-10 before:w-10 before:bg-transparent'>
+                              {msg.messageType === 'text' && (
+                                <button
+                                  onClick={() => handleStartEdit(msg)}
+                                  className='p-1.5 hover:bg-blue-50 text-blue-600 rounded transition'
+                                  title='Chỉnh sửa'
+                                >
+                                  <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                    <path
+                                      strokeLinecap='round'
+                                      strokeLinejoin='round'
+                                      strokeWidth='2'
+                                      d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
+                                    ></path>
+                                  </svg>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id)}
+                                className='p-1.5 hover:bg-red-50 text-red-500 rounded transition'
+                                title='Thu hồi'
+                              >
+                                <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path
+                                    strokeLinecap='round'
+                                    strokeLinejoin='round'
+                                    strokeWidth='2'
+                                    d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'
+                                  ></path>
+                                </svg>
+                              </button>
                             </div>
                           )}
-                          {msg.content}
-                          <div className={`text-[10px] mt-1.5 opacity-70 ${isMe ? 'text-right' : 'text-left'}`}>
+
+                          {/* Tên người gửi trong Group */}
+                          {!isMe && currentChatUser?.isGroup && !msg.isDeleted && (
+                            <div className='text-[10px] font-bold text-[#0052CC] mb-1'>
+                              {msg.senderName || msg.senderUsername}
+                            </div>
+                          )}
+
+                          {/* HIỂN THỊ NỘI DUNG / ẢNH / THU HỒI */}
+                          {msg.isDeleted ? (
+                            <div className='italic'>Tin nhắn đã bị thu hồi</div>
+                          ) : msg.messageType === 'image' ? (
+                            <img
+                              src={imageUrl}
+                              alt='sent image'
+                              className='rounded-lg max-h-60 w-full object-cover cursor-pointer hover:opacity-90 transition'
+                              onClick={() => setSelectedModalImage(imageUrl)}
+                            />
+                          ) : (
+                            <div className='whitespace-pre-wrap break-words'>{msg.content}</div>
+                          )}
+
+                          <div
+                            className={`text-[10px] mt-1.5 flex items-center gap-1 ${isMe ? 'justify-end' : 'justify-start'} ${msg.isDeleted ? 'opacity-0' : 'opacity-60'}`}
+                          >
+                            {msg.updatedAt && !msg.isDeleted && <span>(đã sửa)</span>}
                             {formatTime(msg.createdAt)}
                           </div>
                         </div>
@@ -340,18 +411,55 @@ export default function ChatPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className='p-4 bg-white border-t border-gray-100 shrink-0'>
+              {/* INPUT AREA */}
+              <div className='bg-white border-t border-gray-100 shrink-0 relative z-10'>
+                {/* Banner báo đang sửa tin nhắn */}
+                {editingMessageId && (
+                  <div className='absolute -top-10 left-0 right-0 bg-blue-50/90 backdrop-blur-sm px-6 py-2 flex items-center justify-between text-xs text-[#0052CC] border-t border-blue-100 shadow-sm'>
+                    <div className='flex items-center gap-2'>
+                      <svg className='w-4 h-4 animate-pulse' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth='2'
+                          d='M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
+                        ></path>
+                      </svg>
+                      <span className='font-medium'>Đang chỉnh sửa tin nhắn...</span>
+                    </div>
+                    <button
+                      type='button'
+                      onClick={() => {
+                        setEditingMessageId(null)
+                        setMessageContent('')
+                      }}
+                      className='hover:text-red-500 font-bold transition'
+                    >
+                      Hủy (X)
+                    </button>
+                  </div>
+                )}
+
                 <form
                   onSubmit={(e) => {
                     e.preventDefault()
                     handleSendMessage()
                   }}
-                  className='flex items-center gap-2'
+                  className='flex items-center gap-2 p-4'
                 >
-                  {/* Nút Upload ảnh sẽ làm ở bước sau */}
+                  <input
+                    type='file'
+                    ref={fileInputRef}
+                    className='hidden'
+                    accept='image/*'
+                    onChange={handleUploadImage}
+                    disabled={!!editingMessageId}
+                  />
                   <button
                     type='button'
-                    className='p-2 text-gray-400 hover:text-[#0052CC] transition rounded-full hover:bg-gray-50'
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!!editingMessageId}
+                    className={`p-2 transition rounded-full ${editingMessageId ? 'text-gray-300' : 'text-gray-400 hover:text-[#0052CC] hover:bg-gray-50'}`}
                   >
                     <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                       <path
@@ -367,27 +475,33 @@ export default function ChatPage() {
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
                     placeholder='Nhập tin nhắn...'
-                    className='flex-1 bg-gray-50 border border-gray-200 rounded-full px-5 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#0052CC]/50 text-sm'
+                    className='flex-1 bg-gray-50 border border-gray-200 rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0052CC]/50'
                   />
                   <button
                     type='submit'
                     disabled={!messageContent.trim()}
                     className='w-10 h-10 bg-[#0052CC] hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-full flex items-center justify-center transition shadow-md'
                   >
-                    <svg className='w-5 h-5 ml-1' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth='2'
-                        d='M12 19l9 2-9-18-9 18 9-2zm0 0v-8'
-                      ></path>
-                    </svg>
+                    {editingMessageId ? (
+                      <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M5 13l4 4L19 7'></path>
+                      </svg>
+                    ) : (
+                      <svg className='w-5 h-5 ml-0.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth='2'
+                          d='M12 19l9 2-9-18-9 18 9-2zm0 0v-8'
+                        ></path>
+                      </svg>
+                    )}
                   </button>
                 </form>
               </div>
             </div>
           ) : (
-            <div className='flex-1 flex flex-col items-center justify-center gap-4'>
+            <div className='flex-1 flex flex-col items-center justify-center gap-4 relative z-0'>
               <div className='w-20 h-20 bg-white shadow-xl rounded-full flex items-center justify-center text-[#0052CC]/20 border border-gray-50'>
                 <svg className='w-10 h-10' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                   <path
@@ -403,6 +517,33 @@ export default function ChatPage() {
           )}
         </div>
       </div>
+
+      {/* LIGHTBOX MODAL XEM ẢNH */}
+      {selectedModalImage && (
+        <div
+          className='fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm'
+          onClick={() => setSelectedModalImage(null)}
+        >
+          <button
+            onClick={() => setSelectedModalImage(null)}
+            className='absolute top-6 right-6 text-white hover:text-gray-300 transition'
+          >
+            <svg className='w-8 h-8' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M6 18L18 6M6 6l12 12'></path>
+            </svg>
+          </button>
+          <div
+            className='bg-white p-2 rounded-2xl shadow-2xl max-w-5xl max-h-[90vh] overflow-hidden'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={selectedModalImage}
+              alt='sent full size'
+              className='max-w-full max-h-[85vh] rounded-xl object-contain'
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

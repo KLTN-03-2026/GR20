@@ -287,8 +287,7 @@ const getOtherMemberInPrivateRoom = async (roomId, currentUserId) => {
 
   return result.length > 0 ? result[0] : null;
 };
-// 17. Lấy lịch sử tin nhắn của 1 phòng cụ thể
-// 17. Lấy lịch sử tin nhắn của 1 phòng cụ thể (Đã nâng cấp để lấy tên người gửi)
+// 17. Lấy lịch sử tin nhắn (Nâng cấp để lấy kèm thông tin ảnh/file)
 const getMessageHistory = async (roomId) => {
   return await db
     .select({
@@ -298,15 +297,62 @@ const getMessageHistory = async (roomId) => {
       messageType: schema.chatMessages.messageType,
       content: schema.chatMessages.content,
       createdAt: schema.chatMessages.createdAt,
-      // Lấy thêm thông tin người gửi để hiển thị tên trong Chat Nhóm
       senderName: schema.users.fullName,
       senderUsername: schema.users.username,
       senderAvatar: schema.users.avatarUrl,
+      // Lấy thêm URL ảnh từ bảng đính kèm
+      attachmentUrl: schema.chatMessageAttachments.url,
+      isDeleted: schema.chatMessages.isDeleted,
+      updatedAt: schema.chatMessages.updatedAt,
     })
     .from(schema.chatMessages)
     .innerJoin(schema.users, eq(schema.chatMessages.senderId, schema.users.id))
+    // LEFT JOIN để tin nhắn văn bản (không có ảnh) vẫn hiện ra bình thường
+    .leftJoin(
+      schema.chatMessageAttachments,
+      eq(schema.chatMessages.id, schema.chatMessageAttachments.messageId),
+    )
     .where(eq(schema.chatMessages.roomId, roomId))
     .orderBy(asc(schema.chatMessages.createdAt));
+};
+// 18. Sửa tin nhắn
+// Chỉ cho phép sửa nếu đúng senderId (chủ nhân tin nhắn)
+const editMessage = async (messageId, senderId, newContent) => {
+  const updatedMessage = await db
+    .update(schema.chatMessages)
+    .set({
+      content: newContent,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(schema.chatMessages.id, messageId),
+        eq(schema.chatMessages.senderId, senderId),
+      ),
+    )
+    .returning();
+
+  return updatedMessage[0];
+};
+
+// 19. Xóa tin nhắn (Thu hồi)
+// Thu hồi dạng Soft Delete (ẩn đi chứ không xóa mất khỏi DB)
+const deleteMessage = async (messageId, senderId) => {
+  const deletedMessage = await db
+    .update(schema.chatMessages)
+    .set({
+      isDeleted: true,
+      deletedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(schema.chatMessages.id, messageId),
+        eq(schema.chatMessages.senderId, senderId),
+      ),
+    )
+    .returning();
+
+  return deletedMessage[0];
 };
 module.exports = {
   getUserRole,
@@ -326,4 +372,6 @@ module.exports = {
   getInboxRooms,
   getOtherMemberInPrivateRoom,
   getMessageHistory,
+  editMessage,
+  deleteMessage,
 };

@@ -120,7 +120,7 @@ const handleUploadAttachment = async (userId, roomId, file) => {
 
   // 3. Tạo data để lưu attachment
   const fileData = {
-    url: `/uploads/${file.filename}`, // Đường link để frontend hiển thị ảnh
+    url: `/uploads/chat/${file.filename}`, // Frontend link để hiển thị ảnh
     fileName: file.originalname,
     fileSize: file.size,
     mimeType: file.mimetype,
@@ -197,6 +197,22 @@ const getMessageHistory = async (userId, roomId) => {
 
   return await chatRepo.getMessageHistory(roomId);
 };
+// 3. Xử lý Sửa tin nhắn
+const handleEditMessage = async (userId, messageId, newContent) => {
+  if (!newContent || newContent.trim() === "") {
+    throw new Error("Nội dung tin nhắn không được để trống");
+  }
+  const updated = await chatRepo.editMessage(messageId, userId, newContent);
+  if (!updated) throw new Error("Không thể sửa tin nhắn này");
+  return updated;
+};
+
+// 4. Xử lý Thu hồi tin nhắn
+const handleDeleteMessage = async (userId, messageId) => {
+  const deleted = await chatRepo.deleteMessage(messageId, userId);
+  if (!deleted) throw new Error("Không thể thu hồi tin nhắn này");
+  return deleted;
+};
 module.exports = {
   setupInitialChat,
   getDirectory,
@@ -205,4 +221,6 @@ module.exports = {
   handleUploadAttachment,
   getInboxList,
   getMessageHistory,
+  handleEditMessage,
+  handleDeleteMessage,
 };

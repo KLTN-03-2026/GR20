@@ -62,6 +62,61 @@ const initializeSockets = (io) => {
         socket.emit("error_message", { message: error.message });
       }
     });
+    // BẮT SỰ KIỆN SỬA TIN NHẮN
+    socket.on("edit_message", async (data) => {
+      try {
+        const { messageId, roomId, newContent } = data;
+
+        // Gọi service cập nhật DB
+        const updatedMsg = await chatService.handleEditMessage(
+          socket.userId,
+          messageId,
+          newContent,
+        );
+
+        // Phát loa cho cả phòng biết tin nhắn đã được sửa
+        const roomStr = roomId.toString();
+        io.to(roomStr).emit("message_updated", {
+          id: updatedMsg.id,
+          roomId: updatedMsg.roomId,
+          content: updatedMsg.content,
+          updatedAt: updatedMsg.updatedAt,
+        });
+
+        console.log(`✏️ Đã sửa tin nhắn ${messageId} trong phòng ${roomStr}`);
+      } catch (error) {
+        console.error("❌ Lỗi sửa tin nhắn:", error);
+        socket.emit("error_message", { message: error.message });
+      }
+    });
+
+    // BẮT SỰ KIỆN THU HỒI TIN NHẮN
+    socket.on("delete_message", async (data) => {
+      try {
+        const { messageId, roomId } = data;
+
+        // Gọi service cập nhật isDeleted = true
+        const deletedMsg = await chatService.handleDeleteMessage(
+          socket.userId,
+          messageId,
+        );
+
+        // Phát loa cho cả phòng biết tin nhắn đã bị thu hồi
+        const roomStr = roomId.toString();
+        io.to(roomStr).emit("message_deleted", {
+          id: deletedMsg.id,
+          roomId: deletedMsg.roomId,
+          isDeleted: true,
+        });
+
+        console.log(
+          `🗑️ Đã thu hồi tin nhắn ${messageId} trong phòng ${roomStr}`,
+        );
+      } catch (error) {
+        console.error("❌ Lỗi thu hồi tin:", error);
+        socket.emit("error_message", { message: error.message });
+      }
+    });
     // 👆 -------------------------------------- 👆
 
     socket.on("disconnect", () => {
