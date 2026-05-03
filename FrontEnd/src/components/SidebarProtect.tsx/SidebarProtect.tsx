@@ -1,81 +1,77 @@
-import React from 'react'
+import { NavLink } from 'react-router-dom'
 
 export default function SidebarProtect() {
+  // Hàm xử lý className active giống SidebarUser
+  const getNavClass = ({ isActive }) =>
+    isActive
+      ? 'flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-900 font-bold border-l-4 border-blue-900 bg-surface hover:bg-secondary-container/20 transition-all duration-300'
+      : 'flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 transition-all duration-300'
+
   return (
-    <aside className='hidden lg:flex flex-col h-screen w-64 fixed left-0 top-0 bg-white dark:bg-slate-950 shadow-2xl shadow-blue-900/5 z-50 p-4 space-y-4'>
-      <div className='px-2 py-4'>
-        <span className='text-lg font-black text-blue-700 tracking-tighter'>Homelink AI Security</span>
-      </div>
-      <div className='flex items-center space-x-3 px-2 pb-6'>
-        <div className='w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden'>
-          <img
-            alt='Security Guard Identification'
-            className='w-full h-full object-cover'
-            src='https://lh3.googleusercontent.com/aida-public/AB6AXuBXVPiosIDYlFWm89IzH3ybG-UFvXln53igSYaQY5AomsqswsWB1wKnLWU6GcnSTkBzQicyFTD-NIMD409zfnfPfd7JGyylmicBfuR6f8zxE2QYO49Lawv-Lymui1jzTKw7El6sQMS6v72q1C4LU34LC2G5et4McIq4YQ5kCsFYdnCvCKldU4JQ-6zQWtogW0y1oTjolhPH7no5c1fS71sW_kPQfTvn0nn8EEi9BBgadUXZLs0HC0oJ9TI95w8kGqfSpz2k_uKA4FDP'
-          />
+    <aside className='hidden lg:flex flex-col p-6 space-y-8 h-screen w-64 fixed left-0 top-0 bg-surface-container-low shadow-sm z-50'>
+      {/* Logo / Header - giống SidebarUser */}
+      <div className='flex flex-col space-y-2'>
+        <div className='flex items-center space-x-3 mb-6'>
+          <div className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white'>
+            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+              security
+            </span>
+          </div>
+          <div>
+            <h1 className='text-xl font-extrabold text-blue-900 tracking-tight'>HomeLink AI</h1>
+            <p className='text-[10px] font-medium text-teal-700 uppercase tracking-widest'>Security Gateway</p>
+          </div>
         </div>
-        <div>
-          <p className='font-manrope text-sm font-bold tracking-tight text-on-surface'>Officer Miller</p>
-          <p className='font-manrope text-[10px] uppercase tracking-widest text-on-surface-variant'>
-            North Gate Station
-          </p>
-        </div>
+
+        {/* Menu chính */}
+        <nav className='flex-1 space-y-1'>
+          <NavLink to='/homepageprotect' className={getNavClass}>
+            <span className='material-symbols-outlined'>dashboard</span>
+            <span className='text-sm font-manrope'>Tổng quan</span>
+          </NavLink>
+
+          <NavLink to='/scanqr' className={getNavClass}>
+            <span className='material-symbols-outlined'>qr_code_scanner</span>
+            <span className='text-sm font-manrope'>Quét QR</span>
+          </NavLink>
+
+          <NavLink to='/history/qrcode' className={getNavClass}>
+            <span className='material-symbols-outlined'>history</span>
+            <span className='text-sm font-manrope'>Lịch sử ra vào</span>
+          </NavLink>
+
+          <NavLink to='/security/residents' className={getNavClass}>
+            <span className='material-symbols-outlined'>person_search</span>
+            <span className='text-sm font-manrope'>Tra cứu cư dân</span>
+          </NavLink>
+        </nav>
       </div>
-      <nav className='flex-1 space-y-2'>
-        <a
-          className='flex items-center space-x-3 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold rounded-lg transition-all scale-95 duration-150'
-          href='#'
+
+      {/* Menu cuối */}
+      <div className='mt-auto space-y-1 pt-[250px] border-t border-gray-200'>
+        {/* Nút báo động khẩn cấp */}
+
+        <NavLink
+          to='/support'
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
+              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
+            }`
+          }
         >
-          <span className='material-symbols-outlined'>dashboard</span>
-          <span className='font-manrope text-sm font-medium uppercase tracking-widest'>Dashboard</span>
-        </a>
-        <a
-          className='flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200'
-          href='#'
+          <span className='material-symbols-outlined'>settings</span>
+          <span className='text-sm'>Cài đặt</span>
+        </NavLink>
+
+        <button
+          onClick={() => {
+            /* xử lý đăng xuất */
+          }}
+          className='w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
         >
-          <span className='material-symbols-outlined'>qr_code_scanner</span>
-          <span className='font-manrope text-sm font-medium uppercase tracking-widest'>QR Scanner</span>
-        </a>
-        <a
-          className='flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200'
-          href='#'
-        >
-          <span className='material-symbols-outlined'>history</span>
-          <span className='font-manrope text-sm font-medium uppercase tracking-widest'>Access History</span>
-        </a>
-        <a
-          className='flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200'
-          href='#'
-        >
-          <span className='material-symbols-outlined'>person_search</span>
-          <span className='font-manrope text-sm font-medium uppercase tracking-widest'>Resident Lookup</span>
-        </a>
-        <a
-          className='flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200'
-          href='#'
-        >
-          <span className='material-symbols-outlined'>report_problem</span>
-          <span className='font-manrope text-sm font-medium uppercase tracking-widest'>Incident Report</span>
-        </a>
-      </nav>
-      <button className='mt-auto w-full py-3 px-4 bg-error text-on-error font-bold rounded-full text-xs uppercase tracking-widest active:opacity-80 transition-opacity'>
-        Emergency Alert
-      </button>
-      <div className='pt-4 border-t border-slate-100 dark:border-slate-800'>
-        <a
-          className='flex items-center gap-3 px-2 py-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-all text-xs font-bold uppercase tracking-widest'
-          href='#'
-        >
-          <span className='material-symbols-outlined text-lg'>help_outline</span>
-          <span>Support</span>
-        </a>
-        <a
-          className='flex items-center gap-3 px-2 py-2 text-slate-500 dark:text-slate-400 hover:text-red-500 transition-all text-xs font-bold uppercase tracking-widest'
-          href='#'
-        >
-          <span className='material-symbols-outlined text-lg'>logout</span>
-          <span>Logout</span>
-        </a>
+          <span className='material-symbols-outlined'>logout</span>
+          <span className='text-sm'>Đăng xuất</span>
+        </button>
       </div>
     </aside>
   )

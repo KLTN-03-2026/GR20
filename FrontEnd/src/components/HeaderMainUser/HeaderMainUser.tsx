@@ -1,4 +1,4 @@
-import React, { useContext } from 'react'
+import { useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { AppContext } from 'src/contexts/app.context'
 
@@ -9,13 +9,13 @@ export default function HeaderMainUser() {
       <div className='flex justify-between items-center w-full px-6 py-4 max-w-screen-2xl mx-auto'>
         <div className='flex flex-col'>
           <h2 className='text-xl font-bold font-manrope tracking-tight text-primary'>Chào mừng, {user.name}</h2>
-          <p className='text-xs text-on-surface-variant font-medium'>Căn hộ PB23-1505 • Diamond Precinct</p>
+          {/* <p className='text-xs text-on-surface-variant font-medium'>Căn hộ PB23-1505 • Diamond Precinct</p> */}
         </div>
         <div className='flex items-center space-x-4'>
           <div className='hidden md:flex items-center gap-2 bg-[#f2f4f6] px-4 py-1.5 rounded-full'>
             <span className='material-symbols-outlined text-sm text-[#717786]'>search</span>
             <input
-              className='bg-transparent border-none text-sm focus:ring-0 p-0 w-35 outline-none'
+              className='bg-transparent border-none text-xl focus:ring-0 p-0 w-35 outline-none'
               placeholder='Tìm kiếm...'
               type='text'
             />

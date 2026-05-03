@@ -27,13 +27,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const reset = () => {
     SetIsAuthenticated(false)
-    setUser(null) // 👈 đổi setProfile → setUser
+    setUser(null)
   }
 
   return (
     <AppContext.Provider value={{ isAuthenticated, SetIsAuthenticated, user, setUser, reset }}>
-      {' '}
-      {/* 👈 cập nhật value */}
       {children}
     </AppContext.Provider>
   )

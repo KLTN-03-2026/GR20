@@ -29,8 +29,12 @@ export default function ChatPage() {
   const [typingUserIds, setTypingUserIds] = useState<number[]>([])
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // --- STATE MỚI: QUẢN LÝ ĐÃ XEM ---
   const [isLastMessageRead, setIsLastMessageRead] = useState(false)
+  const [onlineUserIds, setOnlineUserIds] = useState<number[]>([])
+
+  // --- STATE MỚI: QUẢN LÝ POPUP ĐẶT TÊN ---
+  const [showInitModal, setShowInitModal] = useState(false)
+  const [prefixName, setPrefixName] = useState('')
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -47,8 +51,6 @@ export default function ChatPage() {
     socket.on('receive_message', (newMessage) => {
       if (Number(newMessage.roomId) === Number(currentRoomId)) {
         setMessages((prev) => [...prev, newMessage])
-
-        // Nếu mình đang mở phòng này, nhận được tin nhắn thì báo "Đã xem" luôn
         if (Number(newMessage.senderId) !== currentUserId) {
           socket.emit('mark_as_read', { roomId: currentRoomId })
         }
@@ -80,11 +82,22 @@ export default function ChatPage() {
       setTypingUserIds((prev) => prev.filter((id) => id !== userId))
     })
 
-    // --- BẮT SỰ KIỆN ĐÃ XEM TỪ NGƯỜI KIA ---
     socket.on('user_read_message', ({ roomId }) => {
       if (Number(roomId) === Number(currentRoomId)) {
-        setIsLastMessageRead(true) // Bật trạng thái đã xem
+        setIsLastMessageRead(true)
       }
+    })
+
+    socket.on('online_users_list', (users: number[]) => {
+      setOnlineUserIds(users)
+    })
+
+    socket.on('user_connected', (userId: number) => {
+      setOnlineUserIds((prev) => (prev.includes(userId) ? prev : [...prev, userId]))
+    })
+
+    socket.on('user_disconnected', (userId: number) => {
+      setOnlineUserIds((prev) => prev.filter((id) => id !== userId))
     })
 
     return () => {
@@ -94,14 +107,15 @@ export default function ChatPage() {
       socket.off('user_typing')
       socket.off('user_stop_typing')
       socket.off('user_read_message')
+      socket.off('online_users_list')
+      socket.off('user_connected')
+      socket.off('user_disconnected')
     }
   }, [socket, currentRoomId, queryClient, currentUserId])
 
-  // Reset các state khi chuyển phòng
   useEffect(() => {
     setTypingUserIds([])
     setIsLastMessageRead(false)
-    // Vừa vào phòng là báo đã xem luôn
     if (socket && currentRoomId) {
       socket.emit('mark_as_read', { roomId: currentRoomId })
     }
@@ -126,23 +140,45 @@ export default function ChatPage() {
     enabled: !!currentRoomId
   })
 
+  // Bật Modal Đặt Tên nếu chưa có phòng chat nào
+  useEffect(() => {
+    if (inboxData && inboxData.length === 0 && !isLoadingInbox) {
+      setShowInitModal(true)
+    } else {
+      setShowInitModal(false)
+    }
+  }, [inboxData, isLoadingInbox])
+
   useEffect(() => {
     if (historyData) setMessages(historyData)
   }, [historyData])
+
   useEffect(() => {
     if (messages.length > 0 && currentChatUser?.lastReadAt) {
       const lastMsg = messages[messages.length - 1]
-      // Nếu tin nhắn cuối là do mình gửi
       if (Number(lastMsg.senderId) === currentUserId) {
         const msgTime = new Date(lastMsg.createdAt).getTime()
         const readTime = new Date(currentChatUser.lastReadAt).getTime()
-        // Nếu thời gian họ xem lớn hơn hoặc bằng thời gian tin nhắn được tạo -> Đã xem
         if (readTime >= msgTime) {
           setIsLastMessageRead(true)
         }
       }
     }
   }, [messages, currentChatUser, currentUserId])
+
+  const initProfileMutation = useMutation({
+    mutationFn: chatApi.initChatProfile,
+    onSuccess: () => {
+      toast.success('Tuyệt vời! Đã vào phòng chat chung.')
+      setShowInitModal(false)
+      queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
+      queryClient.invalidateQueries({ queryKey: ['chatDirectory'] })
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Lỗi khi đặt tên')
+    }
+  })
+
   const initPrivateChatMutation = useMutation({
     mutationFn: chatApi.initPrivateChat,
     onSuccess: (res, variables) => {
@@ -197,7 +233,7 @@ export default function ChatPage() {
       setEditingMessageId(null)
     } else {
       socket.emit('send_message', { roomId: currentRoomId, content: messageContent })
-      setIsLastMessageRead(false) // Vừa gửi xong thì chắc chắn người kia chưa xem
+      setIsLastMessageRead(false)
     }
 
     setMessageContent('')
@@ -223,7 +259,7 @@ export default function ChatPage() {
     try {
       toast.info('Đang tải ảnh lên...')
       await chatApi.uploadFileMessage(currentRoomId, file)
-      setIsLastMessageRead(false) // Gửi ảnh xong cũng reset trạng thái đã xem
+      setIsLastMessageRead(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
       queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
     } catch (error: any) {
@@ -279,24 +315,39 @@ export default function ChatPage() {
                     <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-[#0052CC]'></div>
                   </div>
                 ) : (
-                  inboxData?.map((room: any) => (
-                    <div
-                      key={room.roomId}
-                      onClick={() => handleSelectInboxRoom(room)}
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition border ${currentRoomId === room.roomId ? 'border-[#0052CC] bg-[#F8F9FA]' : 'border-transparent hover:bg-gray-50'}`}
-                    >
-                      <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shrink-0 shadow-sm'>
-                        {getInitials(room.name)}
-                      </div>
-                      <div className='overflow-hidden flex-1'>
-                        <div className='flex justify-between items-center'>
-                          <h4 className='font-bold text-gray-900 text-sm truncate'>{room.name}</h4>
-                          <span className='text-[10px] text-gray-400'>{formatTime(room.lastMessageAt)}</span>
+                  inboxData?.map((room: any) => {
+                    const isOtherUserOnline =
+                      !room.type?.includes('group') &&
+                      !room.type?.includes('building') &&
+                      room.chatWithUser?.userId &&
+                      onlineUserIds.includes(Number(room.chatWithUser.userId))
+
+                    return (
+                      <div
+                        key={room.roomId}
+                        onClick={() => handleSelectInboxRoom(room)}
+                        className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition border ${currentRoomId === room.roomId ? 'border-[#0052CC] bg-[#F8F9FA]' : 'border-transparent hover:bg-gray-50'}`}
+                      >
+                        <div className='relative shrink-0'>
+                          <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shadow-sm'>
+                            {getInitials(room.name)}
+                          </div>
+                          {isOtherUserOnline && (
+                            <span className='absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full'></span>
+                          )}
                         </div>
-                        <p className='text-xs text-gray-500 truncate'>{room.lastMessage || 'Bắt đầu trò chuyện...'}</p>
+                        <div className='overflow-hidden flex-1'>
+                          <div className='flex justify-between items-center'>
+                            <h4 className='font-bold text-gray-900 text-sm truncate'>{room.name}</h4>
+                            <span className='text-[10px] text-gray-400'>{formatTime(room.lastMessageAt)}</span>
+                          </div>
+                          <p className='text-xs text-gray-500 truncate'>
+                            {room.lastMessage || 'Bắt đầu trò chuyện...'}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             ) : (
@@ -335,8 +386,13 @@ export default function ChatPage() {
                         onClick={() => handleStartChatFromDirectory(u.userId)}
                         className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition border ${Number(currentChatUser?.userId) === Number(u.userId) ? 'border-[#0052CC] bg-[#F8F9FA]' : 'border-transparent hover:bg-gray-50'}`}
                       >
-                        <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shrink-0 shadow-sm'>
-                          {getInitials(u.nickname)}
+                        <div className='relative shrink-0'>
+                          <div className='w-11 h-11 rounded-full bg-[#E5EDFF] text-[#0052CC] flex items-center justify-center font-bold text-sm shadow-sm'>
+                            {getInitials(u.nickname)}
+                          </div>
+                          {onlineUserIds.includes(Number(u.userId)) && (
+                            <span className='absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full'></span>
+                          )}
                         </div>
                         <div className='overflow-hidden flex-1'>
                           <h4 className='font-bold text-gray-900 text-sm truncate'>{u.nickname}</h4>
@@ -360,7 +416,19 @@ export default function ChatPage() {
                 </div>
                 <div>
                   <h3 className='font-bold text-gray-900'>{currentChatUser.nickname || currentChatUser.name}</h3>
-                  <span className='text-[10px] text-green-500 font-bold uppercase'>Online</span>
+                  {currentChatUser.isGroup ? (
+                    <span className='text-[10px] text-[#0052CC] font-bold uppercase'>Nhóm cư dân</span>
+                  ) : onlineUserIds.includes(Number(currentChatUser.userId)) ? (
+                    <div className='flex items-center gap-1.5 mt-0.5'>
+                      <span className='w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]'></span>
+                      <span className='text-[10px] text-green-500 font-bold uppercase tracking-wider'>Trực tuyến</span>
+                    </div>
+                  ) : (
+                    <div className='flex items-center gap-1.5 mt-0.5'>
+                      <span className='w-2 h-2 rounded-full bg-gray-300'></span>
+                      <span className='text-[10px] text-gray-400 font-bold uppercase tracking-wider'>Ngoại tuyến</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -373,7 +441,6 @@ export default function ChatPage() {
                   messages.map((msg, idx) => {
                     const isMe = Number(msg.senderId) === currentUserId
                     const imageUrl = `${config.BASEURL}${msg.attachmentUrl || msg.attachment?.url}`
-                    // Kiểm tra xem đây có phải là tin nhắn cuối cùng của mình gửi không
                     const isMyLastMessage = isMe && idx === messages.length - 1
                     const isEdited =
                       msg.updatedAt && new Date(msg.updatedAt).getTime() - new Date(msg.createdAt).getTime() > 1000
@@ -455,7 +522,6 @@ export default function ChatPage() {
                           </div>
                         </div>
 
-                        {/* --- CHỮ "ĐÃ XEM" --- */}
                         {isMyLastMessage && isLastMessageRead && !currentChatUser?.isGroup && (
                           <div className='text-[10px] text-gray-400 mt-1 flex items-center gap-1'>
                             <svg
@@ -629,6 +695,51 @@ export default function ChatPage() {
               alt='sent full size'
               className='max-w-full max-h-[85vh] rounded-xl object-contain'
             />
+          </div>
+        </div>
+      )}
+
+      {/* --- POPUP ĐẶT TÊN KHỞI TẠO CHAT --- */}
+      {showInitModal && (
+        <div className='fixed inset-0 z-[10000] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm'>
+          <div className='bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform transition-all'>
+            <div className='w-16 h-16 bg-[#E5EDFF] text-[#0052CC] rounded-full flex items-center justify-center mx-auto mb-4'>
+              <svg className='w-8 h-8' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth='2'
+                  d='M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z'
+                ></path>
+              </svg>
+            </div>
+            <h2 className='text-2xl font-bold text-gray-900 mb-2'>Chào mừng đến với Chat</h2>
+            <p className='text-gray-500 text-sm mb-6'>
+              Vui lòng đặt một biệt danh (Prefix) để mọi người trong hệ thống dễ dàng nhận ra bạn nhé!
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                initProfileMutation.mutate(prefixName)
+              }}
+            >
+              <input
+                type='text'
+                value={prefixName}
+                onChange={(e) => setPrefixName(e.target.value)}
+                placeholder='VD: Căn hộ 1505, Kỹ thuật viên...'
+                className='w-full border border-gray-300 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-[#0052CC] transition text-sm'
+                autoFocus
+              />
+              <button
+                type='submit'
+                disabled={!prefixName.trim() || initProfileMutation.isPending}
+                className='w-full bg-[#0052CC] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition disabled:bg-gray-300 shadow-md'
+              >
+                {initProfileMutation.isPending ? 'Đang khởi tạo...' : 'Bắt đầu trò chuyện'}
+              </button>
+            </form>
           </div>
         </div>
       )}

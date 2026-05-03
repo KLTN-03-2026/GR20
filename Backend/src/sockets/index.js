@@ -21,7 +21,10 @@ const initializeSockets = (io) => {
   io.on("connection", (socket) => {
     console.log(`⚡ User connected: ${socket.id} (UserID: ${socket.userId})`);
     onlineUsers.set(socket.userId, socket.id);
-
+    // Gửi cho người vừa vào danh sách những ai đang online
+    socket.emit("online_users_list", Array.from(onlineUsers.keys()));
+    // Báo cho tất cả những người khác biết ông này vừa online
+    socket.broadcast.emit("user_connected", socket.userId);
     // 1. Lắng nghe yêu cầu Join phòng
     socket.on("join_room", (roomId) => {
       // Ép kiểu roomId về chuỗi (string) để socket join cho chuẩn
@@ -155,6 +158,8 @@ const initializeSockets = (io) => {
     socket.on("disconnect", () => {
       console.log(`❌ User disconnected: ${socket.id}`);
       onlineUsers.delete(socket.userId);
+      // Báo cho tất cả những người khác biết ông này vừa offline
+      socket.broadcast.emit("user_disconnected", socket.userId);
     });
   });
 };

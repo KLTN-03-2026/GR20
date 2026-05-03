@@ -12,6 +12,7 @@ import {
 import { yupResolver } from '@hookform/resolvers/yup'
 import { toast } from 'react-toastify'
 import Input from 'src/components/Input'
+import { Link, useNavigate } from 'react-router-dom'
 
 // Helper function to get error message from axios-like error objects
 const getErrorMessage = (error: unknown): string | undefined => {
@@ -28,6 +29,8 @@ export default function Profile() {
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const navigate = useNavigate()
 
   const uploadAvatarMutation = useMutation({
     mutationFn: (file: File) => UserApi.uploadAvatar(file),
@@ -214,34 +217,8 @@ export default function Profile() {
       <div className='pb-12 px-6 md:px-12 max-w-6xl mx-auto'>
         {/* Hero Profile Section */}
         <section className='mb-12 flex flex-col md:flex-row items-center md:items-end gap-8'>
-          {/* <div className='relative group'>
-            <div className='h-32 w-32 md:h-44 md:w-44 rounded-full p-1.5 bg-gradient-to-tr from-[#005ab7] to-[#bdd6ff] shadow-2xl'>
-              <img
-                alt='Avatar'
-                className='h-full w-full rounded-full object-cover border-4 border-white'
-                src={
-                  dataProfile.avatarUrl
-                    ? `${BASE_URL}${dataProfile.avatarUrl}` // 👈 Thêm base URL
-                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(dataProfile.fullName || 'User')}&background=005ab7&color=fff`
-                }
-                // src={
-                //   dataProfile.avatarUrl ||
-                //   `https://ui-avatars.com/api/?name=${encodeURIComponent(dataProfile.fullName || 'User')}&background=005ab7&color=fff`
-                // }
-              />
-            </div>
-          </div> */}
           <div className='relative group'>
             <div className='h-32 w-32 md:h-44 md:w-44 rounded-full p-1.5 bg-gradient-to-tr from-[#005ab7] to-[#bdd6ff] shadow-2xl'>
-              {/* <img
-                alt='Avatar'
-                className='h-full w-full rounded-full object-cover border-4 border-white'
-                src={
-                  dataProfile.avatarUrl
-                    ? `${BASE_URL}${dataProfile.avatarUrl}`
-                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(dataProfile.fullName || 'User')}&background=005ab7&color=fff`
-                }
-              /> */}
               <img
                 alt='Avatar'
                 className='h-full w-full rounded-full object-cover border-4 border-white'
@@ -287,10 +264,20 @@ export default function Profile() {
             </p>
             <p className='text-sm text-[#717786] mt-1 italic'>Tham gia từ {formatDateVN(dataProfile.createdAt)}</p>
           </div>
+
+          <div className='flex gap-4'>
+            <Link
+              to={'/viewQrcodeMe'}
+              className='px-8 py-3 bg-gradient-to-tr bg-slate-50 hover:bg-slate-100 text-blue-600 rounded-xl font-semibold shadow-lg shadow-blue-900/10  active:scale-95 transition-all flex items-center gap-2'
+            >
+              <span className='material-symbols-outlined text-lg'>qr_code</span>
+              Mã QR
+            </Link>
+          </div>
           <div className='flex gap-4'>
             <button
               onClick={() => setIsModalOpen(true)}
-              className='px-8 py-3 bg-gradient-to-tr from-[#005ab7] to-[#0072e5] text-white rounded-full font-semibold shadow-lg shadow-blue-900/10 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2'
+              className='px-8 py-3 bg-gradient-to-tr from-[#005ab7] to-[#0072e5] text-white rounded-xl font-semibold shadow-lg shadow-blue-900/10 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2'
             >
               <span className='material-symbols-outlined text-lg'>edit</span>
               Chỉnh sửa hồ sơ

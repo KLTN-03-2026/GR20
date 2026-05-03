@@ -1,10 +1,11 @@
-import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
-import type { QrcodeMe } from 'src/types/qrcode.type'
 import { toast } from 'react-toastify'
+import { useState } from 'react'
 
 export default function ViewQrcodeMe() {
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+
   // Lấy thông tin QR cá nhân
   const {
     data: qrData,
@@ -17,21 +18,51 @@ export default function ViewQrcodeMe() {
     retry: 1
   })
 
+  // Lấy lịch sử quét QR cá nhân
+  const {
+    data: historyData,
+    isLoading: isHistoryLoading,
+    refetch: refetchHistory
+  } = useQuery({
+    queryKey: ['qrcode-me-history'],
+    queryFn: () => QRCodeApi.getHistoryMe(),
+    retry: 1
+  })
+
   const qrInfo = qrData?.data?.data
   const isSuccess = qrData?.data?.code === 'OK'
 
+  // Lấy dữ liệu lịch sử
+  const historyList = historyData?.data?.data || []
+  const totalElements = historyData?.data?.totalElements || 0
+  const recentHistory = historyList.slice(0, 5)
+
   // Format date function
   const formatDate = (dateString: string) => {
+    if (!dateString) return '---'
     const date = new Date(dateString)
     return `${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
   }
 
   const formatTime = (dateString: string) => {
+    if (!dateString) return '---'
     const date = new Date(dateString)
     return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')} ${date.getHours() >= 12 ? 'Chiều' : 'Sáng'}`
   }
 
+  const formatDateTime = (dateString: string) => {
+    if (!dateString) return '---'
+    const date = new Date(dateString)
+    const day = date.getDate().toString().padStart(2, '0')
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const year = date.getFullYear()
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${day}/${month}/${year} ${hours}:${minutes}`
+  }
+
   const formatCreatedAt = (dateString: string) => {
+    if (!dateString) return '---'
     const date = new Date(dateString)
     return `${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
   }
@@ -45,7 +76,7 @@ export default function ViewQrcodeMe() {
 
     const link = document.createElement('a')
     link.href = qrInfo.qrImage
-    link.download = `QR_${qrInfo.qr_code.slice(-12)}.png`
+    link.download = `QR_${qrInfo.qr_code?.slice(-12) || 'personal'}.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -60,10 +91,9 @@ export default function ViewQrcodeMe() {
     }
 
     try {
-      // Chuyển đổi base64 thành blob
       const response = await fetch(qrInfo.qrImage)
       const blob = await response.blob()
-      const file = new File([blob], `QR_${qrInfo.qr_code.slice(-12)}.png`, { type: 'image/png' })
+      const file = new File([blob], `QR_${qrInfo.qr_code?.slice(-12) || 'personal'}.png`, { type: 'image/png' })
 
       if (navigator.share) {
         await navigator.share({
@@ -83,7 +113,21 @@ export default function ViewQrcodeMe() {
   // Xử lý refresh
   const handleRefresh = () => {
     refetch()
+    refetchHistory()
     toast.info('Đang làm mới dữ liệu...')
+  }
+
+  // Helper cho badge
+  const getResultBadge = (result: string) => {
+    if (result === 'SUCCESS') {
+      return { text: 'THÀNH CÔNG', bg: 'bg-green-100', textColor: 'text-green-700', dot: 'bg-green-500' }
+    }
+    return { text: 'TỪ CHỐI', bg: 'bg-red-100', textColor: 'text-red-700', dot: 'bg-red-500' }
+  }
+
+  const getDirectionIcon = (direction: string) => {
+    if (direction === 'IN') return { icon: 'login', color: 'text-blue-500', text: 'VÀO' }
+    return { icon: 'logout', color: 'text-orange-500', text: 'RA' }
   }
 
   if (isLoading) {
@@ -143,7 +187,6 @@ export default function ViewQrcodeMe() {
     )
   }
 
-  // Xác định trạng thái hiển thị
   const isActive = qrInfo.status === 'ACTIVE'
   const statusText = isActive ? 'HOẠT ĐỘNG' : qrInfo.status === 'EXPIRED' ? 'HẾT HẠN' : 'ĐÃ THU HỒI'
   const statusColor = isActive ? 'bg-emerald-500' : qrInfo.status === 'EXPIRED' ? 'bg-orange-500' : 'bg-red-500'
@@ -152,198 +195,417 @@ export default function ViewQrcodeMe() {
     <main className='min-h-screen bg-surface'>
       <div className='max-w-6xl mx-auto p-8 md:p-12'>
         {/* Hero Title Section */}
-        <header className='mb-12'>
-          <div className='flex flex-col md:flex-row md:items-end justify-between gap-6'>
-            <div className='space-y-2'>
-              <span className='inline-block px-3 py-1 bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-extrabold uppercase tracking-[0.2em] rounded-sm'>
-                Giao Thức Truy Cập An Toàn
-              </span>
-              <h1 className='text-4xl md:text-5xl font-extrabold text-on-surface tracking-tighter leading-tight'>
-                Chìa Khóa Cư Dân Kỹ Thuật Số
-              </h1>
-              <p className='text-lg text-on-surface-variant max-w-xl'>
-                Sử dụng chữ ký mã hóa này để truy cập liền mạch qua cổng chính, phòng tập thể dục và các sảnh cộng đồng.
+        <header className='mb-8'>
+          <div className='flex flex-col md:flex-row md:items-end justify-between gap-4'>
+            <div className='space-y-1'>
+              <h1 className='text-3xl md:text-4xl font-extrabold text-on-surface tracking-tight'>Mã QR Cá nhân</h1>
+              <p className='text-on-surface-variant max-w-xl'>
+                Sử dụng mã QR này để truy cập cổng chính và các tiện ích của tòa nhà
               </p>
             </div>
             <div className='flex items-center gap-3'>
               <div className='flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-outline-variant/10'>
                 <span className={`flex h-2 w-2 rounded-full ${statusColor}`}></span>
-                <span className='text-sm font-bold text-on-surface'>TRẠNG THÁI: {statusText}</span>
+                <span className='text-sm font-bold text-on-surface'>{statusText}</span>
               </div>
-              {/* <button
-                onClick={handleRefresh}
-                className='p-2 bg-white rounded-full shadow-sm hover:bg-surface-container-low transition-all'
-                title='Làm mới'
-              >
-                <span className='material-symbols-outlined text-on-surface-variant'>refresh</span>
-              </button> */}
             </div>
           </div>
         </header>
 
-        {/* Asymmetric Bento Layout */}
-        <div className='grid grid-cols-1 lg:grid-cols-12 gap-8'>
-          {/* QR Code Central Module */}
-          <div className='lg:col-span-7'>
-            <div className='bg-surface-container-lowest rounded-[2rem] p-8 md:p-12 shadow-[0_24px_48px_-12px_rgba(0,90,183,0.08)] flex flex-col items-center justify-center relative overflow-hidden'>
-              {/* Atmospheric Gradient Background */}
-              <div className='absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl'></div>
-              <div className='absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-secondary/5 rounded-full blur-3xl'></div>
-
-              {/* The QR Code Image Container */}
-              <div className='relative z-10 p-8 bg-white rounded-3xl shadow-[0_4px_24px_rgba(0,0,0,0.03)] group transition-transform duration-500 hover:scale-[1.02]'>
-                <div className='w-96 h-96 md:w-[32rem] md:h-[32rem] bg-slate-50 flex items-center justify-center border border-outline-variant/20 rounded-2xl overflow-hidden'>
+        {/* 2 Column Layout */}
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+          {/* Left Column - QR Code */}
+          <div className='lg:col-span-1'>
+            <div className='bg-surface-container-lowest rounded-2xl p-6 shadow-sm relative overflow-hidden'>
+              <div className='flex flex-col items-center'>
+                {/* QR Code - Smaller */}
+                <div className='bg-white p-4 rounded-xl shadow-md mb-4'>
                   <img
                     alt='Resident Access QR Code'
-                    className='w-[70%] h-[70%] object-contain p-4'
+                    className='w-48 h-48 md:w-56 md:h-56 object-contain'
                     src={qrInfo.qrImage}
                   />
                 </div>
-              </div>
 
-              <div className='mt-10 text-center space-y-4'>
-                <code className='px-4 py-2 bg-surface-container-low rounded-lg text-sm font-mono text-on-surface-variant tracking-wider'>
-                  MÃ: {qrInfo.qr_code}
+                <code className='px-3 py-1.5 bg-surface-container-low rounded-lg text-xs font-mono text-on-surface-variant break-all text-center'>
+                  {qrInfo.qr_code}
                 </code>
-                <div className='flex flex-wrap justify-center gap-4'>
+
+                <div className='flex flex-wrap justify-center gap-3 mt-5'>
                   <button
                     onClick={handleDownloadQR}
-                    className='flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-full font-bold transition-all hover:bg-primary-container active:scale-95 shadow-lg shadow-primary/20'
+                    className='flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl font-medium transition-all hover:bg-primary/90 active:scale-95'
                   >
-                    <span className='material-symbols-outlined'>download</span> Tải Mã QR
+                    <span className='material-symbols-outlined text-base'>download</span>
+                    Tải xuống
                   </button>
                   <button
                     onClick={handleShareQR}
-                    className='flex items-center gap-2 px-8 py-4 bg-surface-container-low text-on-surface rounded-full font-bold transition-all hover:bg-surface-container-high active:scale-95'
+                    className='flex items-center gap-2 px-5 py-2.5 bg-surface-container-low text-on-surface rounded-xl font-medium transition-all hover:bg-surface-container active:scale-95'
                   >
-                    <span className='material-symbols-outlined'>share</span> Chia Sẻ
+                    <span className='material-symbols-outlined text-base'>share</span>
+                    Chia sẻ
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Secondary Information Clusters */}
-          <div className='lg:col-span-5 space-y-8'>
-            {/* Insight Module: Expiration */}
-            <div className='bg-primary text-on-primary p-8 rounded-[2rem] shadow-xl shadow-primary/10 relative overflow-hidden'>
-              <div className='absolute top-0 right-0 p-8'>
-                <span className='material-symbols-outlined text-white/20 text-6xl'>event_available</span>
+          {/* Right Column - Info */}
+          <div className='lg:col-span-1 space-y-5'>
+            {/* Thời hạn hiệu lực */}
+            <div className='bg-primary rounded-xl p-5 border border-primary/10'>
+              <div className='flex items-center gap-3 mb-3'>
+                <span className='material-symbols-outlined text-white'>event_available</span>
+                <h3 className='font-bold text-white'>Thời hạn hiệu lực</h3>
               </div>
-              <div className='relative z-10 space-y-6'>
-                <span className='text-[10px] font-black uppercase tracking-[0.3em] text-white/70'>
-                  Thời Hạn Hiệu Lực
-                </span>
-                <div>
-                  <p className='text-sm text-white/60 mb-1'>Hết hạn vào</p>
-                  <p className='text-3xl font-extrabold tracking-tight'>{formatDate(qrInfo.expires_at)}</p>
-                  <p className='text-white/80 font-medium'>lúc {formatTime(qrInfo.expires_at)}</p>
-                </div>
-                <div className='pt-4 border-t border-white/10 flex items-center gap-3'>
-                  <span className='material-symbols-outlined text-sm'>schedule</span>
-                  <span className='text-xs font-medium text-white/70'>Tạo: {formatCreatedAt(qrInfo.created_at)}</span>
-                </div>
+              <div className='flex flex-col gap-1'>
+                <p className='text-2xl font-bold text-white'>{formatDate(qrInfo.expires_at)}</p>
+                <p className='text-sm text-white'>lúc {formatTime(qrInfo.expires_at)}</p>
+                <p className='text-xs text-white mt-2'>Tạo: {formatCreatedAt(qrInfo.created_at)}</p>
               </div>
             </div>
 
-            {/* Usage Instructions Glass Card */}
-            <div className='glass-card p-8 rounded-[2rem] border border-white shadow-sm space-y-6'>
-              <h2 className='text-xl font-bold tracking-tight text-on-surface flex items-center gap-3'>
-                <span className='material-symbols-outlined text-primary' style={{ fontVariationSettings: "'FILL' 1" }}>
-                  info
-                </span>
-                Hướng Dẫn Truy Cập
-              </h2>
-              <div className='space-y-6'>
-                <div className='flex gap-4'>
-                  <div className='flex-shrink-0 w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant font-black text-xs'>
-                    1
-                  </div>
-                  <div>
-                    <h4 className='font-bold text-on-surface text-sm'>Tại Cầu Gác/Lối Vào</h4>
-                    <p className='text-sm text-on-surface-variant leading-relaxed'>
-                      Trình màn hình điện thoại của bạn cho máy quét quang học ở các bục ở lối vào.
-                    </p>
-                  </div>
+            {/* Lịch sử quét gần đây */}
+            <div className='bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden'>
+              <div className='px-5 py-3 border-b border-outline-variant/10 flex justify-between items-center'>
+                <div className='flex items-center gap-2'>
+                  <span className='material-symbols-outlined text-primary text-xl'>history</span>
+                  <h3 className='font-bold text-on-surface'>Lịch sử quét</h3>
+                  {totalElements > 0 && (
+                    <span className='text-xs text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full'>
+                      {recentHistory.length}/{totalElements}
+                    </span>
+                  )}
                 </div>
-                <div className='flex gap-4'>
-                  <div className='flex-shrink-0 w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant font-black text-xs'>
-                    2
-                  </div>
-                  <div>
-                    <h4 className='font-bold text-on-surface text-sm'>Quét Tối Ưu</h4>
-                    <p className='text-sm text-on-surface-variant leading-relaxed'>
-                      Đảm bảo độ sáng màn hình của bạn ở mức tối đa để nhận dạng nhanh nhất.
-                    </p>
-                  </div>
-                </div>
-                <div className='flex gap-4'>
-                  <div className='flex-shrink-0 w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant font-black text-xs'>
-                    3
-                  </div>
-                  <div>
-                    <h4 className='font-bold text-on-surface text-sm'>Truy Cập Khách</h4>
-                    <p className='text-sm text-on-surface-variant leading-relaxed'>
-                      Đây là chìa khóa cư dân cá nhân của bạn. Để khách, vui lòng sử dụng tính năng 'Mời' để tạo lệnh
-                      thông hành tạm thời.
-                    </p>
-                  </div>
-                </div>
+                {totalElements > 5 && (
+                  <button
+                    onClick={() => setIsHistoryModalOpen(true)}
+                    className='text-xs font-medium text-primary hover:underline'
+                  >
+                    Xem tất cả
+                  </button>
+                )}
               </div>
-            </div>
-
-            {/* AI Insight Chip */}
-            <div className='bg-secondary-fixed p-6 rounded-2xl flex items-center gap-4 border border-outline-variant/10'>
-              <div className='bg-white p-2 rounded-xl'>
-                <span
-                  className='material-symbols-outlined text-on-secondary-fixed-variant'
-                  style={{ fontVariationSettings: "'FILL' 1" }}
-                >
-                  auto_awesome
-                </span>
-              </div>
-              <div>
-                <p className='text-xs font-bold text-on-secondary-fixed-variant/60 uppercase tracking-widest'>
-                  Gợi Ý AI Homelink
-                </p>
-                <p className='text-sm font-semibold text-on-secondary-fixed-variant'>
-                  Lệnh thông hành của bạn được sử dụng thường xuyên nhất từ 8:00 - 9:30 Sáng.
-                </p>
+              <div className='divide-y divide-outline-variant/5 max-h-64 overflow-y-auto'>
+                {isHistoryLoading ? (
+                  <div className='flex justify-center py-8'>
+                    <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-primary'></div>
+                  </div>
+                ) : recentHistory.length === 0 ? (
+                  <div className='text-center py-8 text-on-surface-variant'>
+                    <span className='material-symbols-outlined text-3xl mb-1'>history</span>
+                    <p className='text-sm'>Chưa có lịch sử quét</p>
+                  </div>
+                ) : (
+                  recentHistory.map((item: any) => {
+                    const resultBadge = getResultBadge(item.result)
+                    const directionIcon = getDirectionIcon(item.direction)
+                    const dateTime = formatDateTime(item.scan_time)
+                    return (
+                      <div
+                        key={item.id}
+                        className='px-5 py-3 flex items-center justify-between hover:bg-surface-container-low transition-colors'
+                      >
+                        <div className='flex items-center gap-3'>
+                          <div
+                            className={`p-1.5 rounded-full ${item.result === 'SUCCESS' ? 'bg-green-100' : 'bg-red-100'}`}
+                          >
+                            <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
+                              {directionIcon.icon}
+                            </span>
+                          </div>
+                          <div>
+                            <p className='text-sm font-medium text-on-surface'>
+                              {item.building_name || `Cổng ${directionIcon.text}`}
+                            </p>
+                            <p className='text-xs text-on-surface-variant'>
+                              {resultBadge.text} • {item.scanned_by_name || 'Hệ thống'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className='text-right'>
+                          <p className='text-xs font-medium text-on-surface'>{dateTime.split(' ')[1]}</p>
+                          <p className='text-[10px] text-on-surface-variant'>{dateTime.split(' ')[0]}</p>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Visual Context Section */}
-        <section className='mt-20'>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-12 items-center'>
-            <div className='order-2 md:order-1 rounded-[2rem] overflow-hidden shadow-2xl'>
-              <img
-                alt='Property Entrance'
-                className='w-full h-[400px] object-cover'
-                src='https://lh3.googleusercontent.com/aida-public/AB6AXuB2NqEIcDarw1ZVFvimM9p_VGIJLJD-PthQaVbKtYwIeaQWkRxOoAKIPcea8ui91KUL7Uc785WN5THG93GEkz481m_YPwFW33CZQ0YFULsqpEcmnZoZI7o6i1ijr1U8bqoQOfTMYS4CI4V0Qq8dPz0u2rvDRedW1njSTOO3YF1sTCAHF3H39ou0d5JUrLEf3WZh82s5VbiSCC7G4WjTnb2Xs37k2yepk-s1fmKZrlYDINLBjzp8ITMh54PZvJGUCT4MXtK4jhtOaS5D'
-              />
+        {/* Hướng dẫn sử dụng - Nằm dưới cùng */}
+        <div className='mt-8'>
+          <div className='bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10'>
+            <div className='flex items-center gap-2 mb-4'>
+              <span className='material-symbols-outlined text-primary'>lightbulb</span>
+              <h3 className='font-bold text-on-surface'>Hướng dẫn sử dụng</h3>
             </div>
-            <div className='order-1 md:order-2 space-y-6'>
-              <span className='text-primary font-bold text-sm tracking-widest uppercase'>An Ninh Cộng Đồng</span>
-              <h3 className='text-3xl font-extrabold tracking-tight'>
-                An ninh của bạn là ưu tiên hàng đầu của chúng tôi.
-              </h3>
-              <p className='text-on-surface-variant leading-relaxed'>
-                Mỗi lần vào và ra sử dụng Mã QR cá nhân của bạn đều được ghi nhật ký trong cổng thông tin cư dân của bạn
-                để bảo vệ bạn. Nếu bạn mất thiết bị, bạn có thể thu hồi ngay lệnh thông hành này và tạo một lệnh mới từ
-                cài đặt bảo mật của bạn.
-              </p>
-              <div className='pt-4'>
-                <a className='inline-flex items-center gap-2 text-primary font-bold hover:underline' href='#'>
-                  Xem Nhật Ký Bảo Mật
-                  <span className='material-symbols-outlined text-sm'>arrow_forward</span>
-                </a>
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-5'>
+              <div className='flex gap-3'>
+                <div className='w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0'>
+                  1
+                </div>
+                <div>
+                  <h4 className='font-medium text-on-surface text-sm'>Mở ứng dụng</h4>
+                  <p className='text-xs text-on-surface-variant'>Mở Homelink và chọn "Mã QR của tôi"</p>
+                </div>
+              </div>
+              <div className='flex gap-3'>
+                <div className='w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0'>
+                  2
+                </div>
+                <div>
+                  <h4 className='font-medium text-on-surface text-sm'>Đưa mã QR</h4>
+                  <p className='text-xs text-on-surface-variant'>Đưa mã QR trước thiết bị quét tại cửa</p>
+                </div>
+              </div>
+              <div className='flex gap-3'>
+                <div className='w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0'>
+                  3
+                </div>
+                <div>
+                  <h4 className='font-medium text-on-surface text-sm'>Chờ xác nhận</h4>
+                  <p className='text-xs text-on-surface-variant'>Cửa sẽ tự động mở khi quét thành công</p>
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
       </div>
+
+      {/* History Modal */}
+      {isHistoryModalOpen && (
+        <HistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          historyData={historyList}
+          formatDateTime={formatDateTime}
+          getResultBadge={getResultBadge}
+          getDirectionIcon={getDirectionIcon}
+        />
+      )}
     </main>
+  )
+}
+
+// Modal Component để xem tất cả lịch sử
+function HistoryModal({ isOpen, onClose, historyData, formatDateTime, getResultBadge, getDirectionIcon }: any) {
+  const [searchInput, setSearchInput] = useState('')
+  const [resultFilter, setResultFilter] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
+
+  // Filter dữ liệu
+  const filteredData = historyData.filter((item: any) => {
+    const matchesSearch =
+      !searchInput ||
+      item.gate?.toLowerCase().includes(searchInput.toLowerCase()) ||
+      item.scanned_by_name?.toLowerCase().includes(searchInput.toLowerCase()) ||
+      item.building_name?.toLowerCase().includes(searchInput.toLowerCase())
+
+    const matchesResult = !resultFilter || item.result === resultFilter
+
+    const itemDate = item.scan_time ? new Date(item.scan_time).toISOString().split('T')[0] : ''
+    const matchesFromDate = !fromDate || itemDate >= fromDate
+    const matchesToDate = !toDate || itemDate <= toDate
+
+    return matchesSearch && matchesResult && matchesFromDate && matchesToDate
+  })
+
+  const totalPages = Math.ceil(filteredData.length / pageSize)
+  const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  const handleResetFilters = () => {
+    setSearchInput('')
+    setResultFilter('')
+    setFromDate('')
+    setToDate('')
+    setCurrentPage(1)
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className='fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
+      <div className='bg-surface rounded-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden shadow-2xl'>
+        {/* Header */}
+        <div className='p-6 border-b border-outline-variant/10 flex justify-between items-start bg-surface-container-lowest'>
+          <div>
+            <h2 className='text-2xl font-bold text-on-surface'>Lịch sử quét QR Cá nhân</h2>
+            <p className='text-sm mt-1 text-on-surface-variant'>
+              Tổng số lần quét: <span className='font-semibold text-primary'>{historyData.length}</span>
+            </p>
+          </div>
+          <button onClick={onClose} className='p-2 hover:bg-surface-container rounded-full transition-colors'>
+            <span className='material-symbols-outlined text-on-surface-variant'>close</span>
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className='flex flex-wrap gap-3 p-4 bg-surface-container-low border-b border-outline-variant/10'>
+          <input
+            type='text'
+            placeholder='Tìm kiếm cổng, người quét, tòa nhà...'
+            className='flex-1 min-w-[200px] px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value)
+              setCurrentPage(1)
+            }}
+          />
+          <select
+            className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
+            value={resultFilter}
+            onChange={(e) => {
+              setResultFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+          >
+            <option value=''>Tất cả kết quả</option>
+            <option value='SUCCESS'>Thành công</option>
+            <option value='DENIED'>Từ chối</option>
+          </select>
+          <input
+            type='date'
+            className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
+            value={fromDate}
+            onChange={(e) => {
+              setFromDate(e.target.value)
+              setCurrentPage(1)
+            }}
+          />
+          <span className='material-symbols-outlined text-on-surface-variant/60 text-base self-center'>east</span>
+          <input
+            type='date'
+            className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
+            value={toDate}
+            onChange={(e) => {
+              setToDate(e.target.value)
+              setCurrentPage(1)
+            }}
+          />
+          <button
+            onClick={handleResetFilters}
+            className='p-2 hover:bg-surface-container rounded-lg transition-colors text-on-surface-variant hover:text-primary'
+          >
+            <span className='material-symbols-outlined text-sm'>refresh</span>
+          </button>
+        </div>
+
+        {/* Table Content */}
+        <div className='p-6 overflow-y-auto max-h-[calc(85vh-250px)]'>
+          {filteredData.length === 0 ? (
+            <div className='text-center py-12'>
+              <span className='material-symbols-outlined text-5xl text-on-surface-variant/30'>history</span>
+              <p className='mt-3 text-on-surface-variant'>Không có dữ liệu phù hợp</p>
+            </div>
+          ) : (
+            <table className='w-full text-left border-collapse'>
+              <thead>
+                <tr className='border-b border-outline-variant/10'>
+                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>STT</th>
+                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                    Thời gian
+                  </th>
+                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                    Hướng
+                  </th>
+                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                    Tòa nhà
+                  </th>
+                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                    Kết quả
+                  </th>
+                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                    Người quét
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedData.map((item: any, index: number) => {
+                  const dateTime = formatDateTime(item.scan_time)
+                  const resultBadge = getResultBadge(item.result)
+                  const directionIcon = getDirectionIcon(item.direction)
+                  const rowNumber = (currentPage - 1) * pageSize + index + 1
+                  return (
+                    <tr
+                      key={item.id}
+                      className='border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors'
+                    >
+                      <td className='px-4 py-3 text-sm'>{rowNumber}</td>
+                      <td className='px-4 py-3 text-sm'>
+                        <div className='font-medium'>{dateTime.split(' ')[0]}</div>
+                        <div className='text-xs text-on-surface-variant'>{dateTime.split(' ')[1]}</div>
+                      </td>
+                      <td className='px-4 py-3'>
+                        <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
+                          {directionIcon.icon}
+                        </span>{' '}
+                        <span className='text-sm'>{directionIcon.text}</span>
+                      </td>
+                      <td className='px-4 py-3 text-sm'>{item.building_name || '---'}</td>
+                      <td className='px-4 py-3'>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${resultBadge.bg} ${resultBadge.textColor}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${resultBadge.dot}`}></span>
+                          {resultBadge.text}
+                        </span>
+                      </td>
+                      <td className='px-4 py-3 text-sm'>{item.scanned_by_name || '---'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {filteredData.length > 0 && (
+          <div className='px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low flex justify-between items-center'>
+            <p className='text-xs text-on-surface-variant'>
+              Hiển thị {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredData.length)} trên{' '}
+              {filteredData.length}
+            </p>
+            <div className='flex gap-2'>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className='px-4 py-2 border border-outline-variant/30 rounded-lg text-sm font-medium hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                Trước
+              </button>
+              <span className='px-4 py-2 text-sm font-medium text-on-surface-variant'>
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className='px-4 py-2 border border-outline-variant/30 rounded-lg text-sm font-medium hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className='p-4 border-t border-outline-variant/10 bg-surface-container-lowest flex justify-end'>
+          <button
+            onClick={onClose}
+            className='px-6 py-2.5 bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high font-semibold transition-colors'
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

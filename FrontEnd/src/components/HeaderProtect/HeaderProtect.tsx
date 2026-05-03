@@ -1,5 +1,3 @@
-import React from 'react'
-
 export default function HeaderProtect() {
   return (
     <header className='fixed top-0 right-0 left-0 lg:left-64 bg-slate-50/70 backdrop-blur-xl z-40 shadow-sm'>

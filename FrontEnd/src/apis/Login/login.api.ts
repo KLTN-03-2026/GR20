@@ -6,7 +6,7 @@ import http from 'src/utils/http'
 const URL = 'api/auth/login'
 
 export const loginApi = {
-  postLogin(body: { username: string; password: string }) {
+  postLogin(body: { username?: string; password?: string }) {
     return http.post<SuccessResponseApi<AuthResponse>>(URL, body)
   }
 }
