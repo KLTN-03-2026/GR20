@@ -10,7 +10,7 @@ const authRoute = require("../modules/auth/auth.route");
 const floorRoute = require("../modules/floors/floors.route");
 const apartmentRoute = require("../modules/apartments/apartment.route"); 
 const contractRoute = require("../modules/contracts/contract.route");
-// 🆕    THÊM DÒNG NÀY
+router.use("/amenities", require("../modules/amenities/amenity.route"));
 // Sau này nhóm code chức năng khác thì import thêm: const residentRoute = require('../modules/residents/residents.route');
 
 router.use('/uploads', express.static('uploads'));
@@ -23,7 +23,8 @@ router.use("/roles", roleRoute);
 router.use("/users", userRoute);
 router.use("/auth", authRoute);
 router.use("/floors", floorRoute);
-router.use("/apartments", apartmentRoute); // 🆕 THÊM DÒNG NÀY
+router.use("/apartments", apartmentRoute); 
+router.use("/buildings/:buildingId/amenities", require("../modules/amenities/amenity.route"));
 // router.use('/residents', residentRoute);
 
 module.exports = router;
