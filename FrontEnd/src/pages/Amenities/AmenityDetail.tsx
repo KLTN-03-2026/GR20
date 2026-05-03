@@ -1,14 +1,17 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
-import http from 'src/utils/http';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import http from 'src/utils/http';
 import AmenityForm from './AmenityForm';
 
 export default function AmenityDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showForm, setShowForm] = useState(false);
+  const listPath =
+    location.pathname.startsWith('/admin/') ? '/admin/amenities' : '/my-amenities';
+  const showAdminActions = location.pathname.startsWith('/admin/');
 
   const { data, isLoading } = useQuery({
     queryKey: ['amenity', id],
@@ -20,7 +23,7 @@ export default function AmenityDetail() {
 
   if (isLoading) {
     return (
-      <div className="ml-64 pt-24 flex items-center justify-center min-h-screen">
+      <div className="pt-24 flex items-center justify-center min-h-screen">
         <div className="flex items-center gap-3 text-slate-400">
           <span className="material-symbols-outlined animate-spin">sync</span>
           <span className="text-sm">Đang tải dữ liệu...</span>
@@ -31,7 +34,7 @@ export default function AmenityDetail() {
 
   if (!amenity) {
     return (
-      <div className="ml-64 pt-24 flex items-center justify-center min-h-screen">
+      <div className="pt-24 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <span className="material-symbols-outlined text-5xl text-slate-200 mb-4">pool</span>
           <h2 className="text-xl font-bold text-slate-700 mb-2">Không tìm thấy tiện ích</h2>
@@ -42,7 +45,7 @@ export default function AmenityDetail() {
   }
 
   return (
-    <div className='ml-64 min-h-screen'>
+    <div className='min-h-screen pb-10'>
       {/* Header */}
       <header className='sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center'>
         <button
@@ -52,7 +55,7 @@ export default function AmenityDetail() {
           <span className='material-symbols-outlined'>arrow_back</span>
         </button>
         <div className='flex items-center gap-2 text-xs text-slate-400'>
-          <button onClick={() => navigate('/amenities')} className='hover:text-blue-500'>
+          <button onClick={() => navigate(listPath)} className='hover:text-blue-500'>
             Tiện ích
           </button>
           <span className='material-symbols-outlined text-[14px]'>chevron_right</span>
@@ -154,13 +157,15 @@ export default function AmenityDetail() {
           >
             Quay lại
           </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className='px-8 py-3 bg-slate-800 text-white font-bold rounded-full text-sm hover:bg-slate-700 transition-colors flex items-center gap-2'
-          >
-            <span className='material-symbols-outlined text-lg'>edit</span>
-            Chỉnh sửa
-          </button>
+          {showAdminActions && (
+            <button
+              onClick={() => setShowForm(true)}
+              className='px-8 py-3 bg-slate-800 text-white font-bold rounded-full text-sm hover:bg-slate-700 transition-colors flex items-center gap-2'
+            >
+              <span className='material-symbols-outlined text-lg'>edit</span>
+              Chỉnh sửa
+            </button>
+          )}
         </div>
       </main>
       <AmenityForm

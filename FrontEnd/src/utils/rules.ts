@@ -137,4 +137,28 @@ export const userSchema = yup.object({
 
 export type UserSchemaType = yup.InferType<typeof userSchema>
 
+/** Form đổi mật khẩu (khớp `UserApi.changePassword`) */
+export const changePasswordSchema = yup.object({
+  currentPassword: yup.string().required('Vui lòng nhập mật khẩu hiện tại').min(6).max(160),
+  newPassword: yup.string().required('Vui lòng nhập mật khẩu mới').min(6).max(160),
+  confirmPassword: yup
+    .string()
+    .required('Vui lòng xác nhận mật khẩu')
+    .oneOf([yup.ref('newPassword')], 'Mật khẩu xác nhận không khớp')
+})
+
+export type ChangePasswordFormData = yup.InferType<typeof changePasswordSchema>
+
+/** Form cập nhật hồ sơ trong `Profile.tsx` — gửi `UserApi.updateProfile`. */
+export const updateProfileSchema = yup.object({
+  fullName: yup.string().trim().required('Họ và tên là bắt buộc').max(160),
+  email: yup.string().trim().required('Email là bắt buộc').email('Email không hợp lệ').max(160),
+  phone: yup.string().trim().required('Số điện thoại là bắt buộc').max(20),
+  gender: yup.string().oneOf(['MALE', 'FEMALE', 'OTHER'], 'Giới tính không hợp lệ').required(),
+  dateOfBirth: yup.string().required('Ngày sinh là bắt buộc'),
+  avatarUrl: yup.string().max(500).default('')
+})
+
+export type UpdateProfileFormData = yup.InferType<typeof updateProfileSchema>
+
 export type Schema = yup.InferType<typeof schema>

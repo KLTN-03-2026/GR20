@@ -25,19 +25,21 @@ const getContracts = async (query) => {
     size = 10,
   } = query;
 
+  const pageNum = Number(page)
+  const normalizedPage = !Number.isFinite(pageNum) || pageNum < 1 ? 1 : Math.floor(pageNum)
+  const sizeNum = Number(size)
+
   const result = await repo.getContracts({
     status,
     contractType,
-    page: Number(page),
-    size: Number(size),
-  });
+    page: normalizedPage,
+    size: sizeNum,
+  })
 
-  return new ContractListResponse(
-    result.rows,
-    Number(page),
-    Number(size),
-    result.total
-  );
+  const safeSize =
+    Number.isFinite(sizeNum) && sizeNum >= 1 ? Math.min(Math.floor(sizeNum), 100) : 10
+
+  return new ContractListResponse(result.rows, normalizedPage, safeSize, result.total)
 };
 
 // GET DETAIL

@@ -17,7 +17,7 @@ interface FormData {
 }
 
 export default function Login() {
-  const { SetIsAuthenticated, setUser } = useContext(AppContext)
+  const { SetIsAuthenticated, setProfile } = useContext(AppContext)
 
   const navigate = useNavigate()
   const {
@@ -37,7 +37,7 @@ export default function Login() {
         toast.success('Đăng nhập thành công')
         SetIsAuthenticated(true)
         const user = res.data.data.user
-        setUser(user)
+        setProfile(user)
         navigate(getPostLoginRedirectPath(user))
       },
       onError: (errors) => {

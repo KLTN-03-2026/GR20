@@ -138,11 +138,19 @@ export default function useRouteElements() {
     },
     {
       path: '/apartments',
-      element: <Apartment />
+      element: (
+        <DashboardLayoutProtect>
+          <Apartment />
+        </DashboardLayoutProtect>
+      )
     },
     {
       path: '/apartments/:id',
-      element: <ApartmentDetail />
+      element: (
+        <DashboardLayoutProtect>
+          <ApartmentDetail />
+        </DashboardLayoutProtect>
+      )
     },
     {
       path: '/buildings/:id',
@@ -277,7 +285,7 @@ export default function useRouteElements() {
       )
     },
     {
-      path: '/amenities',
+      path: '/admin/amenities',
       element: (
         <DashboardLayoutProtect>
           <AmenityList />
@@ -285,7 +293,7 @@ export default function useRouteElements() {
       )
     },
     {
-      path: '/amenities/:id',
+      path: '/admin/amenities/:id',
       element: (
         <DashboardLayoutProtect>
           <AmenityDetail />
@@ -297,6 +305,14 @@ export default function useRouteElements() {
       element: (
         <DashboardLayoutUser>
           <AmenityList isResident />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/my-amenities/:id',
+      element: (
+        <DashboardLayoutUser>
+          <AmenityDetail />
         </DashboardLayoutUser>
       )
     },
@@ -407,22 +423,6 @@ export default function useRouteElements() {
       element: (
         <DashboardLayoutProtect>
           <Floors />
-        </DashboardLayoutProtect>
-      )
-    },
-    {
-      path: '/admin/apartments',
-      element: (
-        <DashboardLayoutProtect>
-          <Apartment />
-        </DashboardLayoutProtect>
-      )
-    },
-    {
-      path: '/admin/apartments/:id',
-      element: (
-        <DashboardLayoutProtect>
-          <ApartmentDetail />
         </DashboardLayoutProtect>
       )
     },

@@ -44,8 +44,15 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     label: 'Quản lý căn hộ',
     description: 'Danh sách apartments',
-    to: '/admin/apartments',
+    to: '/apartments',
     icon: 'meeting_room'
+  },
+  {
+    label: 'Quản lý tiện ích',
+    description: 'Danh sách tiện ích theo tòa',
+    to: '/admin/amenities',
+    icon: 'pool',
+    group: 'utility'
   },
   {
     label: 'Bảo trì',

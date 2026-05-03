@@ -73,6 +73,7 @@ const createContract = async (entity) => {
 };
 
 // GET LIST (FILTER + PAGINATION) + AUTO UPDATE EXPIRED
+// Phân trang 1-based (trang đầu page=1, như FE 71412cf). page=0 hoặc thiếu → coi là trang 1.
 const getContracts = async ({ status, contractType, page = 1, size = 10 }) => {
   // 🆕 Tự động chuyển ACTIVE → EXPIRED nếu đã hết hạn
   await pool.query(`
@@ -81,7 +82,9 @@ const getContracts = async ({ status, contractType, page = 1, size = 10 }) => {
     WHERE status = 'ACTIVE' AND end_date < CURRENT_DATE
   `);
 
-  const offset = (page - 1) * size;
+  const pageNum = Math.max(1, Number(page) || 1);
+  const sizeNum = Math.min(Math.max(Number(size) || 10, 1), 100);
+  const offset = (pageNum - 1) * sizeNum;
 
   let query = `
     SELECT 
@@ -118,7 +121,7 @@ const getContracts = async ({ status, contractType, page = 1, size = 10 }) => {
   }
 
   query += ` ORDER BY c.id DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  params.push(size, offset);
+  params.push(sizeNum, offset);
 
   const dataResult = await pool.query(query, params);
 

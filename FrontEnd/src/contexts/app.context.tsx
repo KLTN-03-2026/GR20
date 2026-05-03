@@ -7,14 +7,18 @@ interface AppContextInterface {
   isAuthenticated: boolean
   SetIsAuthenticated: React.Dispatch<React.SetStateAction<boolean>>
   profile: User | null
+  /** Đồng bộ với `profile` — nhiều màn billing dùng `user`. */
+  user: User | null
   setProfile: React.Dispatch<React.SetStateAction<User | null>>
   reset: () => void
 }
 
+const initProfile = getProfile()
 const init: AppContextInterface = {
   isAuthenticated: Boolean(getAccessToken()), //ép hàm sang kiểu boolean
   SetIsAuthenticated: () => null,
-  profile: getProfile(),
+  profile: initProfile,
+  user: initProfile,
   setProfile: () => null,
   reset: () => null
 }
@@ -34,7 +38,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AppContext.Provider value={{ isAuthenticated, SetIsAuthenticated, profile, setProfile, reset }}>
+    <AppContext.Provider value={{ isAuthenticated, SetIsAuthenticated, profile, user: profile, setProfile, reset }}>
       {children}
     </AppContext.Provider>
   )

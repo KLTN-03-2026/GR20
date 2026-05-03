@@ -75,6 +75,13 @@ export default function SidebarUser() {
           </div>
           <Link
             className='flex items-center space-x-3 px-8 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
+            to='/my-amenities'
+          >
+            <span className='material-symbols-outlined'>pool</span>
+            <span className='text-sm font-manrope'>Xem tiện ích</span>
+          </Link>
+          <Link
+            className='flex items-center space-x-3 px-8 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20  transition-all duration-300'
             to='/my-utility-meters'
           >
             <span className='material-symbols-outlined'>speed</span>

@@ -1,11 +1,8 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import http from 'src/utils/http';
 
 export default function MyContract() {
-  const navigate = useNavigate();
-
   const { data, isLoading } = useQuery({
     queryKey: ['myApartment'],
     queryFn: () => http.get('/api/apartments/my'),
@@ -19,11 +16,6 @@ export default function MyContract() {
     return new Date(dateStr).toLocaleDateString('vi-VN');
   };
 
-  const formatDateTime = (dateStr: string) => {
-    if (!dateStr) return '---';
-    return new Date(dateStr).toLocaleString('vi-VN');
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN').format(amount || 0);
   };
@@ -35,7 +27,7 @@ export default function MyContract() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen ml-64">
+      <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex items-center gap-3 text-slate-400">
           <span className="material-symbols-outlined animate-spin">sync</span>
           <span className="text-sm">Đang tải dữ liệu...</span>
@@ -45,70 +37,18 @@ export default function MyContract() {
   }
 
   return (
-    <div className='min-h-screen'>
-      {/* Header */}
-      <header className='fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl shadow-sm'>
-        <div className='flex justify-between items-center px-6 py-3 ml-64'>
-          <span className='text-xl font-bold text-slate-900'>HomeLink AI</span>
-          <nav className='hidden md:flex items-center gap-6 text-sm font-medium'>
-            <a className='text-slate-500 hover:text-slate-900 px-3 py-1 rounded-full' href='#'>
-              Trang chủ
-            </a>
-            <a className='text-slate-500 hover:text-slate-900 px-3 py-1 rounded-full' href='#'>
-              Căn hộ
-            </a>
-            <a className='text-blue-600 border-b-2 border-blue-600 px-3 py-1' href='#'>
-              Hợp đồng
-            </a>
-            <a className='text-slate-500 hover:text-slate-900 px-3 py-1 rounded-full' href='#'>
-              Hỗ trợ
-            </a>
-          </nav>
-          <div className='flex items-center gap-4'>
-            <button className='p-2 rounded-full hover:bg-slate-100'>
-              <span className='material-symbols-outlined text-slate-500'>notifications</span>
-            </button>
-            <div className='h-8 w-8 rounded-full bg-slate-200 overflow-hidden'>
-              <img className='h-full w-full object-cover' src='https://via.placeholder.com/32' alt='Avatar' />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Sidebar */}
-      <aside className='h-screen w-64 fixed left-0 top-0 z-40 bg-white border-r flex flex-col py-20 px-4'>
-        <div className='mb-8 px-4'>
-          <p className='text-xs font-semibold uppercase tracking-widest text-slate-400'>Welcome Home</p>
-          <h3 className='text-slate-900 font-bold text-lg'>{apartment?.apartment_code || '---'}</h3>
-        </div>
-        <nav className='space-y-1'>
-          <div className='flex items-center gap-3 py-3 px-4 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform cursor-pointer text-sm uppercase tracking-widest font-semibold'>
-            <span className='material-symbols-outlined'>dashboard</span>
-            <span>Dashboard</span>
-          </div>
-          <div className='flex items-center gap-3 py-3 px-4 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform cursor-pointer text-sm uppercase tracking-widest font-semibold'>
-            <span className='material-symbols-outlined'>domain</span>
-            <span>Căn hộ</span>
-          </div>
-          <div className='flex items-center gap-3 py-3 px-4 text-blue-600 bg-blue-50 rounded-r-full font-bold text-sm uppercase tracking-widest'>
-            <span className='material-symbols-outlined'>description</span>
-            <span>Hợp đồng</span>
-          </div>
-          <div className='flex items-center gap-3 py-3 px-4 text-slate-500 hover:text-slate-900 hover:translate-x-1 transition-transform cursor-pointer text-sm uppercase tracking-widest font-semibold'>
-            <span className='material-symbols-outlined'>support</span>
-            <span>Hỗ trợ</span>
-          </div>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className='ml-64 pt-20 pb-12'>
+    <div className='pb-10'>
+      <main className='w-full'>
         <div className='max-w-6xl mx-auto px-8 py-8'>
           {/* Breadcrumbs */}
-          <nav className='flex items-center gap-2 text-sm text-slate-400 mb-6 font-medium'>
-            <a className='hover:text-blue-500 cursor-pointer'>Trang chủ</a>
+          <nav className='flex flex-wrap items-center gap-2 text-sm text-slate-400 mb-6 font-medium'>
+            <Link to='/' className='hover:text-blue-500'>
+              Trang chủ
+            </Link>
             <span className='material-symbols-outlined text-xs'>chevron_right</span>
-            <a className='hover:text-blue-500 cursor-pointer'>Căn hộ của tôi</a>
+            <Link to='/my-apartment' className='hover:text-blue-500'>
+              Căn hộ của tôi
+            </Link>
             <span className='material-symbols-outlined text-xs'>chevron_right</span>
             <span className='text-blue-600 font-semibold'>Chi tiết hợp đồng</span>
           </nav>

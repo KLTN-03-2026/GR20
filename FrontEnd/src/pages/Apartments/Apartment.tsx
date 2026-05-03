@@ -99,135 +99,8 @@ export default function Apartment() {
   }
 
   return (
-    <>
-      {/* SideNavBar */}
-      <aside className='h-screen w-64 fixed left-0 border-r-0 bg-slate-50/50 backdrop-blur-lg flex flex-col p-6 space-y-4 z-50 overflow-y-auto'>
-        <div className='mb-8 flex items-center gap-3'>
-          <div className='w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white'>
-            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
-              home_work
-            </span>
-          </div>
-          <div>
-            <h1 className='text-lg font-black text-blue-700 leading-none'>HomeLink AI</h1>
-            <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500 mt-1'>Azure Serenity</p>
-          </div>
-        </div>
-
-        <nav className='flex-1 space-y-2'>
-          <a
-            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
-            href='#'
-          >
-            <span className='material-symbols-outlined'>dashboard</span>
-            <span>Bảng điều khiển</span>
-          </a>
-          <a
-            className='flex items-center gap-3 p-3 bg-white text-blue-600 shadow-sm rounded-lg hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
-            href='#'
-          >
-            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
-              domain
-            </span>
-            <span>Danh sách căn hộ</span>
-          </a>
-          <a
-            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
-            href='#'
-          >
-            <span className='material-symbols-outlined'>description</span>
-            <span>Hợp đồng</span>
-          </a>
-          <a
-            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
-            href='#'
-          >
-            <span className='material-symbols-outlined'>payments</span>
-            <span>Thanh toán</span>
-          </a>
-          <a
-            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
-            href='#'
-          >
-            <span className='material-symbols-outlined'>analytics</span>
-            <span>Báo cáo</span>
-          </a>
-        </nav>
-
-        <div className='pt-8 mt-auto space-y-2 border-t border-slate-200'>
-          <a
-            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform font-manrope text-xs font-semibold uppercase tracking-widest'
-            href='#'
-          >
-            <span className='material-symbols-outlined'>help</span>
-            <span>Hỗ trợ</span>
-          </a>
-          <a
-            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform font-manrope text-xs font-semibold uppercase tracking-widest'
-            href='#'
-          >
-            <span className='material-symbols-outlined'>logout</span>
-            <span>Đăng xuất</span>
-          </a>
-        </div>
-      </aside>
-
-      {/* TopNavBar */}
-      <header
-        className='fixed top-0 w-full z-40 bg-white/70 backdrop-blur-xl shadow-sm shadow-blue-900/5 h-16 ml-64 flex items-center justify-between px-8'
-        style={{ width: 'calc(100% - 16rem)' }}
-      >
-        <div className='flex items-center gap-8'>
-          <span className='text-xl font-bold tracking-tighter text-slate-900'>Quản Lý Căn Hộ</span>
-          <div className='hidden lg:flex items-center gap-6'>
-            <a
-              className='text-slate-500 hover:text-slate-900 transition-colors font-manrope text-sm font-medium tracking-tight'
-              href='#'
-            >
-              Tổng quan
-            </a>
-            <a
-              className='text-blue-600 border-b-2 border-blue-600 pb-1 font-manrope text-sm font-medium tracking-tight'
-              href='#'
-            >
-              Căn hộ
-            </a>
-            <a
-              className='text-slate-500 hover:text-slate-900 transition-colors font-manrope text-sm font-medium tracking-tight'
-              href='#'
-            >
-              Cư dân
-            </a>
-            <a
-              className='text-slate-500 hover:text-slate-900 transition-colors font-manrope text-sm font-medium tracking-tight'
-              href='#'
-            >
-              Dịch vụ
-            </a>
-          </div>
-        </div>
-
-        <div className='flex items-center gap-4'>
-          <button className='p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-all active:scale-95'>
-            <span className='material-symbols-outlined'>notifications</span>
-          </button>
-          <button className='p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-all active:scale-95'>
-            <span className='material-symbols-outlined'>settings</span>
-          </button>
-
-          <div className='h-8 w-8 rounded-full overflow-hidden border border-slate-200'>
-            <img
-              alt='Ảnh đại diện quản trị viên'
-              className='w-full h-full object-cover'
-              src='https://lh3.googleusercontent.com/aida-public/AB6AXuA5YDn7HgrQZ2Ny-DBzWIf3X5wnbpLhILl3rmIAtkfhuV8OHTl8KlHzVfdTxX8Jlydpw1tsyjeGT9Ds5KwPkpilo_ONDqqLbo63aExLautR5ejaiHQ_LsNQW7frqcJmnUYPjDK0D0ArfInunXmh_Twqvplf85L2EL-aRuSiuohvkB6IcugSDXcUMASIVJkDHu66koHZaw_d2jcSsCzzDSAWOJTJ5eOQGuVjLjsBLUyyrFiqQ-p2dMfxOFo8oY7-ibcDzzYeWOWw7UK8'
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className='ml-64 pt-24 px-8 pb-40 min-h-screen flex flex-col items-center'>
-        <div className='max-w-6xl w-full'>
+    <div className='w-full pb-10'>
+      <div className='max-w-6xl w-full mx-auto'>
           {/* Dashboard Header & Filters */}
           <div className='flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10'>
             <div>
@@ -512,10 +385,8 @@ export default function Apartment() {
               </div>
             </div>
           </div>
-        </div>
-      </main>
+      </div>
 
-      {/* AI Assistant Widget */}
       <AIAssistantWidget occupancyRate={stats.occupancyRate} expiringContracts={stats.expiringContracts} />
 
       <ApartmentForm
@@ -533,6 +404,6 @@ export default function Apartment() {
         isOpen={deleteId !== null}
         onClose={() => setDeleteId(null)}
       />
-    </>
+    </div>
   )
 }

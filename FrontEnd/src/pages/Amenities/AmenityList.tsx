@@ -10,6 +10,9 @@ interface AmenityListProps {
 
 export default function AmenityList({ isResident = false }: AmenityListProps) {
   const navigate = useNavigate();
+
+  const toAmenityDetail = (amenityId: number) =>
+    isResident ? `/my-amenities/${amenityId}` : `/admin/amenities/${amenityId}`;
   const queryClient = useQueryClient();
   const [selectedBuilding, setSelectedBuilding] = useState('1');
   const [statusFilter, setStatusFilter] = useState('');
@@ -63,11 +66,13 @@ export default function AmenityList({ isResident = false }: AmenityListProps) {
   };
 
   return (
-    <div className='ml-64 min-h-screen'>
+    <div className='min-h-screen pb-10'>
       {/* Header */}
       <header className='sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center justify-between'>
         <div className='flex items-center gap-6'>
-          <span className='text-xl font-bold text-slate-900'>Quản Lý Tiện Ích</span>
+          <span className='text-xl font-bold text-slate-900'>
+            {isResident ? 'Tiện ích' : 'Quản lý tiện ích'}
+          </span>
           <select
             value={selectedBuilding}
             onChange={(e) => setSelectedBuilding(e.target.value)}
@@ -183,29 +188,31 @@ export default function AmenityList({ isResident = false }: AmenityListProps) {
                     )}
                     <div className='flex gap-2 pt-4 border-t border-slate-50'>
                       <button
-                        onClick={() => navigate(`/amenities/${amenity.id}`)}
+                        onClick={() => navigate(toAmenityDetail(amenity.id))}
                         className='flex-1 text-xs font-bold uppercase text-blue-600 py-2 hover:bg-blue-50 rounded-lg transition-colors'
                       >
                         Chi tiết
                       </button>
-                      <button
-                        onClick={() => {
-                          setEditingId(amenity.id)
-                          setShowForm(true)
-                        }}
-                        className='p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors'
-                      >
-                        <span className='material-symbols-outlined text-lg'>edit</span>
-                      </button>
-                      {!isResident &&(
-                      <button
-                        onClick={() => {
-                          if (window.confirm('Xóa tiện ích này?')) deleteMutation.mutate(amenity.id)
-                        }}
-                        className='p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors'
-                      >
-                        <span className='material-symbols-outlined text-lg'>delete</span>
-                      </button>
+                      {!isResident && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingId(amenity.id)
+                              setShowForm(true)
+                            }}
+                            className='p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors'
+                          >
+                            <span className='material-symbols-outlined text-lg'>edit</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Xóa tiện ích này?')) deleteMutation.mutate(amenity.id)
+                            }}
+                            className='p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors'
+                          >
+                            <span className='material-symbols-outlined text-lg'>delete</span>
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

@@ -22,7 +22,7 @@ export default function SidebarProtect({ collapsed = false, onToggle }: Props) {
   const navigate = useNavigate()
   const { user, reset } = useContext(AppContext)
 
-  const displayName = user?.fullName || user?.name || 'Admin'
+  const displayName = user?.name || user?.email || 'Admin'
   const roleLine = user?.roles?.join(', ') || 'Workspace'
 
   const handleLogout = useCallback(() => {

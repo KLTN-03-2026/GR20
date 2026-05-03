@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import http from 'src/utils/http';
 import ContractForm from './ContractForm';
 import DeleteContractModal from './DeleteContractModal';
 
 export default function ContractList() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const detailBase = pathname.startsWith('/admin') ? '/admin/contracts' : '/contracts';
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -242,7 +244,7 @@ export default function ContractList() {
                     <td className='px-6 py-5 text-right'>
                       <div className='flex items-center justify-end gap-1'>
                         <button
-                          onClick={() => navigate(`/contracts/${contract.id}`)}
+                          onClick={() => navigate(`${detailBase}/${contract.id}`)}
                           className='p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
                         >
                           <span className='material-symbols-outlined text-lg'>visibility</span>

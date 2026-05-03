@@ -5,8 +5,10 @@ import http from 'src/utils/http'
 const URL = '/api/building-images'
 
 export const buildingImagesApi = {
-  getAllByBuildingId(buildingId: string) {
-    return http.get<SuccessResponseApi<BuildingImage[]>>(`${URL}/buildings/${buildingId}`)
+  getAllByBuildingId(buildingId: string, params?: { includeDeleted?: boolean }) {
+    return http.get<SuccessResponseApi<BuildingImage[]>>(`${URL}/buildings/${buildingId}`, {
+      params: params?.includeDeleted != null ? { includeDeleted: params.includeDeleted } : undefined
+    })
   },
   createBuildingImage(payload: { buildingId: number; imageUrl: string }) {
     return http.post(URL, payload)

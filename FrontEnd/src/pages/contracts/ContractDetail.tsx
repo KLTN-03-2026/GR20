@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import http from 'src/utils/http';
 import TerminateContractModal from './TerminateContractModal';
 import ContractForm from './ContractForm'; 
@@ -8,6 +8,8 @@ import ContractForm from './ContractForm';
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const contractsListPath = pathname.startsWith('/admin') ? '/admin/contracts' : '/contracts';
   const [showTerminate, setShowTerminate] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -83,7 +85,7 @@ export default function ContractDetail() {
             <span className='material-symbols-outlined'>arrow_back</span>
           </button>
           <div className='flex items-center gap-2 text-xs text-slate-400'>
-            <button onClick={() => navigate('/contracts')} className='hover:text-blue-500'>
+            <button type='button' onClick={() => navigate(contractsListPath)} className='hover:text-blue-500'>
               Hợp đồng
             </button>
             <span className='material-symbols-outlined text-[14px]'>chevron_right</span>

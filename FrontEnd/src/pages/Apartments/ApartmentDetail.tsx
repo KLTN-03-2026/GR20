@@ -127,7 +127,7 @@ export default function ApartmentDetail() {
 
   if (isLoading) {
     return (
-      <div className='flex items-center justify-center min-h-screen ml-64'>
+      <div className='flex items-center justify-center min-h-screen'>
         <div className='flex items-center gap-3 text-slate-400'>
           <span className='material-symbols-outlined animate-spin'>sync</span>
           <span className='text-sm'>Đang tải dữ liệu...</span>
@@ -138,7 +138,7 @@ export default function ApartmentDetail() {
 
   if (!apartment) {
     return (
-      <div className='flex items-center justify-center min-h-screen ml-64'>
+      <div className='flex items-center justify-center min-h-screen'>
         <div className='text-center'>
           <span className='material-symbols-outlined text-4xl text-slate-300 mb-2'>error_outline</span>
           <p className='text-slate-500 font-semibold'>Không tìm thấy căn hộ</p>
@@ -151,9 +151,9 @@ export default function ApartmentDetail() {
   }
 
   return (
-    <div className='ml-64'>
+    <div className='w-full pb-10'>
       {/* Top Header */}
-      <header className='sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center justify-between'>
+      <header className='sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-100 mb-6 -mt-2 px-4 h-14 flex items-center justify-between'>
         <div className='flex items-center gap-6'>
           <button
             onClick={() => navigate(-1)}

@@ -23,7 +23,7 @@ const getErrorMessage = (error: unknown): string | undefined => {
 }
 
 export default function Profile() {
-  const { setUser } = useContext(AppContext)
+  const { setProfile } = useContext(AppContext)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -34,7 +34,11 @@ export default function Profile() {
     onSuccess: (response) => {
       toast.success('Cập nhật avatar thành công!')
       // Cập nhật avatar URL trong state
-      setUser((prev) => ({ ...prev, avatarUrl: response.data.data.avatarUrl }))
+      setProfile((prev) =>
+        prev
+          ? { ...prev, avatar: response.data.data.avatarUrl || prev.avatar }
+          : prev
+      )
       refetch()
       setIsUploading(false)
     },
@@ -136,7 +140,7 @@ export default function Profile() {
     mutationFn: (body: UpdateProfileFormData) => UserApi.updateProfile(body),
     onSuccess: (response) => {
       toast.success('Cập nhật hồ sơ thành công!')
-      setUser(response.data.data)
+      setProfile(response.data.data)
       refetch()
       setIsModalOpen(false)
     },

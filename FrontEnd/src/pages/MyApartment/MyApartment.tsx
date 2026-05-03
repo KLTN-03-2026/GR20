@@ -1,6 +1,5 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import http from 'src/utils/http';
 
 export default function MyApartment() {
@@ -29,7 +28,7 @@ export default function MyApartment() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen ml-64">
+      <div className="flex min-h-[40vh] items-center justify-center">
         <div className="flex items-center gap-3 text-slate-400">
           <span className="material-symbols-outlined animate-spin">sync</span>
           <span className="text-sm">Đang tải dữ liệu...</span>
@@ -40,7 +39,7 @@ export default function MyApartment() {
 
   if (!apartment) {
     return (
-      <div className="flex items-center justify-center min-h-screen ml-64">
+      <div className="flex min-h-[40vh] items-center justify-center">
         <div className="text-center">
           <span className="material-symbols-outlined text-5xl text-slate-200 mb-4">home_work</span>
           <h2 className="text-xl font-bold text-slate-700 mb-2">Chưa có căn hộ</h2>
@@ -51,75 +50,14 @@ export default function MyApartment() {
   }
 
   return (
-    <div className='flex min-h-screen'>
-      {/* Sidebar */}
-      <aside className='w-64 bg-white border-r flex flex-col justify-between py-8 fixed left-0 top-16 bottom-0'>
-        <div>
-          <div className='px-8 mb-10'>
-            <h2 className='text-xs font-bold text-blue-600 tracking-widest uppercase'>Cổng cư dân</h2>
-            <p className='text-[10px] text-slate-400 mt-1'>AZURE SERENITY TIER</p>
-          </div>
-          <nav className='space-y-1'>
-            <a className='flex items-center gap-3 px-8 py-4 text-slate-400 font-semibold hover:bg-slate-50 transition-colors text-sm' href='#'>
-              <span className='material-symbols-outlined'>home</span>
-              <span>TỔNG QUAN</span>
-            </a>
-            <a className='flex items-center gap-3 px-8 py-4 bg-blue-50 text-blue-600 border-r-4 border-blue-600 font-semibold text-sm' href='#'>
-              <span className='material-symbols-outlined'>key</span>
-              <span>CĂN HỘ CỦA TÔI</span>
-            </a>
-            <a className='flex items-center gap-3 px-8 py-4 text-slate-400 font-semibold hover:bg-slate-50 transition-colors text-sm' href='#'>
-              <span className='material-symbols-outlined'>credit_card</span>
-              <span>THANH TOÁN</span>
-            </a>
-            <a className='flex items-center gap-3 px-8 py-4 text-slate-400 font-semibold hover:bg-slate-50 transition-colors text-sm' href='#'>
-              <span className='material-symbols-outlined'>chat</span>
-              <span>PHẢN HỒI</span>
-            </a>
-            <a className='flex items-center gap-3 px-8 py-4 text-slate-400 font-semibold hover:bg-slate-50 transition-colors text-sm' href='#'>
-              <span className='material-symbols-outlined'>help</span>
-              <span>HỖ TRỢ</span>
-            </a>
-          </nav>
-        </div>
-        <div className='px-8 mt-auto pt-8 border-t border-slate-100'>
-          <a className='flex items-center gap-3 text-slate-400 font-semibold hover:text-red-500 transition-colors text-sm' href='#'>
-            <span className='material-symbols-outlined'>logout</span>
-            <span>ĐĂNG XUẤT</span>
-          </a>
-        </div>
-      </aside>
-
-      {/* Header */}
-      <header className='h-16 bg-white border-b flex items-center justify-between px-8 fixed top-0 left-0 right-0 z-40 ml-64'>
-        <div className='flex items-center gap-12'>
-          <span className='text-2xl font-bold text-slate-900'>HomeLink AI</span>
-          <nav className='hidden md:flex items-center gap-8 text-slate-500 font-medium text-sm'>
-            <a className='hover:text-blue-600 transition-colors' href='#'>Trang chủ</a>
-            <a className='text-blue-600 border-b-2 border-blue-600 pb-5 translate-y-[2px]' href='#'>Căn hộ của tôi</a>
-            <a className='hover:text-blue-600 transition-colors' href='#'>Tiện ích</a>
-            <a className='hover:text-blue-600 transition-colors' href='#'>Hóa đơn</a>
-          </nav>
-        </div>
-        <div className='flex items-center gap-6'>
-          <button className='text-slate-500 hover:text-slate-700'>
-            <span className='material-symbols-outlined'>notifications</span>
-          </button>
-          <button className='text-slate-500 hover:text-slate-700'>
-            <span className='material-symbols-outlined'>settings</span>
-          </button>
-          <div className='w-10 h-10 rounded-full overflow-hidden border border-slate-200'>
-            <img className='w-full h-full object-cover' src='https://placehold.co/40' alt='Avatar' />
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className='flex-1 ml-64 pt-24 p-10'>
+    <div className='pb-10'>
+      <main className='w-full'>
         <div className='flex justify-between items-start mb-8'>
           <div>
             <nav className='text-xs font-bold text-slate-400 flex items-center gap-2 uppercase mb-4 tracking-wider'>
-              <a href='#' className='hover:text-blue-500'>Trang chủ</a>
+              <Link to='/' className='hover:text-blue-500'>
+                Trang chủ
+              </Link>
               <span className='material-symbols-outlined text-[14px]'>chevron_right</span>
               <span className='text-slate-600'>Chi tiết căn hộ cá nhân</span>
             </nav>
