@@ -35,6 +35,8 @@ const createApartment = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
+    console.log('❌ ERROR:', err.message);
+    console.log('❌ DETAILS:', err.details || err);
     sendError(res, err);
   }
 };
@@ -42,14 +44,11 @@ const createApartment = async (req, res) => {
 // GET ALL
 const getAllApartments = async (req, res) => {
   try {
-    const floorId = req.params.floorId;
-    const result = floorId
-      ? await service.getApartmentsByFloor(Number(floorId), req.query)
-      : await service.getAllApartments(req.query);
+    const result = await service.getAllApartments(req.query);
 
     res.json({
       operationType: "Success",
-      message: "success",
+      message: "Get apartments successfully",
       code: "OK",
       ...result,
       timestamp: new Date(),
@@ -90,37 +89,6 @@ const getByFloor = async (req, res) => {
       message: "success",
       code: "OK",
       ...result,
-      timestamp: new Date(),
-    });
-  } catch (err) {
-    sendError(res, err);
-  }
-};
-
-const getAvailableApartments = async (req, res) => {
-  try {
-    const data = await service.getAvailableApartments();
-    res.json({
-      operationType: "Success",
-      message: "success",
-      code: "OK",
-      data,
-      size: data.length,
-      timestamp: new Date(),
-    });
-  } catch (err) {
-    sendError(res, err);
-  }
-};
-
-const getDashboardStats = async (req, res) => {
-  try {
-    const data = await service.getDashboardStats();
-    res.json({
-      operationType: "Success",
-      message: "success",
-      code: "OK",
-      data,
       timestamp: new Date(),
     });
   } catch (err) {
@@ -179,139 +147,182 @@ const deleteApartment = async (req, res) => {
   }
 };
 
-const getMyApartment = async (req, res) => {
+// ADD Resident
+const addResident = async (req, res) => {
   try {
-    const userIdRaw = req.user?.sub;
-    if (userIdRaw === undefined || userIdRaw === null || userIdRaw === "") {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    const userId = Number(userIdRaw);
-    if (!Number.isFinite(userId)) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    const result = await pool.query(
-      `
-      SELECT 
-        a.*,
-        b.name AS building_name,
-        f.floor_number,
-        json_build_object(
-          'id', owner.id,
-          'fullName', owner.full_name,
-          'phone', owner.phone,
-          'email', owner.email,
-          'avatarUrl', owner.avatar_url
-        ) AS owner,
-        COALESCE(
-          (
-            SELECT json_agg(
-              json_build_object(
-                'id', rp.id,
-                'fullName', u.full_name,
-                'phone', u.phone,
-                'relationship', rp.relationship,
-                'moveInDate', rp.move_in_date
-              )
-            )
-            FROM resident_profiles rp
-            JOIN users u ON rp.user_id = u.id
-            WHERE rp.apartment_id = a.id AND rp.status = 'ACTIVE'
-          ),
-          '[]'::json
-        ) AS residents,
-        (
-          SELECT json_build_object(
-            'id', c.id,
-            'contractType', c.contract_type,
-            'status', c.status,
-            'startDate', c.start_date,
-            'endDate', c.end_date,
-            'monthlyRent', c.monthly_rent,
-            'deposit', COALESCE(c.deposit, 0),
-            'note', c.note,
-            'signer', json_build_object(
-              'fullName', signer.full_name,
-              'phone', signer.phone,
-              'email', signer.email
-            )
-          )
-          FROM contracts c
-          LEFT JOIN users signer ON c.resident_id = signer.id
-          WHERE c.apartment_id = a.id
-            AND c.resident_id = $1
-          ORDER BY
-            CASE c.status
-              WHEN 'ACTIVE'::public.contract_status_enum THEN 0
-              WHEN 'PENDING'::public.contract_status_enum THEN 1
-              WHEN 'EXPIRED'::public.contract_status_enum THEN 2
-              ELSE 3
-            END,
-            c.id DESC
-          LIMIT 1
-        ) AS "currentContract"
-      FROM apartments a
-      LEFT JOIN buildings b ON a.building_id = b.id
-      LEFT JOIN floors f ON a.floor_id = f.id
-      LEFT JOIN users owner ON a.owner_user_id = owner.id
-      WHERE a.id = COALESCE(
-        (
-          SELECT c.apartment_id
-          FROM contracts c
-          WHERE c.resident_id = $1
-          ORDER BY
-            CASE c.status
-              WHEN 'ACTIVE'::public.contract_status_enum THEN 0
-              WHEN 'PENDING'::public.contract_status_enum THEN 1
-              WHEN 'EXPIRED'::public.contract_status_enum THEN 2
-              ELSE 3
-            END,
-            c.id DESC
-          LIMIT 1
-        ),
-        (
-          SELECT apartment_id
-          FROM resident_profiles
-          WHERE user_id = $1 AND status = 'ACTIVE'
-          ORDER BY id ASC
-          LIMIT 1
-        )
-      )
-      `,
-      [userId],
-    );
-
-    if (result.rows.length === 0) {
-      return res.json({
-        operationType: "Success",
-        message: "success",
-        code: "OK",
-        data: null,
-        timestamp: new Date(),
-      });
-    }
-
-    res.json({
+    const data = await service.addResident(req.params.id, req.body);
+    res.status(201).json({
       operationType: "Success",
-      message: "success",
-      code: "OK",
-      data: result.rows[0],
-      timestamp: new Date(),
+      message: "Add resident successfully",
+      code: "CREATED",
+      data,
     });
   } catch (err) {
     sendError(res, err);
   }
 };
 
+// GET /api/apartments/stats
+const getStats = async (req, res) => {
+  try {
+    const total = await pool.query(
+      `SELECT COUNT(*) FROM apartments WHERE status != 'MAINTENANCE'`,
+    );
+    const occupied = await pool.query(
+      `SELECT COUNT(*) FROM apartments WHERE status = 'OCCUPIED'`,
+    );
+    const expiring = await pool.query(
+      `SELECT COUNT(*) FROM contracts WHERE status = 'ACTIVE' AND end_date <= NOW() + INTERVAL '30 days'`,
+    );
+
+    res.json({
+      operationType: "Success",
+      data: {
+        totalApartments: parseInt(total.rows[0].count),
+        occupiedApartments: parseInt(occupied.rows[0].count),
+        occupancyRate: Math.round(
+          (parseInt(occupied.rows[0].count) / parseInt(total.rows[0].count)) *
+            100,
+        ),
+        expiringContracts: parseInt(expiring.rows[0].count),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+//Available Apartment
+const getAvailableApartments = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT a.*, b.name as building_name 
+      FROM apartments a
+      LEFT JOIN buildings b ON a.building_id = b.id
+      WHERE a.status != 'AVAILABLE'
+      AND a.id NOT IN (
+        SELECT apartment_id FROM contracts WHERE status = 'ACTIVE'
+        UNION
+        SELECT apartment_id FROM contracts WHERE status = 'PENDING'
+        UNION
+        SELECT apartment_id FROM contracts WHERE status = 'EXPIRED'
+      )
+      ORDER BY a.id
+    `);
+    res.json({ operationType: "Success", data: result.rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const moveOutResident = async (req, res) => {
+  try {
+    // 1. Lấy thông tin resident
+    const resident = await pool.query(
+      `SELECT user_id, apartment_id, relationship FROM resident_profiles WHERE id = $1`,
+      [req.params.id],
+    );
+
+    if (resident.rows.length === 0) {
+      return res.status(404).json({ message: "Resident not found" });
+    }
+
+    const { user_id, apartment_id, relationship } = resident.rows[0];
+
+    // 2. Update resident_profile
+    await pool.query(
+      `UPDATE resident_profiles SET status = 'MOVED_OUT', move_out_date = NOW() WHERE id = $1`,
+      [req.params.id],
+    );
+
+    // 3. Nếu là OWNER → chuyển căn hộ về AVAILABLE
+    if (relationship === "OWNER") {
+      await pool.query(
+        `UPDATE apartments SET owner_user_id = NULL, status = 'AVAILABLE', updated_at = NOW() WHERE id = $1`,
+        [apartment_id],
+      );
+    }
+
+    res.json({ operationType: "Success", message: "Resident moved out" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// UPDATE Resident
+const updateResident = async (req, res) => {
+  try {
+    const { relationship, moveInDate } = req.body;
+
+    // 1. Update resident_profile
+    const result = await pool.query(
+      `UPDATE resident_profiles SET relationship = $1, move_in_date = $2 WHERE id = $3 RETURNING user_id, apartment_id`,
+      [relationship, moveInDate, req.params.id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Resident not found" });
+    }
+
+    // 2. Nếu chuyển thành OWNER → update apartments
+    if (relationship === "OWNER") {
+      await pool.query(
+        `UPDATE apartments SET owner_user_id = $1, status = 'OCCUPIED', updated_at = NOW() WHERE id = $2`,
+        [result.rows[0].user_id, result.rows[0].apartment_id],
+      );
+    }
+
+    res.json({ operationType: "Success", message: "Resident updated" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET MY APARTMENT - Cư dân xem căn hộ cá nhân
+const getMyApartment = async (req, res) => {
+  try {
+    const userId = req.user?.id || 1; // Tạm dùng user 1, sau lấy từ JWT
+    
+    const result = await pool.query(`
+      SELECT a.*, b.name as building_name, f.floor_number,
+        json_build_object('id', owner.id, 'fullName', owner.full_name, 'phone', owner.phone, 'email', owner.email, 'avatarUrl', owner.avatar_url) as owner,
+        COALESCE((SELECT json_agg(json_build_object('id', rp.id, 'fullName', u.full_name, 'phone', u.phone, 'relationship', rp.relationship, 'moveInDate', rp.move_in_date))
+          FROM resident_profiles rp JOIN users u ON rp.user_id = u.id
+          WHERE rp.apartment_id = a.id AND rp.status = 'ACTIVE'), '[]'::json) as residents,
+        (SELECT json_build_object('id', c.id, 'contractType', c.contract_type, 'status', c.status, 'startDate', c.start_date, 'endDate', c.end_date, 'monthlyRent', c.monthly_rent)
+          FROM contracts c WHERE c.apartment_id = a.id AND c.status = 'ACTIVE' LIMIT 1) as "currentContract"
+      FROM apartments a
+      LEFT JOIN buildings b ON a.building_id = b.id
+      LEFT JOIN floors f ON a.floor_id = f.id
+      LEFT JOIN users owner ON a.owner_user_id = owner.id
+      WHERE a.id = (
+        SELECT apartment_id FROM resident_profiles WHERE user_id = $1 AND status = 'ACTIVE' LIMIT 1
+      )
+    `, [userId]);
+
+    if (result.rows.length === 0) {
+      return res.json({ operationType: "Success", data: null });
+    }
+
+    res.json({ operationType: "Success", data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 module.exports = {
   createApartment,
   getAllApartments,
-  getAvailableApartments,
-  getDashboardStats,
   getByBuilding,
   getByFloor,
   getApartmentById,
   updateApartment,
   deleteApartment,
+  addResident,
+  getStats,
+  getAvailableApartments,
+  moveOutResident,
+  updateResident,
   getMyApartment,
 };

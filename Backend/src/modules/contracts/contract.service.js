@@ -1,43 +1,48 @@
+// contract.service.js
 const repo = require("./contract.repository");
 const mapper = require("./contract.mapper");
+const { ContractListResponse } = require("./contract.response");
 const { AppError } = require("../../common/app-error");
 const {
   parseCreate,
   parseUpdate,
   parseRenew,
-  parseList,
-  parsePathId,
 } = require("./contract.request");
 
 // CREATE
 const createContract = async (body) => {
   const parsed = parseCreate(body);
   const entity = mapper.toEntity(parsed);
-  return mapper.toResponse(await repo.createContract(entity));
+  return await repo.createContract(entity);
 };
 
 // GET LIST
 const getContracts = async (query) => {
-  const parsed = parseList(query);
+  const {
+    status = null,
+    contractType = null,
+    page = 1,
+    size = 10,
+  } = query;
 
   const result = await repo.getContracts({
-    ...parsed,
+    status,
+    contractType,
+    page: Number(page),
+    size: Number(size),
   });
 
-  return {
-    data: result.rows.map(mapper.toResponse),
-    page: parsed.page,
-    size: result.rows.length,
-    totalElements: result.total,
-    totalPages: Math.ceil(result.total / parsed.size),
-    pageSize: parsed.size,
-  };
+  return new ContractListResponse(
+    result.rows,
+    Number(page),
+    Number(size),
+    result.total
+  );
 };
 
 // GET DETAIL
 const getContractById = async (id) => {
-  const parsedId = parsePathId(id);
-  const data = await repo.getById(parsedId);
+  const data = await repo.getById(id);
   if (!data) throw new AppError(404, "Contract not found");
 
   return mapper.toDetailResponse(data);
@@ -45,28 +50,24 @@ const getContractById = async (id) => {
 
 // UPDATE
 const updateContract = async (id, body) => {
-  const parsedId = parsePathId(id);
+  console.log('🔧 UPDATE BODY:', JSON.stringify(body)); 
   const parsed = parseUpdate(body);
-  const updated = await repo.updateContract(parsedId, parsed);
-  if (!updated) throw new AppError(404, "Contract not found");
-  return mapper.toDetailResponse(updated);
+  console.log('🔧 PARSED:', JSON.stringify(parsed)); 
+  await repo.updateContract(id, parsed);
+  return null;
 };
 
 // DELETE
 const terminateContract = async (id) => {
-  const parsedId = parsePathId(id);
-  const deleted = await repo.terminateContract(parsedId);
-  if (!deleted) throw new AppError(404, "Contract not found");
-  return { id: deleted.id };
+  await repo.terminateContract(id);
+  return null;
 };
 
 // RENEW
 const renewContract = async (id, body) => {
-  const parsedId = parsePathId(id);
   const parsed = parseRenew(body);
-  const renewed = await repo.renewContract(parsedId, parsed);
-  if (!renewed) throw new AppError(404, "Contract not found");
-  return mapper.toDetailResponse(renewed);
+  await repo.renewContract(id, parsed);
+  return null;
 };
 
 module.exports = {

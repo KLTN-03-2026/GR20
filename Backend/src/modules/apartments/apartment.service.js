@@ -17,79 +17,66 @@ const createApartment = async (reqBody) => {
   };
 };
 
-const toPagedListResponse = (result, pageRaw, sizeRaw) => {
-  const page = Math.max(0, Number(pageRaw) || 0);
-  const size = Math.max(1, Number(sizeRaw) || 10);
+// GET ALL
+const getAllApartments = async (query) => {
+  const { page = 0, size = 10, buildingId, floorId, search } = query;
+
+  const result = await repo.getAllApartments({
+    page: Number(page),
+    size: Number(size),
+    buildingId: buildingId || undefined,
+    floorId: floorId || undefined,
+    search: search || undefined,
+  });
+
   return {
     data: result.rows.map(mapper.toResponse),
     size: result.rows.length,
     totalElements: result.total,
-    totalPages: Math.max(1, Math.ceil(result.total / size)),
-    page,
-    pageSize: size,
+    totalPages: Math.ceil(result.total / size),
+    page: Number(page),
+    pageSize: Number(size),
   };
 };
 
-// GET ALL (hỗ trợ ?buildingId=&floorId=&search=&page=&size=)
-const getAllApartments = async (query) => {
-  const { page = 0, size = 10, buildingId, floorId, search } = query;
-  const result = await repo.findApartmentsWithDetails({
-    page,
-    size,
-    buildingId,
-    floorId,
-    search,
-  });
-  return toPagedListResponse(result, page, size);
-};
-
 const getApartmentsByBuilding = async (buildingId, query) => {
-  const { page = 0, size = 10, search } = query;
-  const result = await repo.findApartmentsWithDetails({
-    buildingId,
-    page,
-    size,
-    search,
-  });
-  return toPagedListResponse(result, page, size);
+  const { page = 0, size = 10 } = query;
+  const result = await repo.getApartmentsByBuilding({ buildingId, page, size });
+
+  return {
+    data: result.rows.map(mapper.toResponse),
+    size: result.rows.length,
+    totalElements: result.total,
+    totalPages: Math.ceil(result.total / size),
+    page: Number(page),
+    pageSize: Number(size),
+  };
 };
 
 const getApartmentsByFloor = async (floorId, query) => {
-  const { page = 0, size = 10, search } = query;
-  const result = await repo.findApartmentsWithDetails({
-    floorId,
-    page,
-    size,
-    search,
-  });
-  return toPagedListResponse(result, page, size);
+  const { page = 0, size = 10 } = query;
+  const result = await repo.getApartmentsByFloor({ floorId, page, size });
+
+  return {
+    data: result.rows.map(mapper.toResponse),
+    size: result.rows.length,
+    totalElements: result.total,
+    totalPages: Math.ceil(result.total / size),
+    page: Number(page),
+    pageSize: Number(size),
+  };
 };
 
 // GET BY ID
 const getApartmentById = async (id) => {
-  if (id === undefined || id === null || String(id).trim() === "") {
-    throw new AppError(400, "Invalid apartment id");
-  }
-  const idStr = String(id).trim();
-  if (!/^\d+$/.test(idStr)) {
-    throw new AppError(404, "Apartment not found");
-  }
-
-  const data = await repo.getApartmentById(idStr);
+  const data = await repo.getApartmentById(id);
 
   if (!data) {
     throw new AppError(404, "Apartment not found");
   }
 
-  return mapper.toDetailResponse(data);
+  return mapper.toResponse(data);
 };
-
-const getAvailableApartments = async () => {
-  const rows = await repo.getAvailableApartments();
-  return rows.map(mapper.toResponse);
-};
-
-const getDashboardStats = async () => repo.getDashboardStats();
 
 // UPDATE
 const updateApartment = async (id, reqBody) => {
@@ -116,14 +103,18 @@ const deleteApartment = async (id) => {
   return { id: deleted.id };
 };
 
+//AD RESIDENT
+const addResident = async (apartmentId, body) => {
+  return await repo.addResident(apartmentId, body);
+};
+
 module.exports = {
   createApartment,
   getAllApartments,
   getApartmentsByBuilding,
   getApartmentsByFloor,
   getApartmentById,
-  getAvailableApartments,
-  getDashboardStats,
   updateApartment,
   deleteApartment,
+  addResident,
 };

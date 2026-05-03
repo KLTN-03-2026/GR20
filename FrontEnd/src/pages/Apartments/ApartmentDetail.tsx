@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { apartmentApi } from 'src/apis/apartment_api/apartment_api';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ApartmentForm from './ApartmentForm';
 import AddResidentModal from './AddResidentModal';
 import http from 'src/utils/http';
@@ -41,8 +41,7 @@ interface ApartmentDetail {
   bedrooms: number
   bathrooms: number
   status: string
-  imageUrl?: string | null
-  image_url?: string | null
+  imageUrl: string
   owner: Owner | null
   ownerName?: string
   residents: Resident[]
@@ -74,34 +73,15 @@ const formatDate = (dateStr: string): string => {
   return new Date(dateStr).toLocaleDateString('vi-VN')
 }
 
-/** Ảnh tương đối (/uploads/...) ghép domain API; không dùng host ngoài (tránh ERR_CONNECTION_CLOSED). */
-function resolveUploadedImageSrc(imageUrl: string | undefined | null, apiBase: string | undefined): string | null {
-  if (imageUrl == null || String(imageUrl).trim() === '') return null
-  const u = String(imageUrl).trim()
-  if (/^https?:\/\//i.test(u)) return u
-  const base = String(apiBase ?? '').replace(/\/$/, '')
-  const path = u.startsWith('/') ? u : `/${u}`
-  return base ? `${base}${path}` : path
-}
-
 export default function ApartmentDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const isAdminShell = pathname.startsWith('/admin/apartments/')
-  const listPath = isAdminShell ? '/admin/apartments' : '/apartments'
-  const offsetClass = isAdminShell ? '' : 'ml-64'
   const [editingResident, setEditingResident] = useState<any>(null)
   const [showAddResident, setShowAddResident] = useState(false)
   const queryClient = useQueryClient()
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [coverFailed, setCoverFailed] = useState(false)
-
-  useEffect(() => {
-    setCoverFailed(false)
-  }, [id])
 
   const { data, isLoading } = useQuery({
     queryKey: ['apartment', id],
@@ -145,13 +125,9 @@ export default function ApartmentDetail() {
   const apartment = data?.data?.data || data?.data || null
   const status = apartment ? statusConfig[apartment.status] || statusConfig.AVAILABLE : null
 
-  const imageRaw = apartment?.imageUrl ?? apartment?.image_url ?? null
-  const coverSrc =
-    apartment && imageRaw !== null ? resolveUploadedImageSrc(imageRaw, import.meta.env.VITE_DOMAIN_API) : null
-
   if (isLoading) {
     return (
-      <div className={`flex min-h-screen items-center justify-center ${offsetClass}`}>
+      <div className='flex items-center justify-center min-h-screen ml-64'>
         <div className='flex items-center gap-3 text-slate-400'>
           <span className='material-symbols-outlined animate-spin'>sync</span>
           <span className='text-sm'>Đang tải dữ liệu...</span>
@@ -162,7 +138,7 @@ export default function ApartmentDetail() {
 
   if (!apartment) {
     return (
-      <div className={`flex min-h-screen items-center justify-center ${offsetClass}`}>
+      <div className='flex items-center justify-center min-h-screen ml-64'>
         <div className='text-center'>
           <span className='material-symbols-outlined text-4xl text-slate-300 mb-2'>error_outline</span>
           <p className='text-slate-500 font-semibold'>Không tìm thấy căn hộ</p>
@@ -175,9 +151,9 @@ export default function ApartmentDetail() {
   }
 
   return (
-    <div className={offsetClass}>
+    <div className='ml-64'>
       {/* Top Header */}
-      <header className='sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-100 bg-white/80 px-4 backdrop-blur-xl md:px-8'>
+      <header className='sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center justify-between'>
         <div className='flex items-center gap-6'>
           <button
             onClick={() => navigate(-1)}
@@ -188,7 +164,7 @@ export default function ApartmentDetail() {
           <div className='flex items-center gap-2 text-xs text-slate-400'>
             <span>Trang chủ</span>
             <span className='material-symbols-outlined text-[14px]'>chevron_right</span>
-            <button type='button' onClick={() => navigate(listPath)} className='transition-colors hover:text-blue-500'>
+            <button onClick={() => navigate('/apartments')} className='hover:text-blue-500 transition-colors'>
               Quản lý căn hộ
             </button>
             <span className='material-symbols-outlined text-[14px]'>chevron_right</span>
@@ -213,19 +189,12 @@ export default function ApartmentDetail() {
               {/* Image */}
               {/* Image Section */}
               <div className='relative rounded-2xl overflow-hidden aspect-video bg-slate-200 group'>
-                {coverSrc && !coverFailed ? (
-                  <img
-                    alt={apartment.apartmentCode}
-                    className='h-full w-full object-cover'
-                    src={coverSrc}
-                    onError={() => setCoverFailed(true)}
-                  />
-                ) : (
-                  <div className='flex h-full min-h-[200px] flex-col items-center justify-center gap-2 px-6 text-center text-slate-500'>
-                    <span className='material-symbols-outlined text-5xl text-slate-300'>image_not_supported</span>
-                    <p className='text-sm font-medium'>Chưa có ảnh căn hộ hoặc không tải được ảnh</p>
-                  </div>
-                )}
+                <img
+                  alt={apartment.apartmentCode}
+                  className='w-full h-full object-cover'
+                  crossOrigin="anonymous"
+                  src={(import.meta.env.VITE_DOMAIN_API + apartment.imageUrl) || 'https://via.placeholder.com/800x450?text=No+Image'}
+                />
 
                 {/* Upload overlay */}
                 <label className='absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer'>
@@ -255,11 +224,7 @@ export default function ApartmentDetail() {
                 <div className='flex justify-between items-center mb-4'>
                   <h3 className='text-base font-semibold text-slate-800'>Danh sách cư dân</h3>
                   <button
-                    type='button'
-                    onClick={() => {
-                      setEditingResident(null)
-                      setShowAddResident(true)
-                    }}
+                    onClick={() => setShowAddResident(true)}
                     className='px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-all shadow-sm'
                   >
                     <span className='material-symbols-outlined text-lg mr-1 align-middle'>person_add</span>
@@ -474,6 +439,13 @@ export default function ApartmentDetail() {
       </main>
       {/* Apartment Form Modal */}
       <ApartmentForm apartmentId={Number(id)} isOpen={showForm} onClose={() => setShowForm(false)} />
+
+      <AddResidentModal
+        apartmentId={Number(id)}
+        apartmentCode={apartment.apartmentCode}
+        isOpen={showAddResident}
+        onClose={() => setShowAddResident(false)}
+      />
 
       <AddResidentModal
         apartmentId={Number(id)}

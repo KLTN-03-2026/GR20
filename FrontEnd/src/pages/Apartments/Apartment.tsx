@@ -7,6 +7,7 @@ import ApartmentForm from './ApartmentForm';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import AIAssistantWidget from 'src/components/AIAssistantWidget';
 
+
 export default function Apartment() {
   const navigate = useNavigate()
   const [showForm, setShowForm] = useState(false)
@@ -22,12 +23,9 @@ export default function Apartment() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    http
-      .get('/api/apartments/stats')
-      .then((res) => {
-        setStats(res.data?.data || { occupancyRate: 0, expiringContracts: 0 })
-      })
-      .catch(() => setStats({ occupancyRate: 0, expiringContracts: 0 }))
+    http.get('/api/apartments/stats').then((res) => {
+      setStats(res.data?.data || { occupancyRate: 0, expiringContracts: 0 })
+    })
   }, [])
 
   useEffect(() => {
@@ -39,12 +37,9 @@ export default function Apartment() {
   // Fetch floors khi chọn building
   useEffect(() => {
     if (selectedBuilding) {
-      http
-        .get(`/api/floors/building/${selectedBuilding}`)
-        .then((res) => {
-          setFloors(res.data?.data || [])
-        })
-        .catch(() => setFloors([]))
+      http.get(`/api/floors/building/${selectedBuilding}`).then((res) => {
+        setFloors(res.data?.data || [])
+      })
     } else {
       setFloors([])
       setSelectedFloor('')
@@ -77,25 +72,172 @@ export default function Apartment() {
       .slice(0, 2)
   }
 
+  // Hàm lấy cấu hình status
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'OCCUPIED':
+        return {
+          label: 'ĐÃ CHO THUÊ',
+          className: 'bg-secondary-fixed text-on-secondary-fixed-variant'
+        }
+      case 'AVAILABLE':
+        return {
+          label: 'CÒN TRỐNG',
+          className: 'bg-green-100 text-green-700'
+        }
+      case 'MAINTENANCE':
+        return {
+          label: 'ĐANG BẢO TRÌ',
+          className: 'bg-error-container text-on-error-container'
+        }
+      default:
+        return {
+          label: 'KHÔNG XÁC ĐỊNH',
+          className: 'bg-gray-100 text-gray-700'
+        }
+    }
+  }
+
   return (
     <>
-      <div className='min-h-screen bg-[#F8F9FA] p-8 font-sans'>
-        <div className='mx-auto max-w-6xl'>
-          <div className='mb-2'>
-            <span className='rounded bg-[#DDE7FF] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0052CC]'>
-              Administration
+      {/* SideNavBar */}
+      <aside className='h-screen w-64 fixed left-0 border-r-0 bg-slate-50/50 backdrop-blur-lg flex flex-col p-6 space-y-4 z-50 overflow-y-auto'>
+        <div className='mb-8 flex items-center gap-3'>
+          <div className='w-10 h-10 bg-primary-container rounded-xl flex items-center justify-center text-white'>
+            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+              home_work
             </span>
           </div>
+          <div>
+            <h1 className='text-lg font-black text-blue-700 leading-none'>HomeLink AI</h1>
+            <p className='text-[10px] font-semibold uppercase tracking-widest text-slate-500 mt-1'>Azure Serenity</p>
+          </div>
+        </div>
 
-          {/* Cùng bố cục GR20_1: tiêu đề + mô tả trái, bộ lọc phải */}
-          <div className='mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6'>
+        <nav className='flex-1 space-y-2'>
+          <a
+            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
+            href='#'
+          >
+            <span className='material-symbols-outlined'>dashboard</span>
+            <span>Bảng điều khiển</span>
+          </a>
+          <a
+            className='flex items-center gap-3 p-3 bg-white text-blue-600 shadow-sm rounded-lg hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
+            href='#'
+          >
+            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+              domain
+            </span>
+            <span>Danh sách căn hộ</span>
+          </a>
+          <a
+            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
+            href='#'
+          >
+            <span className='material-symbols-outlined'>description</span>
+            <span>Hợp đồng</span>
+          </a>
+          <a
+            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
+            href='#'
+          >
+            <span className='material-symbols-outlined'>payments</span>
+            <span>Thanh toán</span>
+          </a>
+          <a
+            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform duration-300 ease-in-out font-manrope text-sm font-semibold uppercase tracking-widest'
+            href='#'
+          >
+            <span className='material-symbols-outlined'>analytics</span>
+            <span>Báo cáo</span>
+          </a>
+        </nav>
+
+        <div className='pt-8 mt-auto space-y-2 border-t border-slate-200'>
+          <a
+            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform font-manrope text-xs font-semibold uppercase tracking-widest'
+            href='#'
+          >
+            <span className='material-symbols-outlined'>help</span>
+            <span>Hỗ trợ</span>
+          </a>
+          <a
+            className='flex items-center gap-3 p-3 text-slate-500 hover:translate-x-1 transition-transform font-manrope text-xs font-semibold uppercase tracking-widest'
+            href='#'
+          >
+            <span className='material-symbols-outlined'>logout</span>
+            <span>Đăng xuất</span>
+          </a>
+        </div>
+      </aside>
+
+      {/* TopNavBar */}
+      <header
+        className='fixed top-0 w-full z-40 bg-white/70 backdrop-blur-xl shadow-sm shadow-blue-900/5 h-16 ml-64 flex items-center justify-between px-8'
+        style={{ width: 'calc(100% - 16rem)' }}
+      >
+        <div className='flex items-center gap-8'>
+          <span className='text-xl font-bold tracking-tighter text-slate-900'>Quản Lý Căn Hộ</span>
+          <div className='hidden lg:flex items-center gap-6'>
+            <a
+              className='text-slate-500 hover:text-slate-900 transition-colors font-manrope text-sm font-medium tracking-tight'
+              href='#'
+            >
+              Tổng quan
+            </a>
+            <a
+              className='text-blue-600 border-b-2 border-blue-600 pb-1 font-manrope text-sm font-medium tracking-tight'
+              href='#'
+            >
+              Căn hộ
+            </a>
+            <a
+              className='text-slate-500 hover:text-slate-900 transition-colors font-manrope text-sm font-medium tracking-tight'
+              href='#'
+            >
+              Cư dân
+            </a>
+            <a
+              className='text-slate-500 hover:text-slate-900 transition-colors font-manrope text-sm font-medium tracking-tight'
+              href='#'
+            >
+              Dịch vụ
+            </a>
+          </div>
+        </div>
+
+        <div className='flex items-center gap-4'>
+          <button className='p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-all active:scale-95'>
+            <span className='material-symbols-outlined'>notifications</span>
+          </button>
+          <button className='p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-all active:scale-95'>
+            <span className='material-symbols-outlined'>settings</span>
+          </button>
+
+          <div className='h-8 w-8 rounded-full overflow-hidden border border-slate-200'>
+            <img
+              alt='Ảnh đại diện quản trị viên'
+              className='w-full h-full object-cover'
+              src='https://lh3.googleusercontent.com/aida-public/AB6AXuA5YDn7HgrQZ2Ny-DBzWIf3X5wnbpLhILl3rmIAtkfhuV8OHTl8KlHzVfdTxX8Jlydpw1tsyjeGT9Ds5KwPkpilo_ONDqqLbo63aExLautR5ejaiHQ_LsNQW7frqcJmnUYPjDK0D0ArfInunXmh_Twqvplf85L2EL-aRuSiuohvkB6IcugSDXcUMASIVJkDHu66koHZaw_d2jcSsCzzDSAWOJTJ5eOQGuVjLjsBLUyyrFiqQ-p2dMfxOFo8oY7-ibcDzzYeWOWw7UK8'
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className='ml-64 pt-24 px-8 pb-40 min-h-screen flex flex-col items-center'>
+        <div className='max-w-6xl w-full'>
+          {/* Dashboard Header & Filters */}
+          <div className='flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10'>
             <div>
-              <h1 className='text-2xl font-bold tracking-tight text-slate-900 md:text-3xl'>Danh sách căn hộ</h1>
-              <p className='mt-1 text-sm font-normal text-slate-500'>
+              <h2 className='text-2xl font-bold text-slate-900 tracking-tight'>Danh sách căn hộ</h2>
+              <p className='text-sm text-slate-500 mt-1 font-normal'>
                 Cập nhật và quản lý trạng thái lưu trú từ HOMELINK AI
               </p>
             </div>
-            <div className='flex flex-wrap items-center gap-3'>
+
+            <div className='flex items-center gap-3'>
               <div className='flex bg-slate-100 rounded-full p-0.5 border border-slate-200'>
                 {/* Select Tòa nhà - Dynamic */}
                 <select
@@ -210,16 +352,11 @@ export default function Apartment() {
                     </div>
 
                     <div className='col-span-2'>
-                      <p className='text-sm text-slate-500 font-medium'>
-                        {item.buildingName ? `tòa nhà ${item.buildingName}` : '—'}
-                      </p>
+                      <p className='text-sm text-slate-500 font-medium'>{item.buildingName}</p>
                     </div>
 
                     <div className='col-span-1'>
-                      <p className='text-sm text-slate-600 font-medium'>
-                        Tầng{' '}
-                        {item.floorNumber != null ? item.floorNumber : '—'}
-                      </p>
+                      <p className='text-sm text-slate-600 font-medium'>Tầng {item.floorNumber}</p>
                     </div>
 
                     <div className='col-span-2 flex justify-center'>
@@ -249,12 +386,12 @@ export default function Apartment() {
                           <span className='text-sm text-slate-700 font-medium truncate'>{item.ownerName}</span>
                         </>
                       ) : (
-                        <span className='text-sm italic font-light text-slate-400'>Chưa có chủ</span>
+                        <span className='text-sm text-slate-350 italic font-light'>Chưa có chủ</span>
                       )}
                     </div>
                     <div className='col-span-2 flex justify-end gap-1'>
                       <button
-                        onClick={() => navigate(`/admin/apartments/${item.id}`)}
+                        onClick={() => navigate(`/apartments/${item.id}`)}
                         className='p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
                         title='Xem chi tiết'
                       >
@@ -288,7 +425,7 @@ export default function Apartment() {
           </div>
 
           {/* Footer Controls */}
-          <div className='mt-12 flex flex-col md:flex-row items-center justify-between gap-6 pb-8'>
+          <div className='mt-12 flex flex-col md:flex-row items-center justify-between gap-6 pb-20'>
             <button
               onClick={() => {
                 setEditingApartmentId(null)
@@ -376,8 +513,9 @@ export default function Apartment() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
 
+      {/* AI Assistant Widget */}
       <AIAssistantWidget occupancyRate={stats.occupancyRate} expiringContracts={stats.expiringContracts} />
 
       <ApartmentForm

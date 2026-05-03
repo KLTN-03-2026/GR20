@@ -2,7 +2,6 @@ const { ZodError } = require("zod");
 const { AppError } = require("../../common/app-error");
 const service = require("./floor.service");
 
-
 // ================= ERROR HANDLER =================
 const sendError = (res, err) => {
   if (err instanceof ZodError) {
@@ -24,7 +23,6 @@ const sendError = (res, err) => {
   return res.status(500).json({ message: err.message });
 };
 
-
 // ================= CREATE =================
 const createFloor = async (req, res) => {
   try {
@@ -43,7 +41,6 @@ const createFloor = async (req, res) => {
   }
 };
 
-
 // ================= GET ALL =================
 const getAllFloors = async (req, res) => {
   try {
@@ -61,7 +58,6 @@ const getAllFloors = async (req, res) => {
   }
 };
 
-
 // ================= GET BY ID =================
 const getFloorById = async (req, res) => {
   try {
@@ -75,29 +71,9 @@ const getFloorById = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    sendError(res, err); 
-  }
-};
-
-
-// ================= GET BY BUILDING =================
-const getFloorsByBuildingId = async (req, res) => {
-  try {
-    const data = await service.getFloorsByBuildingId(req.params.buildingId);
-
-    res.json({
-      operationType: "Success",
-      message: "success",
-      code: "OK",
-      data,
-      size: data.length,
-      timestamp: new Date(),
-    });
-  } catch (err) {
     sendError(res, err);
   }
 };
-
 
 // ================= UPDATE =================
 const updateFloor = async (req, res) => {
@@ -116,15 +92,14 @@ const updateFloor = async (req, res) => {
   }
 };
 
-
 // ================= DELETE (SOFT) =================
-const deleteFloor = async (req, res) => {
+const softDeleteFloor = async (req, res) => {
   try {
-    const data = await service.deleteFloor(req.params.id);
+    const data = await service.softDeleteFloor(req.params.id);
 
     res.json({
       operationType: "Success",
-      message: "Delete floor successfully",
+      message: "Soft delete floor successfully",
       code: "OK",
       data,
       timestamp: new Date(),
@@ -134,12 +109,33 @@ const deleteFloor = async (req, res) => {
   }
 };
 
+const { pool } = require("../../configs/database.config");
+const getFloorsByBuilding = async (req, res) => {
+  try {
+    const buildingId = req.params.buildingId;
+    const query = `
+      SELECT * FROM floors 
+      WHERE building_id = $1 AND deleted_at IS NULL 
+      ORDER BY floor_number ASC
+    `;
+    const result = await pool.query(query, [buildingId]);
+    
+    res.json({
+      operationType: "Success",
+      message: "Get floors by building successfully",
+      code: "OK",
+      data: result.rows,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 module.exports = {
   createFloor,
   getAllFloors,
   getFloorById,
-  getFloorsByBuildingId,
   updateFloor,
-  deleteFloor,
+  softDeleteFloor,
+  getFloorsByBuilding,
 };

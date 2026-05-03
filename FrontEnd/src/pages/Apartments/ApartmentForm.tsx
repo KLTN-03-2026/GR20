@@ -55,10 +55,7 @@ export default function ApartmentForm({ apartmentId, isOpen, onClose }: Apartmen
   // Fetch floors khi chọn building
   useEffect(() => {
     if (formData.buildingId) {
-      http
-        .get(`/api/floors/building/${formData.buildingId}`)
-        .then((res) => setFloors(res.data?.data || []))
-        .catch(() => setFloors([]));
+      http.get(`/api/floors/building/${formData.buildingId}`).then(res => setFloors(res.data?.data || []));
     } else {
       setFloors([]);
     }

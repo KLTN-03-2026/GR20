@@ -5,6 +5,9 @@ const controller = require("./floors.controller");
 // import apartments route
 const apartmentRouter = require("../apartments/apartment.route");
 
+// 🆕 GET FLOORS BY BUILDING - Đặt TRƯỚC /:id
+router.get("/building/:buildingId", controller.getFloorsByBuilding);
+
 // CREATE
 router.post("/", controller.createFloor);
 
@@ -20,8 +23,8 @@ router.get("/:id", controller.getFloorById);
 // UPDATE
 router.put("/:id", controller.updateFloor);
 
-// DELETE (SOFT)
-router.delete("/:id", controller.deleteFloor);
+// TOGGLE STATUS (ACTIVE / INACTIVE)
+router.patch("/:id/delete", controller.softDeleteFloor);
 
 // /floors/:floorId/apartments
 router.use("/:floorId/apartments", apartmentRouter);

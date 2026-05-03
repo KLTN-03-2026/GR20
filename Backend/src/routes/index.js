@@ -27,6 +27,9 @@ const paymentRoute = require("../modules/payments/payment.route");
 const vehicleRoute = require("../modules/vehicles/vehicle.route");
 const visitorRoute = require("../modules/visitors/visitor.route");
 const contractRoute = require("../modules/contracts/contract.route");
+const amenityRoute = require("../modules/amenities/amenity.route");
+
+router.use("/uploads", express.static("uploads"));
 
 router.use("/buildings", buildingRoute);
 router.use("/building-images", buildingImageRoute);
@@ -54,5 +57,8 @@ router.use("/payments", paymentRoute);
 router.use("/vehicles", vehicleRoute);
 router.use("/visitors", visitorRoute);
 router.use("/contracts", contractRoute);
+
+router.use("/amenities", amenityRoute);
+router.use("/buildings/:buildingId/amenities", amenityRoute);
 
 module.exports = router;

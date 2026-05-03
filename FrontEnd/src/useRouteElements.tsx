@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useRoutes } from 'react-router-dom'
+﻿import { Navigate, Outlet, useRoutes } from 'react-router-dom'
 import { AppContext } from './contexts/app.context'
 import { useContext } from 'react'
 
@@ -38,8 +38,8 @@ import Addresident from './pages/residentmanagement/Addresident'
 import ResidentDetail from './pages/residentmanagement/Residentdetail'
 
 import Floors from './pages/building management/Floors'
-import Apartment from './pages/building management/Apartments'
-import ApartmentDetail from './pages/building management/ApartmentDetail'
+import Apartment from './pages/Apartments/Apartment'
+import ApartmentDetail from './pages/Apartments/ApartmentDetail'
 import BuildingAssignmentsManagement from './pages/building management/BuildingAssignmentsManagement'
 import BuildingDetailManagement from './pages/building management/BuildingDetailManagement'
 import RoleManagement from './pages/roles/RoleManagement'
@@ -51,8 +51,11 @@ import MaintenanceAssignmentsAdminPage from './pages/maintenance/MaintenanceAssi
 import MaintenanceUserPage from './pages/maintenance/MaintenanceUserPage'
 import MyApartment from './pages/MyApartment/MyApartment'
 import MyContract from './pages/MyApartment/MyContract'
-import ContractList from './pages/contracts/ContractList'
-import ContractDetail from './pages/contracts/ContractDetail'
+import ContractList from './pages/Contracts/ContractList'
+import ContractDetail from './pages/Contracts/ContractDetail'
+import Analytics from './pages/Analytics/Analytics'
+import AmenityList from './pages/Amenities/AmenityList'
+import AmenityDetail from './pages/Amenities/AmenityDetail'
 import VehiclesAdminPage from './pages/vehicles/VehiclesAdminPage'
 import VisitorsAdminPage from './pages/visitors/VisitorsAdminPage'
 
@@ -246,6 +249,54 @@ export default function useRouteElements() {
       element: (
         <DashboardLayoutUser>
           <UserPaymentDetailPage />
+        </DashboardLayoutUser>
+      )
+    },
+    {
+      path: '/analytics',
+      element: (
+        <DashboardLayoutProtect>
+          <Analytics />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/contracts',
+      element: (
+        <DashboardLayoutProtect>
+          <ContractList />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/contracts/:id',
+      element: (
+        <DashboardLayoutProtect>
+          <ContractDetail />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/amenities',
+      element: (
+        <DashboardLayoutProtect>
+          <AmenityList />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/amenities/:id',
+      element: (
+        <DashboardLayoutProtect>
+          <AmenityDetail />
+        </DashboardLayoutProtect>
+      )
+    },
+    {
+      path: '/my-amenities',
+      element: (
+        <DashboardLayoutUser>
+          <AmenityList isResident />
         </DashboardLayoutUser>
       )
     },
