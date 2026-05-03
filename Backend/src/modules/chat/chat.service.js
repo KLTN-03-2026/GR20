@@ -213,6 +213,10 @@ const handleDeleteMessage = async (userId, messageId) => {
   if (!deleted) throw new Error("Không thể thu hồi tin nhắn này");
   return deleted;
 };
+// 5. Xử lý đánh dấu đã xem
+const handleMarkAsRead = async (userId, roomId) => {
+  await chatRepo.markRoomAsRead(roomId, userId);
+};
 module.exports = {
   setupInitialChat,
   getDirectory,
@@ -223,4 +227,5 @@ module.exports = {
   getMessageHistory,
   handleEditMessage,
   handleDeleteMessage,
+  handleMarkAsRead,
 };

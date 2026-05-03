@@ -117,6 +117,39 @@ const initializeSockets = (io) => {
         socket.emit("error_message", { message: error.message });
       }
     });
+    // BẮT SỰ KIỆN ĐANG GÕ PHÍM
+    socket.on("typing", (data) => {
+      const { roomId } = data;
+      // socket.to().emit: Phát loa cho cả phòng TRỪ người đang gõ
+      socket
+        .to(roomId.toString())
+        .emit("user_typing", { userId: socket.userId });
+    });
+
+    // BẮT SỰ KIỆN NGỪNG GÕ PHÍM
+    socket.on("stop_typing", (data) => {
+      const { roomId } = data;
+      socket
+        .to(roomId.toString())
+        .emit("user_stop_typing", { userId: socket.userId });
+    });
+    // BẮT SỰ KIỆN ĐÁNH DẤU ĐÃ XEM
+    socket.on("mark_as_read", async (data) => {
+      try {
+        const { roomId } = data;
+
+        // Cập nhật Database
+        await chatService.handleMarkAsRead(socket.userId, roomId);
+
+        // Báo cho những người khác trong phòng biết là tôi đã xem rồi
+        socket.to(roomId.toString()).emit("user_read_message", {
+          roomId,
+          userId: socket.userId,
+        });
+      } catch (error) {
+        console.error("❌ Lỗi đánh dấu đã xem:", error);
+      }
+    });
     // 👆 -------------------------------------- 👆
 
     socket.on("disconnect", () => {

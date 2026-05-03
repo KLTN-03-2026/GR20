@@ -269,10 +269,11 @@ const getOtherMemberInPrivateRoom = async (roomId, currentUserId) => {
     .select({
       userId: schema.users.id,
       nickname: schema.chatRoomMembers.nickname,
-      fullName: schema.users.fullName, // <-- THÊM DÒNG NÀY
-      username: schema.users.username, // <-- THÊM DÒNG NÀY
+      fullName: schema.users.fullName,
+      username: schema.users.username,
       avatarUrl: schema.users.avatarUrl,
       roleName: schema.roles.name,
+      lastReadAt: schema.chatRoomMembers.lastReadAt,
     })
     .from(schema.chatRoomMembers)
     .innerJoin(schema.users, eq(schema.chatRoomMembers.userId, schema.users.id))
@@ -354,6 +355,20 @@ const deleteMessage = async (messageId, senderId) => {
 
   return deletedMessage[0];
 };
+// 20. Đánh dấu đã xem toàn bộ tin nhắn trong phòng
+const markRoomAsRead = async (roomId, userId) => {
+  await db
+    .update(schema.chatRoomMembers)
+    .set({
+      lastReadAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(schema.chatRoomMembers.roomId, roomId),
+        eq(schema.chatRoomMembers.userId, userId),
+      ),
+    );
+};
 module.exports = {
   getUserRole,
   getResidentInfo,
@@ -374,4 +389,5 @@ module.exports = {
   getMessageHistory,
   editMessage,
   deleteMessage,
+  markRoomAsRead,
 };

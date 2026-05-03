@@ -23,9 +23,14 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // --- STATE MỚI CHO SỬA/XÓA ---
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null)
   const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null)
+
+  const [typingUserIds, setTypingUserIds] = useState<number[]>([])
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // --- STATE MỚI: QUẢN LÝ ĐÃ XEM ---
+  const [isLastMessageRead, setIsLastMessageRead] = useState(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -33,20 +38,24 @@ export default function ChatPage() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, typingUserIds, isLastMessageRead])
 
-  // Lắng nghe các sự kiện Socket
+  // Lắng nghe Socket
   useEffect(() => {
     if (!socket) return
 
     socket.on('receive_message', (newMessage) => {
       if (Number(newMessage.roomId) === Number(currentRoomId)) {
         setMessages((prev) => [...prev, newMessage])
+
+        // Nếu mình đang mở phòng này, nhận được tin nhắn thì báo "Đã xem" luôn
+        if (Number(newMessage.senderId) !== currentUserId) {
+          socket.emit('mark_as_read', { roomId: currentRoomId })
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
     })
 
-    // SỰ KIỆN: Cập nhật tin nhắn (Sửa)
     socket.on('message_updated', (updatedMsg) => {
       if (Number(updatedMsg.roomId) === Number(currentRoomId)) {
         setMessages((prev) =>
@@ -57,10 +66,24 @@ export default function ChatPage() {
       }
     })
 
-    // SỰ KIỆN: Xóa tin nhắn (Thu hồi)
     socket.on('message_deleted', (deletedMsg) => {
       if (Number(deletedMsg.roomId) === Number(currentRoomId)) {
         setMessages((prev) => prev.map((msg) => (msg.id === deletedMsg.id ? { ...msg, isDeleted: true } : msg)))
+      }
+    })
+
+    socket.on('user_typing', ({ userId }) => {
+      setTypingUserIds((prev) => (prev.includes(userId) ? prev : [...prev, userId]))
+    })
+
+    socket.on('user_stop_typing', ({ userId }) => {
+      setTypingUserIds((prev) => prev.filter((id) => id !== userId))
+    })
+
+    // --- BẮT SỰ KIỆN ĐÃ XEM TỪ NGƯỜI KIA ---
+    socket.on('user_read_message', ({ roomId }) => {
+      if (Number(roomId) === Number(currentRoomId)) {
+        setIsLastMessageRead(true) // Bật trạng thái đã xem
       }
     })
 
@@ -68,8 +91,21 @@ export default function ChatPage() {
       socket.off('receive_message')
       socket.off('message_updated')
       socket.off('message_deleted')
+      socket.off('user_typing')
+      socket.off('user_stop_typing')
+      socket.off('user_read_message')
     }
-  }, [socket, currentRoomId, queryClient])
+  }, [socket, currentRoomId, queryClient, currentUserId])
+
+  // Reset các state khi chuyển phòng
+  useEffect(() => {
+    setTypingUserIds([])
+    setIsLastMessageRead(false)
+    // Vừa vào phòng là báo đã xem luôn
+    if (socket && currentRoomId) {
+      socket.emit('mark_as_read', { roomId: currentRoomId })
+    }
+  }, [currentRoomId, socket])
 
   // API Calls
   const { data: directoryData, isLoading: isLoadingDirectory } = useQuery({
@@ -93,7 +129,20 @@ export default function ChatPage() {
   useEffect(() => {
     if (historyData) setMessages(historyData)
   }, [historyData])
-
+  useEffect(() => {
+    if (messages.length > 0 && currentChatUser?.lastReadAt) {
+      const lastMsg = messages[messages.length - 1]
+      // Nếu tin nhắn cuối là do mình gửi
+      if (Number(lastMsg.senderId) === currentUserId) {
+        const msgTime = new Date(lastMsg.createdAt).getTime()
+        const readTime = new Date(currentChatUser.lastReadAt).getTime()
+        // Nếu thời gian họ xem lớn hơn hoặc bằng thời gian tin nhắn được tạo -> Đã xem
+        if (readTime >= msgTime) {
+          setIsLastMessageRead(true)
+        }
+      }
+    }
+  }, [messages, currentChatUser, currentUserId])
   const initPrivateChatMutation = useMutation({
     mutationFn: chatApi.initPrivateChat,
     onSuccess: (res, variables) => {
@@ -129,38 +178,40 @@ export default function ChatPage() {
     if (socket) socket.emit('join_room', room.roomId)
   }
 
-  // --- NÂNG CẤP HÀM GỬI/SỬA TIN NHẮN ---
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageContent(e.target.value)
+    if (socket && currentRoomId) {
+      socket.emit('typing', { roomId: currentRoomId })
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('stop_typing', { roomId: currentRoomId })
+      }, 2000)
+    }
+  }
+
   const handleSendMessage = () => {
     if (!socket || !currentRoomId || !messageContent.trim()) return
 
     if (editingMessageId) {
-      // Đang ở chế độ SỬA
-      socket.emit('edit_message', {
-        roomId: currentRoomId,
-        messageId: editingMessageId,
-        newContent: messageContent
-      })
-      setEditingMessageId(null) // Tắt chế độ sửa
+      socket.emit('edit_message', { roomId: currentRoomId, messageId: editingMessageId, newContent: messageContent })
+      setEditingMessageId(null)
     } else {
-      // Chế độ GỬI MỚI
-      socket.emit('send_message', {
-        roomId: currentRoomId,
-        content: messageContent
-      })
+      socket.emit('send_message', { roomId: currentRoomId, content: messageContent })
+      setIsLastMessageRead(false) // Vừa gửi xong thì chắc chắn người kia chưa xem
     }
 
     setMessageContent('')
+    socket.emit('stop_typing', { roomId: currentRoomId })
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
   }
 
-  // --- HÀM THU HỒI TIN NHẮN ---
   const handleDeleteMessage = (messageId: number) => {
     if (window.confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) {
       if (socket) socket.emit('delete_message', { roomId: currentRoomId, messageId })
     }
   }
 
-  // Khởi động chế độ sửa tin nhắn
   const handleStartEdit = (msg: any) => {
     setEditingMessageId(msg.id)
     setMessageContent(msg.content)
@@ -172,6 +223,7 @@ export default function ChatPage() {
     try {
       toast.info('Đang tải ảnh lên...')
       await chatApi.uploadFileMessage(currentRoomId, file)
+      setIsLastMessageRead(false) // Gửi ảnh xong cũng reset trạng thái đã xem
       if (fileInputRef.current) fileInputRef.current.value = ''
       queryClient.invalidateQueries({ queryKey: ['chatInbox'] })
     } catch (error: any) {
@@ -203,7 +255,6 @@ export default function ChatPage() {
       </div>
 
       <div className='flex h-[75vh] bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative'>
-        {/* CỘT TRÁI */}
         <div className='w-1/3 border-r border-gray-100 flex flex-col bg-white'>
           <div className='flex p-4 border-b border-gray-100 shrink-0'>
             <button
@@ -300,7 +351,6 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* CỘT PHẢI */}
         <div className='w-2/3 flex flex-col bg-[#F8F9FA]/30 relative overflow-hidden'>
           {currentRoomId && currentChatUser ? (
             <div className='flex-1 flex flex-col overflow-hidden'>
@@ -314,7 +364,6 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              {/* KHUNG TIN NHẮN */}
               <div className='flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 custom-scrollbar relative z-0'>
                 {isLoadingHistory ? (
                   <div className='h-full flex items-center justify-center'>
@@ -324,9 +373,13 @@ export default function ChatPage() {
                   messages.map((msg, idx) => {
                     const isMe = Number(msg.senderId) === currentUserId
                     const imageUrl = `${config.BASEURL}${msg.attachmentUrl || msg.attachment?.url}`
+                    // Kiểm tra xem đây có phải là tin nhắn cuối cùng của mình gửi không
+                    const isMyLastMessage = isMe && idx === messages.length - 1
+                    const isEdited =
+                      msg.updatedAt && new Date(msg.updatedAt).getTime() - new Date(msg.createdAt).getTime() > 1000
 
                     return (
-                      <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <div key={idx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                         <div
                           onMouseEnter={() => setHoveredMessageId(msg.id)}
                           onMouseLeave={() => setHoveredMessageId(null)}
@@ -340,7 +393,6 @@ export default function ChatPage() {
                                 : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
                           }`}
                         >
-                          {/* Hiện menu SỬA/XÓA nếu là tin nhắn của mình, chưa bị xóa và đang được hover */}
                           {isMe && !msg.isDeleted && hoveredMessageId === msg.id && (
                             <div className='absolute top-2 -left-[76px] flex items-center gap-1 bg-white shadow-md border border-gray-100 rounded-lg p-1 before:absolute before:content-[""] before:inset-y-0 before:-right-10 before:w-10 before:bg-transparent'>
                               {msg.messageType === 'text' && (
@@ -376,14 +428,12 @@ export default function ChatPage() {
                             </div>
                           )}
 
-                          {/* Tên người gửi trong Group */}
                           {!isMe && currentChatUser?.isGroup && !msg.isDeleted && (
                             <div className='text-[10px] font-bold text-[#0052CC] mb-1'>
                               {msg.senderName || msg.senderUsername}
                             </div>
                           )}
 
-                          {/* HIỂN THỊ NỘI DUNG / ẢNH / THU HỒI */}
                           {msg.isDeleted ? (
                             <div className='italic'>Tin nhắn đã bị thu hồi</div>
                           ) : msg.messageType === 'image' ? (
@@ -400,20 +450,59 @@ export default function ChatPage() {
                           <div
                             className={`text-[10px] mt-1.5 flex items-center gap-1 ${isMe ? 'justify-end' : 'justify-start'} ${msg.isDeleted ? 'opacity-0' : 'opacity-60'}`}
                           >
-                            {msg.updatedAt && !msg.isDeleted && <span>(đã sửa)</span>}
+                            {isEdited && !msg.isDeleted && <span>(đã sửa)</span>}
                             {formatTime(msg.createdAt)}
                           </div>
                         </div>
+
+                        {/* --- CHỮ "ĐÃ XEM" --- */}
+                        {isMyLastMessage && isLastMessageRead && !currentChatUser?.isGroup && (
+                          <div className='text-[10px] text-gray-400 mt-1 flex items-center gap-1'>
+                            <svg
+                              className='w-3 h-3 text-[#0F9D58]'
+                              fill='none'
+                              stroke='currentColor'
+                              viewBox='0 0 24 24'
+                            >
+                              <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth='3'
+                                d='M5 13l4 4L19 7'
+                              ></path>
+                            </svg>
+                            Đã xem
+                          </div>
+                        )}
                       </div>
                     )
                   })
                 )}
+
+                {typingUserIds.length > 0 && (
+                  <div className='flex justify-start'>
+                    <div className='bg-gray-100 text-gray-500 text-xs px-4 py-2.5 rounded-2xl rounded-tl-none animate-pulse flex items-center gap-2 shadow-sm border border-gray-200'>
+                      <span className='flex gap-1'>
+                        <span className='w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce'></span>
+                        <span
+                          className='w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce'
+                          style={{ animationDelay: '0.2s' }}
+                        ></span>
+                        <span
+                          className='w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce'
+                          style={{ animationDelay: '0.4s' }}
+                        ></span>
+                      </span>
+                      {currentChatUser?.isGroup
+                        ? 'Ai đó đang gõ...'
+                        : `${currentChatUser?.nickname || 'Người dùng'} đang gõ...`}
+                    </div>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* INPUT AREA */}
               <div className='bg-white border-t border-gray-100 shrink-0 relative z-10'>
-                {/* Banner báo đang sửa tin nhắn */}
                 {editingMessageId && (
                   <div className='absolute -top-10 left-0 right-0 bg-blue-50/90 backdrop-blur-sm px-6 py-2 flex items-center justify-between text-xs text-[#0052CC] border-t border-blue-100 shadow-sm'>
                     <div className='flex items-center gap-2'>
@@ -473,7 +562,7 @@ export default function ChatPage() {
                   <input
                     type='text'
                     value={messageContent}
-                    onChange={(e) => setMessageContent(e.target.value)}
+                    onChange={handleTyping}
                     placeholder='Nhập tin nhắn...'
                     className='flex-1 bg-gray-50 border border-gray-200 rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0052CC]/50'
                   />
@@ -518,7 +607,6 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* LIGHTBOX MODAL XEM ẢNH */}
       {selectedModalImage && (
         <div
           className='fixed inset-0 z-[9999] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm'
