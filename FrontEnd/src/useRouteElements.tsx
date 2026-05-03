@@ -16,7 +16,7 @@ import EmployeeManagement from './pages/employees/EmployeeManagement'
 import Getresidentlist from './pages/residentmanagement/Getresidentlist'
 import Addresident from './pages/residentmanagement/Addresident'
 import ResidentDetail from './pages/residentmanagement/Residentdetail'
-
+import ChatPage from './pages/chat/ChatPage'
 // QR code
 import QrcodeManagement from './pages/QRCODE_USER/QrcodeManagement'
 import ViewQRcodeDetails from './pages/QRCODE_USER/ViewQRcodeDetails'
@@ -178,6 +178,16 @@ export default function useRouteElements() {
             <AdminNotifications />
           </DashboardLayoutProtect>
         </ProtectedAdminRoute>
+      )
+    },
+    {
+      path: '/chat',
+      element: (
+        <DashboardLayoutUser>
+          {' '}
+          {/* Hoặc Layout tương ứng */}
+          <ChatPage />
+        </DashboardLayoutUser>
       )
     }
   ])

@@ -1,4 +1,4 @@
-const { eq, and, ilike, asc, inArray } = require("drizzle-orm");
+const { eq, and, ilike, asc, inArray, desc, sql } = require("drizzle-orm");
 const { db } = require("../../configs/database.config");
 const schema = require("../../db/schema");
 // 1. Lấy Role của User
@@ -161,7 +161,16 @@ const saveMessage = async (roomId, senderId, content, messageType = "text") => {
       messageType: messageType,
       content: content,
     })
-    .returning(); // returning() để lấy lại data vừa lưu (có id và created_at)
+    .returning();
+
+  // Cập nhật tin nhắn cuối cùng cho phòng chat
+  await db
+    .update(schema.chatRooms)
+    .set({
+      lastMessage: messageType === "text" ? content : "[Tệp đính kèm]",
+      lastMessageAt: sql`now()`, // Cập nhật thời gian
+    })
+    .where(eq(schema.chatRooms.id, roomId));
 
   return newMessage[0];
 };
@@ -234,6 +243,71 @@ const saveAttachment = async (messageId, fileData) => {
 
   return newAttachment[0];
 };
+// 15. Lấy danh sách các phòng chat (Inbox) mà User đang tham gia
+const getInboxRooms = async (userId) => {
+  // Lấy các ID phòng mà user có mặt
+  const myRooms = await db
+    .select({ roomId: schema.chatRoomMembers.roomId })
+    .from(schema.chatRoomMembers)
+    .where(eq(schema.chatRoomMembers.userId, userId));
+
+  const roomIds = myRooms.map((r) => r.roomId);
+  if (roomIds.length === 0) return [];
+
+  // Lấy chi tiết các phòng đó, sắp xếp phòng có tin nhắn mới nhất lên đầu
+  return await db
+    .select()
+    .from(schema.chatRooms)
+    .where(inArray(schema.chatRooms.id, roomIds))
+    .orderBy(desc(schema.chatRooms.lastMessageAt));
+};
+
+// 16. Tìm thông tin của người chat cùng trong phòng 1-1 (Private)
+// Thay thế hàm 16 bằng đoạn này:
+const getOtherMemberInPrivateRoom = async (roomId, currentUserId) => {
+  const result = await db
+    .select({
+      userId: schema.users.id,
+      nickname: schema.chatRoomMembers.nickname,
+      fullName: schema.users.fullName, // <-- THÊM DÒNG NÀY
+      username: schema.users.username, // <-- THÊM DÒNG NÀY
+      avatarUrl: schema.users.avatarUrl,
+      roleName: schema.roles.name,
+    })
+    .from(schema.chatRoomMembers)
+    .innerJoin(schema.users, eq(schema.chatRoomMembers.userId, schema.users.id))
+    .leftJoin(schema.roles, eq(schema.users.roleId, schema.roles.id))
+    .where(
+      and(
+        eq(schema.chatRoomMembers.roomId, roomId),
+        sql`${schema.chatRoomMembers.userId} != ${currentUserId}`,
+      ),
+    )
+    .limit(1);
+
+  return result.length > 0 ? result[0] : null;
+};
+// 17. Lấy lịch sử tin nhắn của 1 phòng cụ thể
+// 17. Lấy lịch sử tin nhắn của 1 phòng cụ thể (Đã nâng cấp để lấy tên người gửi)
+const getMessageHistory = async (roomId) => {
+  return await db
+    .select({
+      id: schema.chatMessages.id,
+      roomId: schema.chatMessages.roomId,
+      senderId: schema.chatMessages.senderId,
+      messageType: schema.chatMessages.messageType,
+      content: schema.chatMessages.content,
+      createdAt: schema.chatMessages.createdAt,
+      // Lấy thêm thông tin người gửi để hiển thị tên trong Chat Nhóm
+      senderName: schema.users.fullName,
+      senderUsername: schema.users.username,
+      senderAvatar: schema.users.avatarUrl,
+    })
+    .from(schema.chatMessages)
+    .innerJoin(schema.users, eq(schema.chatMessages.senderId, schema.users.id))
+    .where(eq(schema.chatMessages.roomId, roomId))
+    .orderBy(asc(schema.chatMessages.createdAt));
+};
 module.exports = {
   getUserRole,
   getResidentInfo,
@@ -249,4 +323,7 @@ module.exports = {
   findPrivateRoom,
   createPrivateRoom,
   saveAttachment,
+  getInboxRooms,
+  getOtherMemberInPrivateRoom,
+  getMessageHistory,
 };

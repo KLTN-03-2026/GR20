@@ -39,4 +39,13 @@ router.post(
   uploadAttachment.single("file"), // Đổi thành tên mới
   chatController.uploadFileMessage,
 );
+// URL: GET /api/chat/inbox
+router.get("/inbox", verifyToken, chatController.getInboxList);
+
+// URL: GET /api/chat/rooms/:roomId/messages
+router.get(
+  "/rooms/:roomId/messages",
+  verifyToken,
+  chatController.getMessageHistory,
+);
 module.exports = router;

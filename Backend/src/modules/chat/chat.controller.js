@@ -98,9 +98,46 @@ const uploadFileMessage = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+// Lấy danh sách Cuộc trò chuyện
+const getInboxList = async (req, res) => {
+  try {
+    const userId = Number(req.user.sub || req.user._id || req.user.id);
+    const result = await chatService.getInboxList(userId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy danh sách trò chuyện thành công",
+      data: result,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi tại getInboxList:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Lấy lịch sử tin nhắn
+const getMessageHistory = async (req, res) => {
+  try {
+    const userId = Number(req.user.sub || req.user._id || req.user.id);
+    const roomId = Number(req.params.roomId);
+
+    const result = await chatService.getMessageHistory(userId, roomId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy lịch sử tin nhắn thành công",
+      data: result,
+    });
+  } catch (error) {
+    console.error("❌ Lỗi tại getMessageHistory:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 module.exports = {
   initChatProfile,
   getBuildingDirectory,
   initPrivateChat,
   uploadFileMessage,
+  getInboxList,
+  getMessageHistory,
 };

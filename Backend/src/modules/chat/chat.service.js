@@ -143,10 +143,66 @@ const handleUploadAttachment = async (userId, roomId, file) => {
     attachment: savedAttachment,
   };
 };
+// 1. Service lấy danh sách Inbox (Cuộc trò chuyện)
+const getInboxList = async (userId) => {
+  // Lấy các phòng chat mà user tham gia
+  const rooms = await chatRepo.getInboxRooms(userId);
+
+  // Đắp thêm thông tin người chat cùng (nếu là phòng 1-1)
+  const inboxList = await Promise.all(
+    rooms.map(async (room) => {
+      let roomName = room.name;
+      let roomAvatar = room.avatar;
+      let chatWithUser = null;
+
+      // Nếu là phòng riêng tư (1-1), tìm thông tin người kia
+      if (room.type === "private") {
+        const otherMember = await chatRepo.getOtherMemberInPrivateRoom(
+          room.id,
+          userId,
+        );
+        if (otherMember) {
+          // SỬA DÒNG DƯỚI ĐÂY: Ưu tiên Nickname -> FullName -> Username
+          roomName =
+            otherMember.nickname ||
+            otherMember.fullName ||
+            otherMember.username;
+          roomAvatar = otherMember.avatarUrl;
+          chatWithUser = otherMember;
+        }
+      }
+
+      return {
+        roomId: room.id,
+        type: room.type,
+        name: roomName || "Cuộc trò chuyện",
+        avatar: roomAvatar,
+        lastMessage: room.lastMessage,
+        lastMessageAt: room.lastMessageAt,
+        chatWithUser: chatWithUser, // Cục data này rất quan trọng để FE bấm vào là chat luôn
+      };
+    }),
+  );
+
+  return inboxList;
+};
+
+// 2. Service lấy Lịch sử tin nhắn
+const getMessageHistory = async (userId, roomId) => {
+  // Check bảo mật: Tránh việc user này truyền ID phòng của người khác để đọc trộm
+  const isMember = await chatRepo.getRoomMember(roomId, userId);
+  if (!isMember) {
+    throw new Error("Bạn không có quyền truy cập cuộc trò chuyện này");
+  }
+
+  return await chatRepo.getMessageHistory(roomId);
+};
 module.exports = {
   setupInitialChat,
   getDirectory,
   handleSendMessage,
   getOrCreatePrivateChat,
   handleUploadAttachment,
+  getInboxList,
+  getMessageHistory,
 };
