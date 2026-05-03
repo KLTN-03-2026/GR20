@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, createSearchParams, useLocation } from 'react-router-dom'
 import { qrApiAdmin } from 'src/apis/QrcodeAdmin/QrcodeAdmin.api'
-import type { historyQrcodeAdmin, historyQrcodeAdmin1 } from 'src/types/qrcode.type'
+import type { historyQrcodeAdmin, historyQrcodeAdmin1, ListQRGuest } from 'src/types/qrcode.type'
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useDebounce } from 'src/hooks/useDebounce'
 import Paginate from 'src/components/Paginate/Paginate'
+import GuestQRTable from './GuestQRTable'
 
 interface UpdateQrcodeParams {
   id: string
@@ -35,7 +36,10 @@ export default function QrcodeManagementAdmin() {
   const debouncedSearch = useDebounce(searchInput, 500)
   const debouncedStatus = useDebounce(statusFilter, 300)
 
-  // Update URL khi filter thay đổi
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'resident' | 'guest'>('resident')
+
+  // Update URL khi filter thay đổi (cho resident)
   useEffect(() => {
     const params: Record<string, string> = {
       page: '1',
@@ -47,7 +51,6 @@ export default function QrcodeManagementAdmin() {
     if (debouncedStatus) {
       params.status = debouncedStatus
     }
-
     navigate(
       {
         pathname: location.pathname,
@@ -57,7 +60,7 @@ export default function QrcodeManagementAdmin() {
     )
   }, [debouncedSearch, debouncedStatus, limitFromUrl, location.pathname, navigate])
 
-  // Modal history states
+  // Modal history states (cho resident)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [selectedResident, setSelectedResident] = useState<{ id: string; name: string } | null>(null)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
@@ -65,20 +68,19 @@ export default function QrcodeManagementAdmin() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedUserForCreate, setSelectedUserForCreate] = useState<PostQRcode | null>(null)
 
-  // History filters
+  // History filters (cho resident)
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
   const [historyPageSize] = useState(10)
   const [historySearchInput, setHistorySearchInput] = useState('')
   const [historyResultFilter, setHistoryResultFilter] = useState('')
   const [historyFromDate, setHistoryFromDate] = useState('')
   const [historyToDate, setHistoryToDate] = useState('')
-
   const debouncedHistorySearch = useDebounce(historySearchInput, 500)
   const debouncedHistoryResult = useDebounce(historyResultFilter, 300)
 
   const queryClient = useQueryClient()
 
-  // Query danh sách chính với phân trang
+  // Query danh sách resident QR
   const { data, isLoading } = useQuery({
     queryKey: ['personal/list', pageFromUrl, limitFromUrl, debouncedSearch, debouncedStatus],
     queryFn: () =>
@@ -92,16 +94,33 @@ export default function QrcodeManagementAdmin() {
     staleTime: 3000 * 60
   })
 
-  // console.log(data?.data?.data?.data)
+  // // Query danh sách guest QR
+  // const { data: guestData, isLoading: guestLoading } = useQuery({
+  //   queryKey: ['guest/list', guestPage, limitFromUrl, debouncedGuestSearch, debouncedGuestStatus],
+  //   queryFn: () =>
+  //     qrApiAdmin.getListGuest({
+  //       page: guestPage,
+  //       limit: Number(limitFromUrl),
+  //       search: debouncedGuestSearch || undefined,
+  //       status: debouncedGuestStatus || undefined
+  //     }),
+  //   placeholderData: keepPreviousData,
+  //   staleTime: 3000 * 60,
+  //   enabled: activeTab === 'guest'
+  // })
 
   const dataListQr: historyQrcodeAdmin[] = data?.data?.data || []
+  // const guestList: ListQRGuest[] = guestData?.data?.data || []
 
   const totalElements = data?.data?.totalElements || 0
   const totalPages = data?.data?.totalPages || 1
   const currentPage = data?.data?.page || Number(pageFromUrl)
   const currentPageSize = data?.data?.pageSize || Number(limitFromUrl)
 
-  // Query lịch sử quét
+  // const guestTotalElements = guestData?.data?.totalElements || 0
+  // const guestTotalPages = guestData?.data?.totalPages || 1
+
+  // Query lịch sử quét resident
   const {
     data: historyData,
     isLoading: isLoadingHistory,
@@ -132,13 +151,13 @@ export default function QrcodeManagementAdmin() {
   const historyTotalElements = historyData?.data?.totalElements || 0
   const historyTotalPages = historyData?.data?.totalPages || 1
 
-  // Thống kê (dựa trên data hiện tại)
+  // Thống kê resident
   const totalIssued = dataListQr.filter((item) => item.qr_id !== null).length
   const activeKeys = dataListQr.filter((item) => item.qr_status === 'ACTIVE').length
   const revokedKeys = dataListQr.filter((item) => item.qr_status === 'REVOKED').length
   const activePercentage = totalIssued > 0 ? (activeKeys / totalIssued) * 100 : 0
 
-  // Mutations
+  // Mutations Resident
   const deleteMutation = useMutation({
     mutationFn: (id: string) => qrApiAdmin.deleteQrcodeAdmin(id),
     onSuccess: () => {
@@ -215,7 +234,7 @@ export default function QrcodeManagementAdmin() {
     return { icon: 'logout', color: 'text-orange-500', text: 'RA' }
   }
 
-  // Handlers
+  // Handlers Resident
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code)
     toast.success('Đã sao chép mã QR')
@@ -264,7 +283,7 @@ export default function QrcodeManagementAdmin() {
     setHistoryCurrentPage(1)
   }
 
-  if (isLoading && !data) {
+  if (isLoading && !data && activeTab === 'resident') {
     return (
       <div className='bg-surface text-on-surface min-h-screen flex items-center justify-center'>
         <div className='text-center'>
@@ -285,7 +304,7 @@ export default function QrcodeManagementAdmin() {
               <span className='text-xs font-bold tracking-[0.2em] text-primary uppercase mb-2 block'>
                 Trung tâm bảo mật
               </span>
-              <h1 className='text-4xl font-extrabold tracking-tight text-on-surface'>Mã QR Cư dân</h1>
+              <h1 className='text-4xl font-extrabold tracking-tight text-on-surface'>Quản lý Mã QR</h1>
               <p className='mt-4 text-on-surface-variant text-lg leading-relaxed'>
                 Quản lý và giám sát chìa khóa truy cập kỹ thuật số cho hệ sinh thái cư dân.
               </p>
@@ -301,241 +320,279 @@ export default function QrcodeManagementAdmin() {
             </div>
           </section>
 
-          {/* Filter Bar */}
-          <div className='bg-surface-container-low rounded-2xl p-6 flex flex-col lg:flex-row gap-6 items-center'>
-            <div className='w-full lg:flex-1 relative'>
-              <span className='material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60'>
-                search
+          {/* Tabs */}
+          <div className='flex gap-3 mb-8 border-b border-surface-container-low'>
+            <button
+              onClick={() => setActiveTab('resident')}
+              className={`px-6 py-3 font-semibold transition-all relative ${
+                activeTab === 'resident' ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <span className='flex items-center gap-2'>
+                <span className='material-symbols-outlined text-lg'>qr_code_2</span>
+                QR Cư dân
               </span>
-              <input
-                className='w-full pl-12 pr-4 py-3 bg-surface-container-lowest border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-sm'
-                placeholder='Tìm kiếm theo tên, email, số điện thoại...'
-                type='text'
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-              />
-            </div>
-            <div className='flex flex-wrap items-center gap-4 w-full lg:w-auto'>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className='px-4 py-2 bg-surface-container-highest/50 border-none rounded-lg text-sm cursor-pointer'
-              >
-                <option value=''>Tất cả trạng thái</option>
-                <option value='ACTIVE'>Hoạt động</option>
-                <option value='EXPIRED'>Hết hạn</option>
-                <option value='REVOKED'>Đã thu hồi</option>
-              </select>
-            </div>
-            <div className='flex flex-wrap items-center gap-4 w-full lg:w-auto bg-slate-50 rounded-md'>
-              <button
-                onClick={handleResetFilters}
-                className='px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2'
-              >
-                <span className='material-symbols-outlined text-base'>refresh</span>
-                Xóa bộ lọc
-              </button>
-            </div>
+              {activeTab === 'resident' && (
+                <span className='absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full'></span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('guest')}
+              className={`px-6 py-3 font-semibold transition-all relative ${
+                activeTab === 'guest' ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <span className='flex items-center gap-2'>
+                <span className='material-symbols-outlined text-lg'>group</span>
+                QR Khách
+              </span>
+              {activeTab === 'guest' && (
+                <span className='absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-full'></span>
+              )}
+            </button>
           </div>
 
-          {/* Statistics */}
-          <section className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-            <div className='md:col-span-2 bg-surface-container-lowest p-8 rounded-[2rem]'>
-              <div className='flex items-center gap-3 mb-6'>
-                <div className='p-3 bg-primary-fixed rounded-2xl text-primary'>
-                  <span className='material-symbols-outlined'>analytics</span>
+          {/* ==================== RESIDENT QR TAB ==================== */}
+          {activeTab === 'resident' && (
+            <>
+              {/* Filter Bar */}
+              <div className='bg-surface-container-low rounded-2xl p-6 flex flex-col lg:flex-row gap-6 items-center'>
+                <div className='w-full lg:flex-1 relative'>
+                  <span className='material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60'>
+                    search
+                  </span>
+                  <input
+                    className='w-full pl-12 pr-4 py-3 bg-surface-container-lowest border-none rounded-xl focus:ring-2 focus:ring-primary/20 text-sm'
+                    placeholder='Tìm kiếm theo tên, email, số điện thoại...'
+                    type='text'
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                  />
                 </div>
-                <span className='font-bold tracking-widest text-on-surface-variant opacity-60'>TỔNG SỐ ĐÃ CẤP</span>
+                <div className='flex flex-wrap items-center gap-4 w-full lg:w-auto'>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className='px-4 py-2 bg-surface-container-highest/50 border-none rounded-lg text-sm cursor-pointer'
+                  >
+                    <option value=''>Tất cả trạng thái</option>
+                    <option value='ACTIVE'>Hoạt động</option>
+                    <option value='EXPIRED'>Hết hạn</option>
+                    <option value='REVOKED'>Đã thu hồi</option>
+                  </select>
+                </div>
+                <div className='flex flex-wrap items-center gap-4 w-full lg:w-auto bg-slate-50 rounded-md'>
+                  <button
+                    onClick={handleResetFilters}
+                    className='px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors flex items-center gap-2'
+                  >
+                    <span className='material-symbols-outlined text-base'>refresh</span>
+                    Xóa bộ lọc
+                  </button>
+                </div>
               </div>
-              <h2 className='text-6xl font-extrabold text-on-surface'>{totalIssued}</h2>
-            </div>
 
-            <div className='bg-secondary-fixed/30 p-8 rounded-[2rem]'>
-              <span className='font-bold tracking-widest text-on-secondary-fixed-variant opacity-70'>
-                CHÌA KHÓA HOẠT ĐỘNG
-              </span>
-              <h3 className='text-4xl font-extrabold text-on-secondary-fixed mt-2'>{activeKeys}</h3>
-              <div className='w-full bg-white/50 h-1.5 rounded-full mt-6 overflow-hidden'>
-                <div className='bg-primary h-full rounded-full' style={{ width: `${activePercentage}%` }}></div>
-              </div>
-            </div>
+              {/* Statistics */}
+              <section className='grid grid-cols-1 md:grid-cols-4 gap-6'>
+                <div className='md:col-span-2 bg-surface-container-lowest p-8 rounded-[2rem]'>
+                  <div className='flex items-center gap-3 mb-6'>
+                    <div className='p-3 bg-primary-fixed rounded-2xl text-primary'>
+                      <span className='material-symbols-outlined'>analytics</span>
+                    </div>
+                    <span className='font-bold tracking-widest text-on-surface-variant opacity-60'>TỔNG SỐ ĐÃ CẤP</span>
+                  </div>
+                  <h2 className='text-6xl font-extrabold text-on-surface'>{totalIssued}</h2>
+                </div>
 
-            <div className='bg-error-container/20 p-8 rounded-[2rem]'>
-              <span className='font-bold tracking-widest text-on-error-container opacity-70'>ĐÃ THU HỒI</span>
-              <h3 className='text-4xl font-extrabold text-on-error-container mt-2'>{revokedKeys}</h3>
-            </div>
-          </section>
+                <div className='bg-secondary-fixed/30 p-8 rounded-[2rem]'>
+                  <span className='font-bold tracking-widest text-on-secondary-fixed-variant opacity-70'>
+                    CHÌA KHÓA HOẠT ĐỘNG
+                  </span>
+                  <h3 className='text-4xl font-extrabold text-on-secondary-fixed mt-2'>{activeKeys}</h3>
+                  <div className='w-full bg-white/50 h-1.5 rounded-full mt-6 overflow-hidden'>
+                    <div className='bg-primary h-full rounded-full' style={{ width: `${activePercentage}%` }}></div>
+                  </div>
+                </div>
 
-          {/* Table */}
-          <div className='bg-surface-container-lowest rounded-[2rem] overflow-hidden'>
-            <div className='overflow-x-auto'>
-              <table className='w-full text-left border-collapse'>
-                <thead>
-                  <tr className='bg-surface-container-low/50'>
-                    {/* <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>STT</th> */}
-                    <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Người dùng</th>
-                    <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Liên hệ</th>
-                    <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Căn hộ</th>
-                    <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Mã QR</th>
-                    <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest text-center'>
-                      Trạng thái
-                    </th>
-                    <th className='px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-right'>
-                      Hết hạn
-                    </th>
-                    <th className='px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-right'>
-                      Thao tác
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-surface-container-low'>
-                  {dataListQr.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className='px-8 py-12 text-center'>
-                        Không tìm thấy kết quả
-                      </td>
-                    </tr>
-                  ) : (
-                    dataListQr.map((item) => {
-                      const statusBadge = getStatusBadge(item.qr_status)
-                      // const rowNumber = (currentPage - 1) * currentPageSize + index + 1
-                      return (
-                        <tr key={item.user_id} className='group hover:bg-surface-container-low/20'>
-                          {/* <td className='px-6 py-6'>{rowNumber}</td> */}
+                <div className='bg-error-container/20 p-8 rounded-[2rem]'>
+                  <span className='font-bold tracking-widest text-on-error-container opacity-70'>ĐÃ THU HỒI</span>
+                  <h3 className='text-4xl font-extrabold text-on-error-container mt-2'>{revokedKeys}</h3>
+                </div>
+              </section>
 
-                          <td className='px-6 py-6 font-bold'>{item.user_name}</td>
-                          <td className='px-6 py-6 text-sm'>
-                            <div>{item.user_email}</div>
-                            <div className='text-xs opacity-70 '>{item.user_phone || 'Chưa có SĐT'}</div>
-                          </td>
-                          <td className='px-6 py-6'>
-                            {item.apartment_code ? (
-                              <span className='px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold'>
-                                {item.apartment_code}
-                              </span>
-                            ) : (
-                              <span className='text-xs italic'>Chưa có căn hộ</span>
-                            )}
-                          </td>
-                          <td className='px-6 py-6'>
-                            {item.qr_code ? (
-                              <div
-                                className='flex items-center gap-2 cursor-pointer group/code'
-                                onClick={() => handleCopyCode(item.qr_code)}
-                              >
-                                <code className='text-xs bg-surface-container-low px-2 py-1 rounded'>
-                                  {item.qr_code.slice(0, 10)}...
-                                </code>
-                                <span className='material-symbols-outlined text-xs opacity-0 group-hover/code:opacity-100'>
-                                  content_copy
-                                </span>
-                              </div>
-                            ) : (
-                              <span className='text-xs italic'>Chưa có QR</span>
-                            )}
-                          </td>
-                          <td className='px-6 py-6 text-center'>
-                            <span
-                              className={`inline-flex px-4 py-1.5 rounded-full text-[10px] font-bold ${statusBadge.bgColor} ${statusBadge.textColor}`}
-                            >
-                              {statusBadge.text}
-                            </span>
-                          </td>
-                          <td className='px-6 py-6 text-right'>
-                            <p className='text-sm font-bold'>{formatDate(item.expires_at)}</p>
-                            <p className='text-[10px] opacity-70'>
-                              {item.qr_status === 'ACTIVE'
-                                ? 'Còn hiệu lực'
-                                : item.qr_status === 'EXPIRED'
-                                  ? 'Đã hết hạn'
-                                  : 'Đã thu hồi'}
-                            </p>
-                          </td>
-                          <td className='px-6 py-6 text-right'>
-                            <div className='flex justify-end gap-2'>
-                              <button
-                                onClick={() => navigate(`/admin/viewDetailResident/${item.user_id}`)}
-                                className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
-                                title='Xem chi tiết'
-                              >
-                                <span className='material-symbols-outlined text-sm'>visibility</span>
-                              </button>
-                              <button
-                                onClick={() => handleViewHistory(item.user_id, item.user_name)}
-                                className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
-                                title='Lịch sử'
-                              >
-                                <span className='material-symbols-outlined text-sm'>history</span>
-                              </button>
-
-                              {item.qr_id ? (
-                                <>
-                                  <button
-                                    onClick={() => handleEdit(item)}
-                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
-                                  >
-                                    <span className='material-symbols-outlined text-sm'>edit</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleRevoke(item)}
-                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-red-500 hover:text-white'
-                                  >
-                                    <span className='material-symbols-outlined text-sm'>block</span>
-                                  </button>
-                                </>
-                              ) : item.apartment_code && item.apartment_code !== 'Chưa có căn hộ' ? (
-                                <button
-                                  onClick={() => {
-                                    setSelectedUserForCreate({
-                                      userId: item.user_id,
-                                      apartmentId: String(item.apartment_id),
-                                      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-                                    })
-                                    setIsCreateModalOpen(true)
-                                  }}
-                                  className='p-2 bg-green-500 text-white rounded-lg hover:bg-green-600'
-                                  title='Tạo mã QR'
-                                >
-                                  <span className='material-symbols-outlined text-sm'>add</span>
-                                </button>
-                              ) : (
-                                <button
-                                  disabled
-                                  className='p-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed'
-                                  title='Cư dân chưa có căn hộ'
-                                >
-                                  <span className='material-symbols-outlined text-sm'>add</span>
-                                </button>
-                              )}
-                            </div>
+              {/* Resident Table */}
+              <div className='bg-surface-container-lowest rounded-[2rem] overflow-hidden'>
+                <div className='overflow-x-auto'>
+                  <table className='w-full text-left border-collapse'>
+                    <thead>
+                      <tr className='bg-surface-container-low/50'>
+                        <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Người dùng</th>
+                        <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Liên hệ</th>
+                        <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Căn hộ</th>
+                        <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Mã QR</th>
+                        <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest text-center'>
+                          Trạng thái
+                        </th>
+                        <th className='px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-right'>
+                          Hết hạn
+                        </th>
+                        <th className='px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-right'>
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y divide-surface-container-low'>
+                      {dataListQr.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className='px-8 py-12 text-center'>
+                            Không tìm thấy kết quả
                           </td>
                         </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        dataListQr.map((item) => {
+                          const statusBadge = getStatusBadge(item.qr_status)
+                          return (
+                            <tr key={item.user_id} className='group hover:bg-surface-container-low/20'>
+                              <td className='px-6 py-6 font-bold'>{item.user_name}</td>
+                              <td className='px-6 py-6 text-sm'>
+                                <div>{item.user_email}</div>
+                                <div className='text-xs opacity-70 '>{item.user_phone || 'Chưa có SĐT'}</div>
+                              </td>
+                              <td className='px-6 py-6'>
+                                {item.apartment_code ? (
+                                  <span className='px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold'>
+                                    {item.apartment_code}
+                                  </span>
+                                ) : (
+                                  <span className='text-xs italic'>Chưa có căn hộ</span>
+                                )}
+                              </td>
+                              <td className='px-6 py-6'>
+                                {item.qr_code ? (
+                                  <div
+                                    className='flex items-center gap-2 cursor-pointer group/code'
+                                    onClick={() => handleCopyCode(item.qr_code)}
+                                  >
+                                    <code className='text-xs bg-surface-container-low px-2 py-1 rounded'>
+                                      {item.qr_code.slice(0, 10)}...
+                                    </code>
+                                    <span className='material-symbols-outlined text-xs opacity-0 group-hover/code:opacity-100'>
+                                      content_copy
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className='text-xs italic'>Chưa có QR</span>
+                                )}
+                              </td>
+                              <td className='px-6 py-6 text-center'>
+                                <span
+                                  className={`inline-flex px-4 py-1.5 rounded-full text-[10px] font-bold ${statusBadge.bgColor} ${statusBadge.textColor}`}
+                                >
+                                  {statusBadge.text}
+                                </span>
+                              </td>
+                              <td className='px-6 py-6 text-right'>
+                                <p className='text-sm font-bold'>{formatDate(item.expires_at)}</p>
+                                <p className='text-[10px] opacity-70'>
+                                  {item.qr_status === 'ACTIVE'
+                                    ? 'Còn hiệu lực'
+                                    : item.qr_status === 'EXPIRED'
+                                      ? 'Đã hết hạn'
+                                      : 'Đã thu hồi'}
+                                </p>
+                              </td>
+                              <td className='px-6 py-6 text-right'>
+                                <div className='flex justify-end gap-2'>
+                                  <button
+                                    onClick={() => navigate(`/admin/viewDetailResident/${item.user_id}`)}
+                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
+                                    title='Xem chi tiết'
+                                  >
+                                    <span className='material-symbols-outlined text-sm'>visibility</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleViewHistory(item.user_id, item.user_name)}
+                                    className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
+                                    title='Lịch sử'
+                                  >
+                                    <span className='material-symbols-outlined text-sm'>history</span>
+                                  </button>
 
-            {/* Pagination */}
-            {totalElements > 0 && (
-              <div className='p-6 bg-surface-container-low/30 flex items-center justify-between'>
-                <p className='text-xs'>
-                  Hiển thị {(currentPage - 1) * currentPageSize + 1} -{' '}
-                  {Math.min(currentPage * currentPageSize, totalElements)} trên {totalElements}
-                </p>
-                <Paginate
-                  queryConfig={{ page: currentPage.toString(), limit: currentPageSize.toString() }}
-                  pageSize={totalPages}
-                  search={debouncedSearch || undefined}
-                />
+                                  {item.qr_id ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleEdit(item)}
+                                        className='p-2 bg-surface-container-low rounded-lg hover:bg-primary hover:text-white'
+                                      >
+                                        <span className='material-symbols-outlined text-sm'>edit</span>
+                                      </button>
+                                      <button
+                                        onClick={() => handleRevoke(item)}
+                                        className='p-2 bg-surface-container-low rounded-lg hover:bg-red-500 hover:text-white'
+                                      >
+                                        <span className='material-symbols-outlined text-sm'>block</span>
+                                      </button>
+                                    </>
+                                  ) : item.apartment_code && item.apartment_code !== 'Chưa có căn hộ' ? (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedUserForCreate({
+                                          userId: item.user_id,
+                                          apartmentId: String(item.apartment_id),
+                                          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+                                        })
+                                        setIsCreateModalOpen(true)
+                                      }}
+                                      className='p-2 bg-green-500 text-white rounded-lg hover:bg-green-600'
+                                      title='Tạo mã QR'
+                                    >
+                                      <span className='material-symbols-outlined text-sm'>add</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      disabled
+                                      className='p-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed'
+                                      title='Cư dân chưa có căn hộ'
+                                    >
+                                      <span className='material-symbols-outlined text-sm'>add</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Resident */}
+                {totalElements > 0 && (
+                  <div className='p-6 bg-surface-container-low/30 flex items-center justify-between'>
+                    <p className='text-xs'>
+                      Hiển thị {(currentPage - 1) * currentPageSize + 1} -{' '}
+                      {Math.min(currentPage * currentPageSize, totalElements)} trên {totalElements}
+                    </p>
+                    <Paginate
+                      queryConfig={{ page: currentPage.toString(), limit: currentPageSize.toString() }}
+                      pageSize={totalPages}
+                      search={debouncedSearch || undefined}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+
+          {/* ==================== GUEST QR TAB ==================== */}
+          {activeTab === 'guest' && <GuestQRTable />}
         </div>
       </main>
 
-      {/* Modal Lịch sử quét */}
+      {/* ==================== MODALS ==================== */}
+
+      {/* Modal Lịch sử quét Resident */}
       {isHistoryModalOpen && selectedResident && (
         <div className='fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
           <div className='bg-white rounded-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden shadow-2xl'>
@@ -609,7 +666,8 @@ export default function QrcodeManagementAdmin() {
                         <th className='px-4 py-3 text-xs font-bold'>STT</th>
                         <th className='px-4 py-3 text-xs font-bold'>Thời gian</th>
                         <th className='px-4 py-3 text-xs font-bold'>Hướng</th>
-                        <th className='px-4 py-3 text-xs font-bold'>Cổng</th>
+                        <th className='px-4 py-3 text-xs font-bold'>Tòa nhà</th>
+                        <th className='px-4 py-3 text-xs font-bold'>Căn hộ</th>
                         <th className='px-4 py-3 text-xs font-bold'>Kết quả</th>
                         <th className='px-4 py-3 text-xs font-bold'>Người quét</th>
                       </tr>
@@ -633,7 +691,8 @@ export default function QrcodeManagementAdmin() {
                               </span>{' '}
                               {directionIcon.text}
                             </td>
-                            <td className='px-4 py-3'>{item.gate || '---'}</td>
+                            <td className='px-4 py-3'>{item.building_name}</td>
+                            <td className='px-4 py-3'>{item.apartment_code}</td>
                             <td className='px-4 py-3'>
                               <span
                                 className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold ${resultBadge.bgColor} ${resultBadge.textColor}`}
@@ -695,7 +754,7 @@ export default function QrcodeManagementAdmin() {
         </div>
       )}
 
-      {/* Modal Cập nhật QR */}
+      {/* Modal Cập nhật QR Resident */}
       {isUpdateModalOpen && selectedItem && (
         <div className='fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
           <div className='bg-white rounded-2xl max-w-md w-full'>
@@ -750,7 +809,7 @@ export default function QrcodeManagementAdmin() {
         </div>
       )}
 
-      {/* Modal Tạo QR */}
+      {/* Modal Tạo QR Resident */}
       {isCreateModalOpen && selectedUserForCreate && (
         <div className='fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
           <div className='bg-white rounded-2xl max-w-md w-full'>

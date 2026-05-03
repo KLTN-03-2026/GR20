@@ -429,7 +429,413 @@ const getAllResidentAccessHistory = async (req, res) => {
   }
 };
 
+// ==================== GUEST QR CONTROLLERS ====================
 
+// Lấy lịch sử quét của guest QR
+
+const getGuestQrHistory = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+    }
+    
+    const { id } = req.params;
+    const { page, limit, fromDate, toDate , search } = req.query;
+    
+    const existingGuestQr = await service.getGuestQrById(id);
+    if (!existingGuestQr) {
+      return res.status(404).json({ message: 'Guest QR not found' });
+    }
+    
+    const data = await service.getGuestQrHistory(id, {
+      page: page || 1,
+      limit: limit || 10,
+      fromDate: fromDate || null,
+      toDate: toDate || null,
+      search: search || ''
+    });
+    
+    res.json({
+      operationType: "Success",
+      message: "Get guest QR history successfully",
+      code: "OK",
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+
+// Tạo guest QR (CHỈ 1 LẦN)
+// const createGuestQr = async (req, res) => {
+//   try {
+//     if (req.user.role !== 'ADMIN') {
+//       return res.status(403).json({ message: 'Forbidden: Only admin can create guest QR' });
+//     }
+    
+//     const { 
+//       hostUserId,        
+//       apartmentId, 
+//       validFrom, 
+//       validTo, 
+//       maxEntries, 
+//       status,
+//       visitorName,
+//       visitorPhone,
+//       visitorIdCard,
+//       visitorId,
+//       adminValidToOriginal  
+//     } = req.body;
+    
+//     // Kiểm tra các trường bắt buộc
+//     if (!hostUserId || !apartmentId || !validTo) {
+//       return res.status(400).json({ message: 'Missing required fields: hostUserId, apartmentId, validTo' });
+//     }
+    
+//     const data = await service.createGuestQr({
+//       hostUserId,        // 👈 truyền vào
+//       apartmentId,
+//       validFrom: validFrom || new Date(),
+//       validTo,
+//       maxEntries: maxEntries || 1,
+//       status: status || 'ACTIVE',
+//       visitorName,
+//       visitorPhone,
+//       visitorIdCard,
+//       visitorId
+//     });
+    
+//     res.status(201).json({
+//       operationType: "Success",
+//       message: "Guest QR created successfully",
+//       code: "CREATED",
+//       data,
+//       timestamp: new Date()
+//     });
+//   } catch (err) {
+//     console.error('Error:', err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+const createGuestQr = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can create guest QR' });
+    }
+    
+    const { 
+      hostUserId,        
+      apartmentId, 
+      validFrom, 
+      validTo, 
+      maxEntries, 
+      status,
+      visitorName,
+      visitorPhone,
+      visitorIdCard,
+      visitorId,
+      adminValidToOriginal  // 👈 Thêm trường này
+    } = req.body;
+    
+    // Kiểm tra các trường bắt buộc
+    if (!hostUserId || !apartmentId || !validTo) {
+      return res.status(400).json({ message: 'Missing required fields: hostUserId, apartmentId, validTo' });
+    }
+    
+    const data = await service.createGuestQr({
+      hostUserId,
+      apartmentId,
+      validFrom: validFrom || new Date(),
+      validTo,
+      maxEntries: maxEntries || 1,
+      status: status || 'ACTIVE',
+      visitorName,
+      visitorPhone,
+      visitorIdCard,
+      visitorId,
+      adminValidToOriginal: adminValidToOriginal || validTo  // 👈 Lưu original date
+    });
+    
+    res.status(201).json({
+      operationType: "Success",
+      message: "Guest QR created successfully",
+      code: "CREATED",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+// Cập nhật guest QR
+// const updateGuestQr = async (req, res) => {
+//   try {
+//     if (req.user.role !== 'ADMIN') {
+//       return res.status(403).json({ message: 'Forbidden: Only admin can update guest QR' });
+//     }
+    
+//     const { id } = req.params;
+//     const { 
+//       validFrom, 
+//       validTo, 
+//       maxEntries, 
+//       status, 
+//       apartmentId, 
+//       hostUserId,
+//       visitorName,      // 👈 THÊM
+//       visitorPhone,     // 👈 THÊM
+//       visitorIdCard     // 👈 THÊM
+//     } = req.body;
+    
+//     const existingQr = await service.getGuestQrById(id);
+//     if (!existingQr) {
+//       return res.status(404).json({ message: 'Guest QR not found' });
+//     }
+    
+//     const data = await service.updateGuestQr(id, {
+//       validFrom,
+//       validTo,
+//       maxEntries,
+//       status,
+//       apartmentId,
+//       hostUserId,
+//       visitorName,      // 👈 THÊM
+//       visitorPhone,     // 👈 THÊM
+//       visitorIdCard     // 👈 THÊM
+//     });
+    
+//     res.json({
+//       operationType: "Success",
+//       message: "Guest QR updated successfully",
+//       code: "OK",
+//       data,
+//       timestamp: new Date()
+//     });
+//   } catch (err) {
+//     console.error('Error:', err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+const updateGuestQr = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can update guest QR' });
+    }
+    
+    const { id } = req.params;
+    const { 
+      validFrom, 
+      validTo, 
+      maxEntries, 
+      status, 
+      apartmentId, 
+      hostUserId,
+      visitorName,
+      visitorPhone,
+      visitorIdCard,
+      adminValidToOriginal  // 👈 THÊM trường này
+    } = req.body;
+    
+    const existingQr = await service.getGuestQrById(id);
+    if (!existingQr) {
+      return res.status(404).json({ message: 'Guest QR not found' });
+    }
+    
+    const data = await service.updateGuestQr(id, {
+      validFrom,
+      validTo,
+      maxEntries,
+      status,
+      apartmentId,
+      hostUserId,
+      visitorName,
+      visitorPhone,
+      visitorIdCard,
+      adminValidToOriginal  // 👈 TRUYỀN xuống service
+    });
+    
+    res.json({
+      operationType: "Success",
+      message: "Guest QR updated successfully",
+      code: "OK",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Xóa guest QR (soft delete)
+const deleteGuestQr = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can delete guest QR' });
+    }
+    
+    const { id } = req.params;
+    
+    const existingQr = await service.getGuestQrById(id);
+    if (!existingQr) {
+      return res.status(404).json({ message: 'Guest QR not found' });
+    }
+    
+    const data = await service.deleteGuestQr(id);
+    
+    res.json({
+      operationType: "Success",
+      message: "Guest QR revoked successfully",
+      code: "OK",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Lấy chi tiết guest QR
+const getGuestQrDetail = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+    }
+    
+    const { id } = req.params;
+    
+    const data = await service.getGuestQrById(id);
+    if (!data) {
+      return res.status(404).json({ message: 'Guest QR not found' });
+    }
+    
+    res.json({
+      operationType: "Success",
+      message: "Get guest QR detail successfully",
+      code: "OK",
+      data,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+// Lấy danh sách cư dân
+const getAllGuestQrs  = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+    }
+    
+    const { page, limit, search, status  } = req.query;
+    
+    const data = await service.getAllGuestQrs({
+      page: page || 1,
+      limit: limit || 10,
+      search: search || '',
+      apartmentId: status  || ''
+    });
+    
+    res.json({
+      operationType: "Success",
+      message: "Get all residents successfully",
+      code: "OK",
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Lấy danh sách cư dân (để cấp QR khách)
+  // const getAllResidents = async (req, res) => {
+  //   try {
+  //     if (req.user.role !== 'ADMIN') {
+  //       return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+  //     }
+      
+  //     const { page, limit, search, apartmentId } = req.query;
+      
+  //     const data = await service.getAllResidents({
+  //       page: page || 1,
+  //       limit: limit || 10,
+  //       search: search || '',
+  //       status: apartmentId || ''
+  //     });
+      
+  //     res.json({
+  //       operationType: "Success",
+  //       message: "Get all residents successfully",
+  //       code: "OK",
+  //       data: data.data,
+  //       size: data.size,
+  //       totalElements: data.totalElements,
+  //       totalPages: data.totalPages,
+  //       page: data.page,
+  //       pageSize: data.pageSize,
+  //       timestamp: new Date()
+  //     });
+  //   } catch (err) {
+  //     console.error('Error:', err);
+  //     res.status(500).json({ message: err.message });
+  //   }
+  // };
+
+  const getAllResidents = async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ message: 'Forbidden: Only admin can access' });
+    }
+    
+    const { page, limit, search, apartmentId, hasQrOnly, noQrOnly } = req.query;
+    
+    const data = await service.getAllResidents({
+      page: page || 1,
+      limit: limit || 10,
+      search: search || '',
+      apartmentId: apartmentId || '',
+      hasQrOnly: hasQrOnly || false,
+      noQrOnly: noQrOnly || false
+    });
+    
+    res.json({
+      operationType: "Success",
+      message: "Get all residents successfully",
+      code: "OK",
+      data: data.data,
+      size: data.size,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages,
+      page: data.page,
+      pageSize: data.pageSize,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
 
 module.exports = {
   getAllPersonalQrs,
@@ -438,5 +844,11 @@ module.exports = {
   revokePersonalQr,
   getResidentAccessHistory,
   getAllResidentAccessHistory,
-  // getPersonalQrByUserId
+   getAllGuestQrs,
+  createGuestQr,
+  updateGuestQr,
+  deleteGuestQr,
+  getGuestQrDetail,
+  getGuestQrHistory,
+  getAllResidents
 }

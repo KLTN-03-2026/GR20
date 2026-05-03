@@ -4,7 +4,19 @@ const { v4: uuidv4 } = require("uuid");
 const { pool } = require("../../../configs/database.config");
 const mapper = require("../common/qr.mapper");
 
-
+// Kiểm tra user có thuộc căn hộ không
+const checkUserBelongsToApartment = async (userId, apartmentId) => {
+  const query = `
+    SELECT 1 FROM resident_profiles 
+    WHERE user_id = $1 AND apartment_id = $2 AND status = 'ACTIVE'
+    UNION
+    SELECT 1 FROM apartments 
+    WHERE owner_user_id = $1 AND id = $2
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [userId, apartmentId]);
+  return result.rows.length > 0;
+};
 
 const getAllPersonalQrs = async (queryParams = {}) => {
   const {
@@ -34,6 +46,14 @@ const getAllPersonalQrs = async (queryParams = {}) => {
 };
 
 const createPersonalQr = async (data) => {
+
+  const isValid = await checkUserBelongsToApartment(data.userId, data.apartmentId);
+  
+  if (!isValid) {
+    throw new Error("User does not belong to this apartment");
+  }
+  
+
   const query = `
     INSERT INTO qr_codes (user_id, apartment_id, qr_code, expires_at, status)
     VALUES ($1, $2, $3, $4, 'ACTIVE')
@@ -188,6 +208,233 @@ const getAllResidentAccessHistory = async (queryParams = {}) => {
   };
 };
 
+
+// ==================== GUEST QR SERVICES ====================
+
+
+
+// const createGuestQr = async (data) => {
+//   // Tạo mã QR duy nhất
+//   const qrCodeValue = `GUEST_${uuidv4()}`;
+  
+//   const result = await repo.createGuestQr({
+//     hostUserId: data.hostUserId,     // 👈 SỬA: phải là data.hostUserId
+//     apartmentId: data.apartmentId,
+//     qrCode: qrCodeValue,
+//     validFrom: data.validFrom,
+//     validTo: data.validTo,
+//     maxEntries: data.maxEntries || 1,
+//     status: data.status || 'ACTIVE',
+//     visitorName: data.visitorName,
+//     visitorPhone: data.visitorPhone,
+//     visitorIdCard: data.visitorIdCard,
+//     visitorId: data.visitorId
+//   });
+  
+//   // Tạo QR image để trả về
+//   const qrImage = await generateQrCodeImage(qrCodeValue);
+  
+//   return {
+//     ...result,
+//     qr_image: qrImage
+//   };
+// };
+// const createGuestQr = async (data) => {
+//   // ✅ KIỂM TRA: user có thuộc căn hộ không?
+//   const isValid = await checkUserBelongsToApartment(data.hostUserId, data.apartmentId);
+  
+//   if (!isValid) {
+//     throw new Error("User does not belong to this apartment");
+//   }
+  
+//   // Tạo mã QR duy nhất
+//   const qrCodeValue = `GUEST_${uuidv4()}`;
+  
+//   const result = await repo.createGuestQr({
+//     hostUserId: data.hostUserId,
+//     apartmentId: data.apartmentId,
+//     qrCode: qrCodeValue,
+//     validFrom: data.validFrom,
+//     validTo: data.validTo,
+//     maxEntries: data.maxEntries || 1,
+//     status: data.status || 'ACTIVE',
+//     visitorName: data.visitorName,
+//     visitorPhone: data.visitorPhone,
+//     visitorIdCard: data.visitorIdCard,
+//     visitorId: data.visitorId
+//   });
+  
+//   const qrImage = await repo.generateQrCodeImage(qrCodeValue);
+  
+//   return {
+//     ...result,
+//     qr_image: qrImage
+//   };
+// };
+
+const createGuestQr = async (data) => {
+  // KIỂM TRA: user có thuộc căn hộ không?
+  const isValid = await checkUserBelongsToApartment(data.hostUserId, data.apartmentId);
+  
+  if (!isValid) {
+    throw new Error("User does not belong to this apartment");
+  }
+  
+  // Tạo mã QR duy nhất
+  const qrCodeValue = `GUEST_${uuidv4()}`;
+  
+  const result = await repo.createGuestQr({
+    hostUserId: data.hostUserId,
+    apartmentId: data.apartmentId,
+    qrCode: qrCodeValue,
+    validFrom: data.validFrom,
+    validTo: data.validTo,
+    maxEntries: data.maxEntries || 1,
+    status: data.status || 'ACTIVE',
+    visitorName: data.visitorName,
+    visitorPhone: data.visitorPhone,
+    visitorIdCard: data.visitorIdCard,
+    visitorId: data.visitorId,
+    adminValidToOriginal: data.adminValidToOriginal  // 👈 Truyền vào repo
+  });
+  
+  const qrImage = await repo.generateQrCodeImage(qrCodeValue);
+  
+  return {
+    ...result,
+    qr_image: qrImage
+  };
+};
+
+const getGuestQrById = async (id) => {
+  return await repo.getGuestQrById(id);
+};
+
+const updateGuestQr = async (id, updateData) => {
+  return await repo.updateGuestQr(id, updateData);
+};
+
+const deleteGuestQr = async (id) => {
+  return await repo.deleteGuestQr(id);
+};
+
+// ==================== GUEST QR HISTORY SERVICES ====================
+
+const getGuestQrHistory = async (guestQrId, queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    fromDate = null,
+    toDate = null
+  } = queryParams;
+
+  let fromDateTime = fromDate;
+  let toDateTime = toDate;
+
+  if (fromDate && !fromDate.includes('T')) {
+    fromDateTime = `${fromDate}T00:00:00`;
+  }
+  if (toDate && !toDate.includes('T')) {
+    toDateTime = `${toDate}T23:59:59`;
+  }
+
+  const result = await repo.getGuestQrHistory(guestQrId, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    fromDate: fromDateTime,
+    toDate: toDateTime
+  });
+
+  return {
+    data: result.data,
+    size: result.size,
+    totalElements: result.totalElements,
+    totalPages: result.totalPages,
+    page: result.page,
+    pageSize: result.pageSize
+  };
+};
+
+// Lấy danh sách cư dân
+// const getAllResidents = async (queryParams = {}) => {
+//   const {
+//     page = 1,
+//     limit = 10,
+//     search = '',
+//     status  = ''
+//   } = queryParams;
+
+//   const result = await repo.getAllResidents({
+//     page: parseInt(page),
+//     limit: parseInt(limit),
+//     search: search || '',
+//     apartmentId: status  || ''
+//   });
+
+//   return {
+//     data: result.data,
+//     size: result.data.length,
+//     totalElements: result.total,
+//     totalPages: result.totalPages,
+//     page: result.page,
+//     pageSize: result.limit
+//   };
+// };
+const getAllResidents = async (queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    apartmentId = '',
+    hasQrOnly = false,
+    noQrOnly = false
+  } = queryParams;
+
+  const result = await repo.getAllResidents({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    apartmentId: apartmentId || '',
+    hasQrOnly: hasQrOnly === 'true',
+    noQrOnly: noQrOnly === 'true'
+  });
+
+  return {
+    data: result.data,
+    size: result.data.length,
+    totalElements: result.total,
+    totalPages: result.totalPages,
+    page: result.page,
+    pageSize: result.limit
+  };
+};
+
+const getAllGuestQrs = async (queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    status = ''
+    // ❌ XÓA apartmentId
+  } = queryParams;
+
+  const result = await repo.getAllGuestQrs({
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    status: status || ''
+    // ❌ XÓA apartmentId
+  });
+
+  return {
+    data: result.data,
+    size: result.data.length,
+    totalElements: result.total,
+    totalPages: result.totalPages,
+    page: result.page,
+    pageSize: result.limit
+  };
+};
 module.exports = {
   getAllPersonalQrs,
   createPersonalQr,
@@ -195,5 +442,13 @@ module.exports = {
   getPersonalQrById,
   revokePersonalQr,
   getResidentAccessHistory,
-  getAllResidentAccessHistory
+  getAllResidentAccessHistory,
+   getAllGuestQrs,
+  createGuestQr,
+  getGuestQrById,
+  updateGuestQr,
+  deleteGuestQr,
+  getGuestQrHistory,
+  getAllResidents
+  // getGuestQrById
 };

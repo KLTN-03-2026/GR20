@@ -268,6 +268,7 @@ import HomePageAdmin from './pages/HomePageAdmin/HomePageAdmin'
 import HomePageStaff from './pages/HomePageStaff/HomePageStaff'
 import HomePageManager from './pages/HomePageManager/HomePageManager'
 import DashboaedLayoutManager from './layout/DashboaedLayoutManager'
+import GuestQRDetail from './pages/QRCODE_USER/GuestQRDetail'
 
 // Component chặn truy cập dựa trên role
 // function RoleBasedRedirect() {
@@ -583,6 +584,20 @@ export default function useRouteElements() {
           element: (
             <DashboardLayoutUser>
               <ViewQrcodeMe />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
+    },
+    {
+      path: '/guest-qr/:id',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <GuestQRDetail />
             </DashboardLayoutUser>
           )
         }

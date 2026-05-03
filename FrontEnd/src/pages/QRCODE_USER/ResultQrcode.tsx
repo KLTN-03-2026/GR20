@@ -5,31 +5,33 @@ import type { QrScanResult } from 'src/types/qrcode.type'
 
 export default function ResultQrcodePage() {
   // const location = useLocation()
+  const location = useLocation()
   const navigate = useNavigate()
-  // const { qrCode: qrCodeFromUrl } = useParams<{ qrCode: string }>()
-
   const { qrcode } = useParams()
-
   const qrCode = qrcode
-  // const [showHistory, setShowHistory] = useState(false)
-  // const [historyData, setHistoryData] = useState<any[]>([])
+
+  // Lấy direction từ URL
+  const searchParams = new URLSearchParams(location.search)
+  const direction = searchParams.get('direction') || 'IN'
 
   // Phân biệt loại QR dựa vào prefix
   const isGuestQrType = qrCode?.startsWith('GUEST_')
   const isPersonalQrType = qrCode?.startsWith('PERSONAL_')
 
   // Lấy thông tin QR từ API dựa vào loại QR
-  const {
-    data: qrDetailData,
-    isLoading
-    // refetch
-  } = useQuery({
-    queryKey: ['qr-scan-result', qrCode, isGuestQrType],
+  const { data: qrDetailData, isLoading } = useQuery({
+    queryKey: ['qr-scan-result', qrCode, isGuestQrType, direction],
     queryFn: async () => {
       if (isGuestQrType) {
-        return QRCodeApi.scanGuestQr(qrCode!)
+        return QRCodeApi.scanGuestQr(qrCode!, {
+          direction: direction || 'IN',
+          gate: 'Cổng chính'
+        })
       } else if (isPersonalQrType) {
-        return QRCodeApi.scanPersonalQr(qrCode!)
+        return QRCodeApi.scanPersonalQr(qrCode!, {
+          direction: direction || 'IN',
+          gate: 'Cổng chính'
+        })
       }
       throw new Error('Invalid QR code type')
     },
@@ -39,7 +41,6 @@ export default function ResultQrcodePage() {
 
   const scanResult = qrDetailData?.data?.data as QrScanResult | undefined
   const isSuccess = qrDetailData?.data?.code === 'OK'
-
   // Helper functions - đơn giản nhất, không cần type guard phức tạp
   const getDisplayName = () => {
     if (!scanResult) return 'Không có thông tin'
@@ -92,9 +93,9 @@ export default function ResultQrcodePage() {
     return scanResult?.qrType === 'guest'
   }
 
-  const isPersonalQR = () => {
-    return scanResult?.qrType === 'personal'
-  }
+  // const isPersonalQR = () => {
+  //   return scanResult?.qrType === 'personal'
+  // }
 
   const getUsagePercent = () => {
     if (!isGuestQR()) return 0
@@ -109,11 +110,11 @@ export default function ResultQrcodePage() {
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
   }
 
-  const formatDateTime = (dateString: string) => {
-    if (!dateString) return 'N/A'
-    const date = new Date(dateString)
-    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
-  }
+  // const formatDateTime = (dateString: string) => {
+  //   if (!dateString) return 'N/A'
+  //   const date = new Date(dateString)
+  //   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+  // }
 
   // const handleLoadHistory = async () => {
   //   setShowHistory(true)

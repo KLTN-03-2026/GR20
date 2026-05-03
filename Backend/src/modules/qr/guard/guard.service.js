@@ -179,12 +179,24 @@ const getPersonalQrByCode = async (qrCode) => {
 //   return response;
 // };
 
+const getBuildingIdByApartmentId = async (apartmentId) => {
+  if (!apartmentId) return null;
+  
+  const query = `
+    SELECT building_id 
+    FROM apartments 
+    WHERE id = $1
+  `;
+  const result = await pool.query(query, [apartmentId]);
+  return result.rows[0]?.building_id || null;
+};
 
 const scanQr = async (qrCode, scanData = {}) => {
   // Thử tìm guest QR
   let data = await repo.scanQr(qrCode);
   let qrType = 'guest';
   let qrCodeId = data?.id;
+  let buildingId = null;
   
   // Nếu không tìm thấy, tìm personal QR
   if (!data) {
@@ -195,11 +207,16 @@ const scanQr = async (qrCode, scanData = {}) => {
   
   if (!data) throw new Error("QR code không hợp lệ hoặc đã bị vô hiệu");
   
+  // 👑 CÁCH 3: Tự động lấy building_id từ apartment_id của QR
+  if (data.apartment_id) {
+    buildingId = await getBuildingIdByApartmentId(data.apartment_id);
+  }
+  
   const now = new Date();
   let result = "SUCCESS";
   let errorMessage = null;
   
-  // ✅ FIX: Kiểm tra status TRƯỚC (kiểm tra REVOKED, EXPIRED trạng thái)
+  // Kiểm tra status
   if (data.status === 'REVOKED') {
     result = "DENIED";
     errorMessage = "QR code đã bị thu hồi";
@@ -208,48 +225,41 @@ const scanQr = async (qrCode, scanData = {}) => {
     result = "DENIED";
     errorMessage = "QR code đã bị vô hiệu hóa";
   }
-  // ✅ FIX: Chỉ check thời gian khi status = ACTIVE
   else {
     const validFrom = data.valid_from;
     const validTo = data.valid_to || data.expires_at;
     
-    // Check validFrom
     if (validFrom && new Date(validFrom) > now) {
       result = "DENIED";
       errorMessage = "QR code chưa có hiệu lực";
     }
-    // ✅ FIX: Check validTo đúng cách
     else if (validTo && new Date(validTo) < now) {
       result = "DENIED";
       errorMessage = "QR code đã hết hạn";
     }
-    // Check max entries (guest QR only)
     else if (qrType === 'guest' && data.max_entries && data.used_entries >= data.max_entries) {
       result = "DENIED";
       errorMessage = "QR code đã được sử dụng hết số lần cho phép";
     }
   }
   
-  // ✅ FIX: Throw error NGAY NẾU CÓ LỖI (trước ghi log)
+  // Ghi log khi DENIED
   if (result === "DENIED") {
-    // Ghi log DENIED
     await repo.createAccessLog({
       qr_code_id: qrType === 'guest' ? qrCodeId : null,
       personal_qr_code_id: qrType === 'personal' ? qrCodeId : null,
       user_id: qrType === 'guest' ? data.host_user_id : data.user_id,
       scanned_by: scanData.scannedBy,
-      building_id: scanData.building_id || null,
+      building_id: buildingId,  // 👈 Đã có building_id tự động
       direction: scanData.direction || "IN",
       gate: scanData.gate || null,
       result: "DENIED",
       qr_type: qrType
     });
-    
-    // Throw error ngay
     throw new Error(errorMessage);
   }
   
-  // Chỉ xử lý SUCCESS nếu không có error
+  // Xử lý SUCCESS cho guest QR
   if (qrType === 'guest' && data.max_entries) {
     await repo.incrementUsedEntries(data.id);
     const updatedData = await repo.getGuestQrById(data.id);
@@ -263,7 +273,7 @@ const scanQr = async (qrCode, scanData = {}) => {
     personal_qr_code_id: qrType === 'personal' ? qrCodeId : null,
     user_id: qrType === 'guest' ? data.host_user_id : data.user_id,
     scanned_by: scanData.scannedBy,
-    building_id: scanData.building_id || null,
+    building_id: buildingId,  // 👈 Đã có building_id tự động
     direction: scanData.direction || "IN",
     gate: scanData.gate || null,
     result: "SUCCESS",
@@ -292,16 +302,142 @@ const scanQr = async (qrCode, scanData = {}) => {
     response.remainingEntries = data.max_entries - data.used_entries;
     response.validFrom = data.valid_from;
     response.validTo = data.valid_to;
+    response.buildingId = buildingId;  // 👈 Thêm building_id vào response
   } else {
     response.userName = data.user_name;
     response.userPhone = data.user_phone;
     response.userEmail = data.user_email;
     response.apartmentCode = data.apartment_code;
     response.expiresAt = data.expires_at;
+    response.buildingId = buildingId;  // 👈 Thêm building_id vào response
   }
   
   return response;
 };
+
+
+// const scanQr = async (qrCode, scanData = {}) => {
+//   // Thử tìm guest QR
+//   let data = await repo.scanQr(qrCode);
+//   let qrType = 'guest';
+//   let qrCodeId = data?.id;
+  
+//   // Nếu không tìm thấy, tìm personal QR
+//   if (!data) {
+//     data = await getPersonalQrByCode(qrCode);
+//     qrType = 'personal';
+//     qrCodeId = data?.id;
+//   }
+  
+//   if (!data) throw new Error("QR code không hợp lệ hoặc đã bị vô hiệu");
+  
+//   const now = new Date();
+//   let result = "SUCCESS";
+//   let errorMessage = null;
+  
+//   // ✅ FIX: Kiểm tra status TRƯỚC (kiểm tra REVOKED, EXPIRED trạng thái)
+//   if (data.status === 'REVOKED') {
+//     result = "DENIED";
+//     errorMessage = "QR code đã bị thu hồi";
+//   } 
+//   else if (data.status !== 'ACTIVE') {
+//     result = "DENIED";
+//     errorMessage = "QR code đã bị vô hiệu hóa";
+//   }
+//   // ✅ FIX: Chỉ check thời gian khi status = ACTIVE
+//   else {
+//     const validFrom = data.valid_from;
+//     const validTo = data.valid_to || data.expires_at;
+    
+//     // Check validFrom
+//     if (validFrom && new Date(validFrom) > now) {
+//       result = "DENIED";
+//       errorMessage = "QR code chưa có hiệu lực";
+//     }
+//     // ✅ FIX: Check validTo đúng cách
+//     else if (validTo && new Date(validTo) < now) {
+//       result = "DENIED";
+//       errorMessage = "QR code đã hết hạn";
+//     }
+//     // Check max entries (guest QR only)
+//     else if (qrType === 'guest' && data.max_entries && data.used_entries >= data.max_entries) {
+//       result = "DENIED";
+//       errorMessage = "QR code đã được sử dụng hết số lần cho phép";
+//     }
+//   }
+  
+//   // ✅ FIX: Throw error NGAY NẾU CÓ LỖI (trước ghi log)
+//   if (result === "DENIED") {
+//     // Ghi log DENIED
+//     await repo.createAccessLog({
+//       qr_code_id: qrType === 'guest' ? qrCodeId : null,
+//       personal_qr_code_id: qrType === 'personal' ? qrCodeId : null,
+//       user_id: qrType === 'guest' ? data.host_user_id : data.user_id,
+//       scanned_by: scanData.scannedBy,
+//       building_id: scanData.building_id || null,
+//       direction: scanData.direction || "IN",
+//       gate: scanData.gate || null,
+//       result: "DENIED",
+//       qr_type: qrType
+//     });
+    
+//     // Throw error ngay
+//     throw new Error(errorMessage);
+//   }
+  
+//   // Chỉ xử lý SUCCESS nếu không có error
+//   if (qrType === 'guest' && data.max_entries) {
+//     await repo.incrementUsedEntries(data.id);
+//     const updatedData = await repo.getGuestQrById(data.id);
+//     data.used_entries = updatedData.used_entries;
+//     data.remaining_entries = data.max_entries - updatedData.used_entries;
+//   }
+  
+//   // Ghi log SUCCESS
+//   await repo.createAccessLog({
+//     qr_code_id: qrType === 'guest' ? qrCodeId : null,
+//     personal_qr_code_id: qrType === 'personal' ? qrCodeId : null,
+//     user_id: qrType === 'guest' ? data.host_user_id : data.user_id,
+//     scanned_by: scanData.scannedBy,
+//     building_id: scanData.building_id || null,
+//     direction: scanData.direction || "IN",
+//     gate: scanData.gate || null,
+//     result: "SUCCESS",
+//     qr_type: qrType
+//   });
+  
+//   // Tạo QR image
+//   const qrImage = await QRCode.toDataURL(qrCode);
+  
+//   // Build response
+//   const response = {
+//     id: data.id,
+//     qrCode: data.qr_code,
+//     status: data.status,
+//     qrType: qrType,
+//     qrImage: qrImage
+//   };
+  
+//   if (qrType === 'guest') {
+//     response.hostName = data.host_name;
+//     response.visitorName = data.visitor_name;
+//     response.visitorPhone = data.visitor_phone;
+//     response.apartmentCode = data.apartment_code;
+//     response.usedEntries = data.used_entries;
+//     response.maxEntries = data.max_entries;
+//     response.remainingEntries = data.max_entries - data.used_entries;
+//     response.validFrom = data.valid_from;
+//     response.validTo = data.valid_to;
+//   } else {
+//     response.userName = data.user_name;
+//     response.userPhone = data.user_phone;
+//     response.userEmail = data.user_email;
+//     response.apartmentCode = data.apartment_code;
+//     response.expiresAt = data.expires_at;
+//   }
+  
+//   return response;
+// };
 
 
 const getGuestQrHistory = async (hostUserId, queryParams = {}) => {

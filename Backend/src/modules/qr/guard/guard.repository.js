@@ -30,7 +30,7 @@ const getPersonalQrByCode = async (qrCode) => {
       u.phone AS user_phone,
       u.email AS user_email,
       a.apartment_code,
-      a.id AS apartment_id
+      a.id AS apartment_id          -- 👈 Thêm dòng này
     FROM qr_codes qc
     LEFT JOIN users u ON u.id = qc.user_id
     LEFT JOIN apartments a ON a.id = qc.apartment_id
@@ -39,6 +39,23 @@ const getPersonalQrByCode = async (qrCode) => {
   const result = await pool.query(query, [qrCode]);
   return result.rows[0];
 };
+// const getPersonalQrByCode = async (qrCode) => {
+//   const query = `
+//     SELECT 
+//       qc.*,
+//       u.full_name AS user_name,
+//       u.phone AS user_phone,
+//       u.email AS user_email,
+//       a.apartment_code,
+//       a.id AS apartment_id
+//     FROM qr_codes qc
+//     LEFT JOIN users u ON u.id = qc.user_id
+//     LEFT JOIN apartments a ON a.id = qc.apartment_id
+//     WHERE qc.qr_code = $1 AND qc.status = 'ACTIVE'
+//   `;
+//   const result = await pool.query(query, [qrCode]);
+//   return result.rows[0];
+// };
 
 // Lấy guest QR theo ID
 const getGuestQrById = async (id) => {

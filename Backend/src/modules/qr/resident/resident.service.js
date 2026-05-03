@@ -197,9 +197,107 @@ const getGuestQrById = async (id) => {
   return { ...mapper.toGuestQrResponse(data), qrImage };
 };
 
-const getGuestQrHistory = async (hostUserId, queryParams) => {
-  return await repo.getGuestQrHistory(hostUserId, queryParams);
+const getPersonalQrHistory = async (userId, options) => {
+  const { page = 1, limit = 10 } = options;
+  return await repo.getPersonalQrHistory(userId, page, limit);
 };
+
+
+
+
+const getMyGuestQrs = async (userId, queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    search = '',
+    status = ''
+  } = queryParams;
+
+  const result = await repo.getMyGuestQrs(userId, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    search: search || '',
+    status: status || ''
+  });
+
+  return {
+    data: result.data,
+    size: result.data.length,
+    totalElements: result.total,
+    totalPages: result.totalPages,
+    page: result.page,
+    pageSize: result.limit
+  };
+};
+
+const getMyGuestQrById = async (qrId, userId) => {
+  return await repo.getMyGuestQrById(qrId, userId);
+};
+
+const updateMyGuestQrStatus = async (qrId, userId, status) => {
+  return await repo.updateMyGuestQrStatus(qrId, userId, status);
+};
+
+// const updateMyGuestQrValidTo = async (qrId, userId, newValidTo, maxEntries, visitorName, visitorPhone, visitorIdCard) => {
+//   return await repo.updateMyGuestQrValidTo(qrId, userId, newValidTo, maxEntries, visitorName, visitorPhone, visitorIdCard);
+// };
+const updateMyGuestQrValidTo = async (
+  qrId, 
+  userId, 
+  newValidTo, 
+  maxEntries,
+  visitorName, 
+  visitorPhone, 
+  visitorIdCard
+) => {
+  return await repo.updateMyGuestQrValidTo(
+    qrId, 
+    userId, 
+    newValidTo, 
+    maxEntries,
+    visitorName, 
+    visitorPhone, 
+    visitorIdCard
+  );
+};
+
+const getMyGuestQrHistory = async (qrId, userId, queryParams = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    fromDate = null,
+    toDate = null
+  } = queryParams;
+
+  let fromDateTime = fromDate;
+  let toDateTime = toDate;
+
+  if (fromDate && !fromDate.includes('T')) {
+    fromDateTime = `${fromDate}T00:00:00`;
+  }
+  if (toDate && !toDate.includes('T')) {
+    toDateTime = `${toDate}T23:59:59`;
+  }
+
+  const result = await repo.getMyGuestQrHistory(qrId, userId, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+    fromDate: fromDateTime,
+    toDate: toDateTime
+  });
+
+  return {
+    data: result.data,
+    size: result.size,
+    totalElements: result.totalElements,
+    totalPages: result.totalPages,
+    page: result.page,
+    pageSize: result.pageSize
+  };
+};
+
+
+
 
 module.exports = { getPersonalQrByUserId, 
   getGuestQrsByHost, 
@@ -207,6 +305,11 @@ module.exports = { getPersonalQrByUserId,
   updateGuestQr, 
   deleteGuestQr, 
   getGuestQrById, 
-  getGuestQrHistory ,
-  getApartmentByUserId
+  getApartmentByUserId,
+getPersonalQrHistory,
+   getMyGuestQrs,
+  getMyGuestQrById,
+  updateMyGuestQrStatus,
+  updateMyGuestQrValidTo,
+  getMyGuestQrHistory
 };
