@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 
 export default function SidebarProtect() {
   // Hàm xử lý className active giống SidebarUser
-  const getNavClass = ({ isActive }) =>
+  const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
       ? 'flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-900 font-bold border-l-4 border-blue-900 bg-surface hover:bg-secondary-container/20 transition-all duration-300'
       : 'flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 transition-all duration-300'

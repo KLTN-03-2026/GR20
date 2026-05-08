@@ -66,9 +66,7 @@ const getBuildingById = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(404).json({
-      message: err.message,
-    });
+    sendError(res, err);
   }
 };
 

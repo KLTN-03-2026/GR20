@@ -12,7 +12,6 @@
 
 // const app = express();
 
-
 // app.use("/api/security", securityResidentRoutes);
 
 // // ✅ CORS cấu hình đúng
@@ -70,6 +69,7 @@
 
 // module.exports = app;
 // app.js
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -89,19 +89,26 @@ app.use(
     origin: ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Secret-Key",
+      "X-Casso-Signature",
+    ],
+  }),
 );
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // ✅ 2. Các middleware khác
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static("uploads"));
 
 // ✅ 3. Serve static files
 const uploadsPath = path.join(__dirname, "../uploads");
@@ -112,7 +119,7 @@ app.use(
       res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       res.setHeader("Access-Control-Allow-Origin", "*");
     },
-  })
+  }),
 );
 
 // ✅ 4. Routes - SAU CORS
@@ -135,5 +142,16 @@ app.get("/test-file/:filename", (req, res) => {
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Chào mừng đến với API của HOMELINK AI" });
 });
+
+module.exports = app;
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.header("Cross-Origin-Resource-Policy", "cross-origin");
+    res.header("Access-Control-Allow-Origin", "*");
+    next();
+  },
+  express.static("uploads"),
+);
 
 module.exports = app;

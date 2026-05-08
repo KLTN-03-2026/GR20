@@ -1,5 +1,7 @@
+// contract.service.js
 const repo = require("./contract.repository");
 const mapper = require("./contract.mapper");
+const { ContractListResponse } = require("./contract.response");
 const { AppError } = require("../../common/app-error");
 const {
   parseCreate,
@@ -23,19 +25,21 @@ const getContracts = async (query) => {
     size = 10,
   } = query;
 
+  const pageNum = Number(page)
+  const normalizedPage = !Number.isFinite(pageNum) || pageNum < 1 ? 1 : Math.floor(pageNum)
+  const sizeNum = Number(size)
+
   const result = await repo.getContracts({
     status,
     contractType,
-    page: Number(page),
-    size: Number(size),
-  });
+    page: normalizedPage,
+    size: sizeNum,
+  })
 
-  return {
-    data: result.rows.map(mapper.toResponse),
-    page: Number(page),
-    size: Number(size),
-    total: result.total,
-  };
+  const safeSize =
+    Number.isFinite(sizeNum) && sizeNum >= 1 ? Math.min(Math.floor(sizeNum), 100) : 10
+
+  return new ContractListResponse(result.rows, normalizedPage, safeSize, result.total)
 };
 
 // GET DETAIL
@@ -48,7 +52,9 @@ const getContractById = async (id) => {
 
 // UPDATE
 const updateContract = async (id, body) => {
+  console.log('🔧 UPDATE BODY:', JSON.stringify(body)); 
   const parsed = parseUpdate(body);
+  console.log('🔧 PARSED:', JSON.stringify(parsed)); 
   await repo.updateContract(id, parsed);
   return null;
 };

@@ -3,7 +3,6 @@ import { toast } from 'react-toastify'
 import { clearLS, getAccessToken, getRefeshToken, setAccessToken, setRefreshToken, setUser } from './auth'
 import config from 'src/contexts/config'
 import type { AuthResponse } from 'src/types/auth.type'
-import type { data } from 'src/types/user.type'
 class Http {
   instance: AxiosInstance
   private accessToken: string

@@ -3,6 +3,16 @@ const { AppError } = require("../../common/app-error");
 
 const isUniqueViolation = (err) => err && err.code === "23505";
 
+const buildDeletedFilter = ({ includeDeleted = false, status }) => {
+  if (status === "deleted") {
+    return "deleted_at IS NOT NULL";
+  }
+  if (status === "all" || includeDeleted) {
+    return null;
+  }
+  return "deleted_at IS NULL";
+};
+
 const saveRole = async (role) => {
   const query = `
     INSERT INTO roles (name, description)
@@ -22,19 +32,31 @@ const saveRole = async (role) => {
   }
 };
 
-const getAllRoles = async ({ page = 0, size = 10, search }) => {
+const getAllRoles = async ({
+  page = 0,
+  size = 10,
+  search,
+  includeDeleted = false,
+  status,
+}) => {
   const offset = page * size;
   const values = [];
   const conditions = [];
 
+  const deletedFilter = buildDeletedFilter({ includeDeleted, status });
+  if (deletedFilter) {
+    conditions.push(deletedFilter);
+  }
+
   if (search) {
     values.push(`%${search}%`);
     conditions.push(
-      `(name ILIKE $${values.length} OR description ILIKE $${values.length})`
+      `(name ILIKE $${values.length} OR description ILIKE $${values.length})`,
     );
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const where =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   values.push(size);
   values.push(offset);
@@ -60,13 +82,17 @@ const getAllRoles = async ({ page = 0, size = 10, search }) => {
 };
 
 const findRoleById = async (id) => {
-  const query = `SELECT * FROM roles WHERE id = $1`;
+  const query = `SELECT * FROM roles WHERE id = $1 AND deleted_at IS NULL`;
   const result = await pool.query(query, [id]);
   return result.rows[0];
 };
 
 const findRoleByName = async (name) => {
-  const query = `SELECT * FROM roles WHERE LOWER(name) = LOWER($1)`;
+  const query = `
+    SELECT * FROM roles
+    WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))
+      AND deleted_at IS NULL
+  `;
   const result = await pool.query(query, [name]);
   return result.rows[0];
 };
@@ -93,6 +119,7 @@ const updateRole = async (id, role) => {
     UPDATE roles
     SET ${fields.join(", ")}
     WHERE id = $${index}
+      AND deleted_at IS NULL
     RETURNING *
   `;
 
@@ -111,8 +138,10 @@ const updateRole = async (id, role) => {
 
 const deleteRole = async (id) => {
   const query = `
-    DELETE FROM roles
+    UPDATE roles
+    SET deleted_at = NOW()
     WHERE id = $1
+      AND deleted_at IS NULL
     RETURNING id
   `;
   const result = await pool.query(query, [id]);

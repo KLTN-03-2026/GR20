@@ -12,3 +12,5 @@ yarn-error.log*
 # Các thư mục rác của hệ điều hành
 .DS_Store
 Thumbs.db
+
+uploads/*

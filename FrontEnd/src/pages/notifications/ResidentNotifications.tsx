@@ -1,14 +1,34 @@
 import React, { useState, useEffect } from 'react'
-import { Bell, FileText, Megaphone, Settings, Trash2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { notificationApi, type INotification } from '../../apis/notification/notification.api'
+import { notificationApi, type INotification } from 'src/apis/notification/notification.api'
+
+const TABS: { id: string; label: string; icon: string }[] = [
+  { id: 'ALL', label: 'Tất cả thông báo', icon: 'notifications' },
+  { id: 'PAYMENT', label: 'Hóa đơn & Phí', icon: 'receipt_long' },
+  { id: 'NORMAL', label: 'Tin tức tòa nhà', icon: 'campaign' },
+  { id: 'MAINTENANCE', label: 'Hệ thống', icon: 'handyman' },
+  { id: 'EMERGENCY', label: 'Khẩn cấp', icon: 'warning' }
+]
+
+function TypeIcon({ type }: { type: string }) {
+  const cls = 'material-symbols-outlined text-2xl leading-none'
+  switch (type) {
+    case 'PAYMENT':
+      return <span className={`${cls} text-blue-600`}>receipt_long</span>
+    case 'MAINTENANCE':
+      return <span className={`${cls} text-slate-600`}>handyman</span>
+    case 'EMERGENCY':
+      return <span className={`${cls} text-red-600`}>warning</span>
+    default:
+      return <span className={`${cls} text-emerald-600`}>campaign</span>
+  }
+}
 
 export default function ResidentNotifications() {
   const [notifications, setNotifications] = useState<INotification[]>([])
   const [activeTab, setActiveTab] = useState<string>('ALL')
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
-  // 1. Gọi API lấy danh sách khi mới vào trang
   const fetchNotifications = async () => {
     try {
       setIsLoading(true)
@@ -17,7 +37,6 @@ export default function ResidentNotifications() {
         setNotifications(res.data.data)
       }
     } catch (error) {
-      // File http.ts của bạn đã tự động hiện toast lỗi rồi nên ở đây không cần toast error nữa
       console.error(error)
     } finally {
       setIsLoading(false)
@@ -28,13 +47,11 @@ export default function ResidentNotifications() {
     fetchNotifications()
   }, [])
 
-  // 2. Hàm xử lý: Đánh dấu đã đọc
   const handleMarkAsRead = async (receiverId: number) => {
     try {
       const res = await notificationApi.markAsRead(receiverId)
       if (res.data.success) {
         toast.success(res.data.message || 'Đã đọc thông báo')
-        // Cập nhật lại UI ngay lập tức mà không cần gọi lại API
         setNotifications((prev) =>
           prev.map((noti) => (noti.receiverId === receiverId ? { ...noti, isRead: true } : noti))
         )
@@ -44,7 +61,6 @@ export default function ResidentNotifications() {
     }
   }
 
-  // 3. Hàm xử lý: Xóa thông báo
   const handleDelete = async (receiverId: number) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa thông báo này không?')) return
 
@@ -52,7 +68,6 @@ export default function ResidentNotifications() {
       const res = await notificationApi.deleteNotification(receiverId)
       if (res.data.success) {
         toast.success(res.data.message || 'Đã xóa thông báo')
-        // Lọc bỏ thông báo đã xóa khỏi UI
         setNotifications((prev) => prev.filter((noti) => noti.receiverId !== receiverId))
       }
     } catch (error) {
@@ -60,124 +75,114 @@ export default function ResidentNotifications() {
     }
   }
 
-  // Lọc dữ liệu theo Tab đang chọn
   const filteredNotifications = notifications.filter((noti) => {
     if (activeTab === 'ALL') return true
     return noti.type === activeTab
   })
 
-  // Hàm render icon tùy theo loại thông báo
-  const renderIcon = (type: string) => {
-    switch (type) {
-      case 'PAYMENT':
-        return <FileText size={24} />
-      case 'MAINTENANCE':
-        return <Settings size={24} />
-      case 'EMERGENCY':
-        return <Bell size={24} className='text-red-600' />
-      default:
-        return <Megaphone size={24} />
-    }
-  }
-
   return (
-    <div className='flex gap-6 p-6 bg-gray-50 min-h-screen font-sans'>
-      {/* CỘT TRÁI: SIDEBAR DANH MỤC */}
-      <div className='w-1/4 flex flex-col gap-6'>
-        <div className='bg-white p-4 rounded-2xl shadow-sm border border-gray-100'>
-          <p className='text-xs font-semibold text-gray-400 mb-4 tracking-wider uppercase'>Hạng mục</p>
-          <ul className='space-y-2'>
-            {[
-              { id: 'ALL', label: 'Tất cả thông báo', icon: <Bell size={20} /> },
-              { id: 'PAYMENT', label: 'Hóa đơn & Phí', icon: <FileText size={20} /> },
-              { id: 'NORMAL', label: 'Tin tức tòa nhà', icon: <Megaphone size={20} /> },
-              { id: 'MAINTENANCE', label: 'Hệ thống', icon: <Settings size={20} /> }
-            ].map((tab) => (
-              <li key={tab.id}>
-                <button
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
-                >
-                  {tab.icon} {tab.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* CỘT PHẢI: DANH SÁCH THÔNG BÁO */}
-      <div className='flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-8'>
-        <div className='flex justify-between items-center mb-8'>
-          <div>
-            <h1 className='text-2xl font-bold text-gray-800'>Trung tâm thông báo</h1>
-            <p className='text-gray-500 mt-1'>Cập nhật thông tin mới nhất từ Ban Quản Lý</p>
+    <div className='min-h-screen bg-[#F8F9FA] p-4 font-sans text-slate-900 md:p-6'>
+      <div className='mx-auto flex max-w-7xl flex-col gap-6 lg:flex-row'>
+        <div className='w-full shrink-0 lg:w-64 xl:w-72'>
+          <div className='rounded-2xl border border-gray-100 bg-white p-4 shadow-sm'>
+            <p className='mb-4 text-xs font-bold uppercase tracking-wider text-gray-400'>Hạng mục</p>
+            <ul className='space-y-2'>
+              {TABS.map((tab) => (
+                <li key={tab.id}>
+                  <button
+                    type='button'
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-[#0052CC] text-white shadow-md'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className='material-symbols-outlined text-xl'>{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        <div className='space-y-4'>
-          {isLoading ? (
-            <p className='text-center text-gray-500 py-10'>Đang tải thông báo...</p>
-          ) : filteredNotifications.length === 0 ? (
-            <p className='text-center text-gray-500 py-10'>Bạn không có thông báo nào trong mục này.</p>
-          ) : (
-            filteredNotifications.map((noti) => (
-              <div
-                key={noti.receiverId}
-                className={`group flex items-start gap-4 p-5 rounded-xl transition-all hover:shadow-md relative border ${!noti.isRead ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'bg-white border-gray-100'}`}
-              >
+        <div className='min-w-0 flex-1 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm md:p-8'>
+          <div className='mb-8'>
+            <h1 className='text-2xl font-bold text-gray-900'>Trung tâm thông báo</h1>
+            <p className='mt-1 text-sm text-gray-500'>Cập nhật thông tin mới nhất từ Ban Quản Lý</p>
+          </div>
+
+          <div className='space-y-4'>
+            {isLoading ? (
+              <p className='py-10 text-center text-gray-500'>Đang tải thông báo...</p>
+            ) : filteredNotifications.length === 0 ? (
+              <p className='py-10 text-center text-gray-500'>Bạn không có thông báo nào trong mục này.</p>
+            ) : (
+              filteredNotifications.map((noti) => (
                 <div
-                  className={`p-3 rounded-full shadow-sm ${!noti.isRead ? 'bg-white text-blue-600' : 'bg-gray-50 text-gray-400'}`}
+                  key={noti.receiverId}
+                  className={`group relative flex items-start gap-4 rounded-xl border p-5 transition-all hover:shadow-md ${
+                    !noti.isRead
+                      ? 'border-l-4 border-l-[#0052CC] bg-[#DDE7FF]/30 border-gray-100'
+                      : 'border-gray-100 bg-white'
+                  }`}
                 >
-                  {renderIcon(noti.type)}
-                </div>
-
-                <div className='flex-1 pr-16'>
-                  <div className='flex items-start gap-3'>
-                    <h3 className={`font-bold text-lg ${!noti.isRead ? 'text-gray-800' : 'text-gray-600'}`}>
-                      {noti.title}
-                    </h3>
-                    <span className='text-xs text-gray-400 font-medium whitespace-nowrap mt-1'>
-                      {new Date(noti.createdAt).toLocaleDateString('vi-VN')}
-                    </span>
-                  </div>
-
-                  <p className={`${!noti.isRead ? 'text-gray-600' : 'text-gray-500'} mt-1 leading-relaxed`}>
-                    {noti.content}
-                  </p>
-
-                  <div className='mt-3 flex gap-2'>
-                    <span className='px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full'>
-                      {noti.type}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Chấm xanh báo chưa đọc */}
-                {!noti.isRead && <div className='w-3 h-3 bg-blue-600 rounded-full mt-2 shrink-0'></div>}
-
-                {/* Nút hành động hiện lên khi Hover */}
-                <div className='absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2'>
-                  {!noti.isRead && (
-                    <button
-                      title='Đánh dấu đã đọc'
-                      onClick={() => handleMarkAsRead(noti.receiverId)}
-                      className='p-2 text-green-600 bg-green-50 rounded-full hover:bg-green-100 transition-colors'
-                    >
-                      <CheckCircle2 size={18} />
-                    </button>
-                  )}
-                  <button
-                    title='Xóa thông báo'
-                    onClick={() => handleDelete(noti.receiverId)}
-                    className='p-2 text-red-600 bg-red-50 rounded-full hover:bg-red-100 transition-colors'
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-sm ${
+                      !noti.isRead ? 'bg-white text-[#0052CC]' : 'bg-gray-50 text-gray-400'
+                    }`}
                   >
-                    <Trash2 size={18} />
-                  </button>
+                    <TypeIcon type={noti.type} />
+                  </div>
+
+                  <div className='min-w-0 flex-1 pr-24'>
+                    <div className='flex flex-wrap items-start gap-3'>
+                      <h3 className={`text-lg font-bold ${!noti.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+                        {noti.title}
+                      </h3>
+                      <span className='mt-0.5 whitespace-nowrap text-xs font-medium text-gray-400'>
+                        {new Date(noti.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+
+                    <p className={`mt-1 leading-relaxed ${!noti.isRead ? 'text-gray-600' : 'text-gray-500'}`}>
+                      {noti.content}
+                    </p>
+
+                    <div className='mt-3'>
+                      <span className='rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600'>
+                        {noti.type}
+                      </span>
+                    </div>
+                  </div>
+
+                  {!noti.isRead && <div className='mt-2 h-3 w-3 shrink-0 rounded-full bg-[#0052CC]' />}
+
+                  <div className='absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100'>
+                    {!noti.isRead && (
+                      <button
+                        type='button'
+                        title='Đánh dấu đã đọc'
+                        onClick={() => handleMarkAsRead(noti.receiverId)}
+                        className='rounded-full bg-emerald-50 p-2 text-emerald-600 transition-colors hover:bg-emerald-100'
+                      >
+                        <span className='material-symbols-outlined text-lg'>check_circle</span>
+                      </button>
+                    )}
+                    <button
+                      type='button'
+                      title='Xóa thông báo'
+                      onClick={() => handleDelete(noti.receiverId)}
+                      className='rounded-full bg-red-50 p-2 text-red-600 transition-colors hover:bg-red-100'
+                    >
+                      <span className='material-symbols-outlined text-lg'>delete</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

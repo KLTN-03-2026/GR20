@@ -1,4 +1,3 @@
-
 const repo = require("./resident.repository");
 const mapper = require("../common/qr.mapper");
 const QRCode = require("qrcode");
@@ -16,50 +15,42 @@ const getPersonalQrByUserId = async (userId) => {
   return result.rows[0];
 };
 
+const getGuestQrsByHost = async (hostUserId, queryParams = {}) => {
+  const { limit, page, onlyValid, search, fromDate, toDate } = queryParams;
 
-  const getGuestQrsByHost = async (hostUserId, queryParams = {}) => {
-  const { 
-    limit, 
-    page, 
-    onlyValid, 
-    search,
-    fromDate,   
-    toDate      
-  } = queryParams;
-  
   const pageNum = page ? parseInt(page) : 1;
   const pageSize = limit ? parseInt(limit) : 10;
   const offset = (pageNum - 1) * pageSize;
-  
+
   // ✅ Xử lý fromDate và toDate để lọc theo valid_to
   let fromDateTime = null;
   let toDateTime = null;
-  
+
   if (fromDate) {
-    fromDateTime = !fromDate.includes('T') ? `${fromDate}T00:00:00` : fromDate;
+    fromDateTime = !fromDate.includes("T") ? `${fromDate}T00:00:00` : fromDate;
   }
   if (toDate) {
-    toDateTime = !toDate.includes('T') ? `${toDate}T23:59:59` : toDate;
+    toDateTime = !toDate.includes("T") ? `${toDate}T23:59:59` : toDate;
   }
-  
+
   const result = await repo.getGuestQrsByHost(hostUserId, {
     limit: pageSize,
     offset: offset,
-    onlyValid: onlyValid === 'true',
-    search: search || '',
-    validFromDate: fromDateTime,  // valid_to >= fromDate
-    validToDate: toDateTime       // valid_to <= toDate
+    onlyValid: onlyValid === "true",
+    search: search || "",
+    validFromDate: fromDateTime, // valid_to >= fromDate
+    validToDate: toDateTime, // valid_to <= toDate
   });
-  
+
   const mappedData = result.data.map(mapper.toGuestQrResponse);
-  
+
   return {
     data: mappedData,
     size: mappedData.length,
     totalElements: result.total,
     totalPages: Math.ceil(result.total / pageSize),
     page: pageNum,
-    pageSize: pageSize
+    pageSize: pageSize,
   };
 };
 
@@ -70,7 +61,7 @@ const getApartmentByUserId = async (userId) => {
 const createGuestQr = async (reqBody) => {
   // ✅ Đảm bảo hostUserId được truyền đúng
   const entity = mapper.toGuestQrEntity({
-    hostUserId: reqBody.hostUserId,  // Phải có giá trị
+    hostUserId: reqBody.hostUserId, // Phải có giá trị
     visitorName: reqBody.visitorName,
     visitorPhone: reqBody.visitorPhone,
     visitorIdCard: reqBody.visitorIdCard,
@@ -94,15 +85,15 @@ const createGuestQr = async (reqBody) => {
 
 const updateGuestQr = async (id, updateData) => {
   const client = await pool.connect();
-  
+
   try {
     await client.query("BEGIN");
-    
+
     // Cập nhật guest_qr_codes
     const qrFields = [];
     const qrValues = [];
     let idx = 1;
-    
+
     if (updateData.validFrom !== undefined) {
       qrFields.push(`valid_from = $${idx++}`);
       qrValues.push(updateData.validFrom);
@@ -119,7 +110,7 @@ const updateGuestQr = async (id, updateData) => {
       qrFields.push(`status = $${idx++}`);
       qrValues.push(updateData.status);
     }
-    
+
     if (qrFields.length > 0) {
       qrValues.push(id);
       const qrQuery = `
@@ -130,19 +121,23 @@ const updateGuestQr = async (id, updateData) => {
       `;
       await client.query(qrQuery, qrValues);
     }
-    
+
     // Cập nhật visitors table
-    if (updateData.visitorName !== undefined || updateData.visitorPhone !== undefined || updateData.visitorIdCard !== undefined) {
+    if (
+      updateData.visitorName !== undefined ||
+      updateData.visitorPhone !== undefined ||
+      updateData.visitorIdCard !== undefined
+    ) {
       // Lấy visitor_id từ guest_qr_codes
       const getVisitorQuery = `SELECT visitor_id FROM guest_qr_codes WHERE id = $1`;
       const visitorResult = await client.query(getVisitorQuery, [id]);
       const visitorId = visitorResult.rows[0]?.visitor_id;
-      
+
       if (visitorId) {
         const visitorFields = [];
         const visitorValues = [];
         let vIdx = 1;
-        
+
         if (updateData.visitorName !== undefined) {
           visitorFields.push(`name = $${vIdx++}`);
           visitorValues.push(updateData.visitorName);
@@ -155,7 +150,7 @@ const updateGuestQr = async (id, updateData) => {
           visitorFields.push(`id_card = $${vIdx++}`);
           visitorValues.push(updateData.visitorIdCard);
         }
-        
+
         if (visitorFields.length > 0) {
           visitorValues.push(visitorId);
           const visitorQuery = `
@@ -167,13 +162,12 @@ const updateGuestQr = async (id, updateData) => {
         }
       }
     }
-    
+
     await client.query("COMMIT");
-    
+
     // Lấy lại dữ liệu đã cập nhật
     const updatedData = await getGuestQrById(id);
     return mapper.toGuestQrResponse(updatedData);
-    
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -188,7 +182,6 @@ const deleteGuestQr = async (id) => {
   return { id: deleted.id };
 };
 
-
 const getGuestQrById = async (id) => {
   const data = await repo.getGuestQrById(id);
   if (!data) throw new Error("Guest QR not found");
@@ -202,22 +195,14 @@ const getPersonalQrHistory = async (userId, options) => {
   return await repo.getPersonalQrHistory(userId, page, limit);
 };
 
-
-
-
 const getMyGuestQrs = async (userId, queryParams = {}) => {
-  const {
-    page = 1,
-    limit = 10,
-    search = '',
-    status = ''
-  } = queryParams;
+  const { page = 1, limit = 10, search = "", status = "" } = queryParams;
 
   const result = await repo.getMyGuestQrs(userId, {
     page: parseInt(page),
     limit: parseInt(limit),
-    search: search || '',
-    status: status || ''
+    search: search || "",
+    status: status || "",
   });
 
   return {
@@ -226,7 +211,7 @@ const getMyGuestQrs = async (userId, queryParams = {}) => {
     totalElements: result.total,
     totalPages: result.totalPages,
     page: result.page,
-    pageSize: result.limit
+    pageSize: result.limit,
   };
 };
 
@@ -242,40 +227,35 @@ const updateMyGuestQrStatus = async (qrId, userId, status) => {
 //   return await repo.updateMyGuestQrValidTo(qrId, userId, newValidTo, maxEntries, visitorName, visitorPhone, visitorIdCard);
 // };
 const updateMyGuestQrValidTo = async (
-  qrId, 
-  userId, 
-  newValidTo, 
+  qrId,
+  userId,
+  newValidTo,
   maxEntries,
-  visitorName, 
-  visitorPhone, 
-  visitorIdCard
+  visitorName,
+  visitorPhone,
+  visitorIdCard,
 ) => {
   return await repo.updateMyGuestQrValidTo(
-    qrId, 
-    userId, 
-    newValidTo, 
+    qrId,
+    userId,
+    newValidTo,
     maxEntries,
-    visitorName, 
-    visitorPhone, 
-    visitorIdCard
+    visitorName,
+    visitorPhone,
+    visitorIdCard,
   );
 };
 
 const getMyGuestQrHistory = async (qrId, userId, queryParams = {}) => {
-  const {
-    page = 1,
-    limit = 10,
-    fromDate = null,
-    toDate = null
-  } = queryParams;
+  const { page = 1, limit = 10, fromDate = null, toDate = null } = queryParams;
 
   let fromDateTime = fromDate;
   let toDateTime = toDate;
 
-  if (fromDate && !fromDate.includes('T')) {
+  if (fromDate && !fromDate.includes("T")) {
     fromDateTime = `${fromDate}T00:00:00`;
   }
-  if (toDate && !toDate.includes('T')) {
+  if (toDate && !toDate.includes("T")) {
     toDateTime = `${toDate}T23:59:59`;
   }
 
@@ -283,7 +263,7 @@ const getMyGuestQrHistory = async (qrId, userId, queryParams = {}) => {
     page: parseInt(page),
     limit: parseInt(limit),
     fromDate: fromDateTime,
-    toDate: toDateTime
+    toDate: toDateTime,
   });
 
   return {
@@ -292,24 +272,22 @@ const getMyGuestQrHistory = async (qrId, userId, queryParams = {}) => {
     totalElements: result.totalElements,
     totalPages: result.totalPages,
     page: result.page,
-    pageSize: result.pageSize
+    pageSize: result.pageSize,
   };
 };
 
-
-
-
-module.exports = { getPersonalQrByUserId, 
-  getGuestQrsByHost, 
-  createGuestQr, 
-  updateGuestQr, 
-  deleteGuestQr, 
-  getGuestQrById, 
+module.exports = {
+  getPersonalQrByUserId,
+  getGuestQrsByHost,
+  createGuestQr,
+  updateGuestQr,
+  deleteGuestQr,
+  getGuestQrById,
   getApartmentByUserId,
-getPersonalQrHistory,
-   getMyGuestQrs,
+  getPersonalQrHistory,
+  getMyGuestQrs,
   getMyGuestQrById,
   updateMyGuestQrStatus,
   updateMyGuestQrValidTo,
-  getMyGuestQrHistory
+  getMyGuestQrHistory,
 };

@@ -220,7 +220,7 @@ export default function ResultQrcodePage() {
                 {isSuccess && isGuestQR() && (
                   <div className='bg-white/10 backdrop-blur-xl p-6 rounded-3xl border border-white/20 text-center min-w-[160px]'>
                     <p className='text-[10px] uppercase tracking-[0.2em] font-bold text-blue-100 mb-2'>
-                      Số lượt còn lại
+Số lượt còn lại
                     </p>
                     <p className='text-5xl font-black'>{getRemainingEntries()}</p>
                     <p className='text-xs mt-2 text-blue-200'>
@@ -434,7 +434,7 @@ export default function ResultQrcodePage() {
                 // <>
                 //   <button
                 //     onClick={handleAllowEntry}
-                //     className='w-full bg-gradient-to-r from-primary to-primary-container text-white py-6 rounded-full font-bold text-lg shadow-lg shadow-blue-500/20 active:scale-95 transition-transform flex items-center justify-center gap-3'
+//     className='w-full bg-gradient-to-r from-primary to-primary-container text-white py-6 rounded-full font-bold text-lg shadow-lg shadow-blue-500/20 active:scale-95 transition-transform flex items-center justify-center gap-3'
                 //   >
                 //     <span className='material-symbols-outlined'>login</span>
                 //     Cho phép vào

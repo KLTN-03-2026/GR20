@@ -19,9 +19,15 @@ const createApartment = async (reqBody) => {
 
 // GET ALL
 const getAllApartments = async (query) => {
-  const { page = 0, size = 10 } = query;
+  const { page = 0, size = 10, buildingId, floorId, search } = query;
 
-  const result = await repo.getAllApartments({ page, size });
+  const result = await repo.getAllApartments({
+    page: Number(page),
+    size: Number(size),
+    buildingId: buildingId || undefined,
+    floorId: floorId || undefined,
+    search: search || undefined,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),
@@ -97,6 +103,11 @@ const deleteApartment = async (id) => {
   return { id: deleted.id };
 };
 
+//AD RESIDENT
+const addResident = async (apartmentId, body) => {
+  return await repo.addResident(apartmentId, body);
+};
+
 module.exports = {
   createApartment,
   getAllApartments,
@@ -105,4 +116,5 @@ module.exports = {
   getApartmentById,
   updateApartment,
   deleteApartment,
+  addResident,
 };

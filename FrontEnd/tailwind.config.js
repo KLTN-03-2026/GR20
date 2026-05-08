@@ -22,11 +22,11 @@ module.exports = {
         secondary: '#006876',
         error: '#ba1a1a',
         outline: '#767683',
-        'outline-variant': '#c6c5d4',
+        'outline-variant': '#c6c5d4'
       },
       fontFamily: {
         manrope: ['Manrope'],
-        inter: ['Inter'],
+        inter: ['Inter']
       }
     }
   },
