@@ -1,12 +1,20 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 export default function SidebarProtect() {
+  const navigate = useNavigate()
   // Hàm xử lý className active giống SidebarUser
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
       ? 'flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-900 font-bold border-l-4 border-blue-900 bg-surface hover:bg-secondary-container/20 transition-all duration-300'
       : 'flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 transition-all duration-300'
 
+  const handleLogout = () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
+
+    navigate('/login', { replace: true })
+  }
   return (
     <aside className='hidden lg:flex flex-col p-6 space-y-8 h-screen w-64 fixed left-0 top-0 bg-surface-container-low shadow-sm z-50'>
       {/* Logo / Header - giống SidebarUser */}
@@ -14,7 +22,7 @@ export default function SidebarProtect() {
         <div className='flex items-center space-x-3 mb-6'>
           <div className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white'>
             <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
-              security
+              home
             </span>
           </div>
           <div>
@@ -50,6 +58,11 @@ export default function SidebarProtect() {
       {/* Menu cuối */}
       <div className='mt-auto space-y-1 pt-[250px] border-t border-gray-200'>
         {/* Nút báo động khẩn cấp */}
+        <NavLink to='/profile' className={getNavClass}>
+          <span className='material-symbols-outlined text-xl flex-shrink-0'>account_circle</span>
+
+          {<span className='text-sm truncate flex-1'>Thông tin cá nhân</span>}
+        </NavLink>
 
         <NavLink
           to='/support'
@@ -64,9 +77,7 @@ export default function SidebarProtect() {
         </NavLink>
 
         <button
-          onClick={() => {
-            /* xử lý đăng xuất */
-          }}
+          onClick={handleLogout}
           className='w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
         >
           <span className='material-symbols-outlined'>logout</span>

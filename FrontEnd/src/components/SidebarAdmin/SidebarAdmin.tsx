@@ -1,328 +1,303 @@
-// import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 
-// export default function SidebarAdmin() {
-//   // Hàm xử lý className active
-//   const getNavClass = ({ isActive }) =>
-//     isActive
-//       ? 'flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-900 font-bold border-l-4 border-blue-900 bg-surface hover:bg-secondary-container/20 transition-all duration-300'
-//       : 'flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 transition-all duration-300'
+interface MenuGroup {
+  label: string
+  icon: string
+  items: Array<{
+    path: string
+    label: string
+    icon: string
+  }>
+}
 
-//   return (
-//     <aside className='hidden lg:flex flex-col p-6 space-y-8 h-screen w-64 fixed left-0 top-0 bg-surface-container-low shadow-sm z-50'>
-//       {/* Logo / Header */}
-//       <div className='flex flex-col space-y-2'>
-//         <div className='flex items-center space-x-3 mb-6'>
-//           <div className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white'>
-//             <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
-//               apartment
-//             </span>
-//           </div>
-//           <div>
-//             <h1 className='text-xl font-extrabold text-blue-900 tracking-tight'>HomeLink AI</h1>
-//             <p className='text-[10px] font-medium text-teal-700 uppercase tracking-widest'>Management Portal</p>
-//           </div>
-//         </div>
+const menuGroups: MenuGroup[] = [
+  {
+    label: 'Tổng quan',
+    icon: 'dashboard',
+    items: [
+      {
+        path: '/admin/',
+        label: 'Tổng quan hệ thống',
+        icon: 'analytics'
+      }
+    ]
+  },
 
-//         {/* Menu chính */}
-//         <nav className='flex-1 space-y-1 overflow-y-auto max-h-[calc(100vh-300px)]'>
-//           {/* Dashboard */}
-//           <NavLink to='/' className={getNavClass} end>
-//             <span className='material-symbols-outlined'>dashboard</span>
-//             <span className='text-sm font-manrope'>Tổng quan</span>
-//           </NavLink>
+  {
+    label: 'Quản lý cư dân & Căn hộ',
+    icon: 'groups',
+    items: [
+      {
+        path: '/owner/management/residents',
+        label: 'Quản lý cư dân',
+        icon: 'people'
+      },
+      {
+        path: '/owner/management/apartments',
+        label: 'Quản lý căn hộ',
+        icon: 'apartment'
+      },
+      {
+        path: '/owner/security/residents',
+        label: 'Tra cứu thông tin cư dân',
+        icon: 'person_search'
+      }
+    ]
+  },
 
-//           {/* Quản lý cư dân */}
-//           <NavLink to='/residents' className={getNavClass}>
-//             <span className='material-symbols-outlined'>people</span>
-//             <span className='text-sm font-manrope'>Quản lý cư dân</span>
-//           </NavLink>
+  {
+    label: 'Vận hành & Dịch vụ',
+    icon: 'build',
+    items: [
+      {
+        path: '/owner/operations/requests',
+        label: 'Quản lý yêu cầu cư dân',
+        icon: 'assignment'
+      },
+      {
+        path: '/owner/management/staff',
+        label: 'Quản lý nhân viên',
+        icon: 'badge'
+      },
+      {
+        path: '/owner/management/invoices',
+        label: 'Quản lý phí dịch vụ',
+        icon: 'receipt_long'
+      },
+      {
+        path: '/owner/management/services',
+        label: 'Quản lý tiện ích',
+        icon: 'home_repair_service'
+      },
+      {
+        path: '/owner/management/contracts',
+        label: 'Quản lý hợp đồng',
+        icon: 'description'
+      }
+    ]
+  },
 
-//           {/* Quản lý căn hộ */}
-//           <NavLink to='/apartments' className={getNavClass}>
-//             <span className='material-symbols-outlined'>home_work</span>
-//             <span className='text-sm font-manrope'>Quản lý căn hộ</span>
-//           </NavLink>
+  {
+    label: 'Báo cáo & Thống kê',
+    icon: 'bar_chart',
+    items: [
+      {
+        path: '/owner/management/reports',
+        label: 'Báo cáo thống kê',
+        icon: 'analytics'
+      },
+      {
+        path: '/owner/management/notifications',
+        label: 'Quản lý thông báo',
+        icon: 'campaign'
+      }
+    ]
+  },
 
-//           {/* Quản lý nhân viên */}
-//           <NavLink to='/staff' className={getNavClass}>
-//             <span className='material-symbols-outlined'>badge</span>
-//             <span className='text-sm font-manrope'>Quản lý nhân viên</span>
-//           </NavLink>
+  {
+    label: 'Bảo mật & Kiểm soát',
+    icon: 'security',
+    items: [
+      {
+        path: '/qrcode',
+        label: 'Quản lý QR',
+        icon: 'qr_code_2'
+      },
+      {
+        path: '/owner/security/scan',
+        label: 'Quét QR',
+        icon: 'qr_code_scanner'
+      },
+      {
+        path: '/owner/security/history',
+        label: 'Lịch sử ra vào',
+        icon: 'history'
+      },
+      {
+        path: '/owner/security/incident-report',
+        label: 'Báo cáo sự cố',
+        icon: 'report_problem'
+      },
+      {
+        path: '/owner/buildings',
+        label: 'Quản lý tòa nhà',
+        icon: 'business_center'
+      },
+      {
+        path: '/owner/system-monitor',
+        label: 'Theo dõi hệ thống',
+        icon: 'monitor_heart'
+      }
+    ]
+  }
+]
 
-//           {/* Quản lý dịch vụ */}
-//           <NavLink to='/services' className={getNavClass}>
-//             <span className='material-symbols-outlined'>handyman</span>
-//             <span className='text-sm font-manrope'>Quản lý dịch vụ</span>
-//           </NavLink>
+export default function SidebarOwnerOptimized() {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const navigate = useNavigate()
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Tổng quan'])
 
-//           {/* Quản lý hóa đơn */}
-//           <NavLink to='/bills' className={getNavClass}>
-//             <span className='material-symbols-outlined'>receipt</span>
-//             <span className='text-sm font-manrope'>Quản lý hóa đơn</span>
-//           </NavLink>
+  const toggleGroup = (groupLabel: string) => {
+    setExpandedGroups((prev) =>
+      prev.includes(groupLabel) ? prev.filter((g) => g !== groupLabel) : [...prev, groupLabel]
+    )
+  }
 
-//           {/* Quản lý QR */}
-//           <NavLink to='/qrcodeAdmin' className={getNavClass}>
-//             <span className='material-symbols-outlined'>qr_code</span>
-//             <span className='text-sm font-manrope'>Quản lý QR</span>
-//           </NavLink>
+  const handleLogout = () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('user')
 
-//           {/* Báo cáo & Thống kê */}
-//           <NavLink to='/reports' className={getNavClass}>
-//             <span className='material-symbols-outlined'>bar_chart</span>
-//             <span className='text-sm font-manrope'>Báo cáo & Thống kê</span>
-//           </NavLink>
+    navigate('/login', { replace: true })
+  }
 
-//           {/* Quản lý thông báo */}
-//           <NavLink to='/notifications' className={getNavClass}>
-//             <span className='material-symbols-outlined'>notifications_active</span>
-//             <span className='text-sm font-manrope'>Gửi thông báo</span>
-//           </NavLink>
-
-//           {/* Divider + Chức năng kế thừa */}
-//           <div className='pt-4 mt-2'>
-//             <p className='text-[10px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-2'>Chức năng kế thừa</p>
-
-//             {/* Bảo vệ - Quét QR */}
-//             <NavLink to='/security/scan' className={getNavClass}>
-//               <span className='material-symbols-outlined'>qr_code_scanner</span>
-//               <span className='text-sm font-manrope'>Quét QR (BV)</span>
-//             </NavLink>
-
-//             {/* Bảo vệ - Lịch sử ra vào */}
-//             <NavLink to='/security/access-history' className={getNavClass}>
-//               <span className='material-symbols-outlined'>history</span>
-//               <span className='text-sm font-manrope'>Lịch sử ra vào (BV)</span>
-//             </NavLink>
-
-//             {/* Nhân viên - Yêu cầu từ cư dân */}
-//             <NavLink to='/staff/requests' className={getNavClass}>
-//               <span className='material-symbols-outlined'>assignment</span>
-//               <span className='text-sm font-manrope'>Yêu cầu cư dân (NV)</span>
-//             </NavLink>
-//           </div>
-//         </nav>
-//       </div>
-
-//       {/* Menu cuối - Cài đặt & Đăng xuất */}
-//       <div className='mt-auto space-y-1 pt-6 border-t border-gray-200'>
-//         <NavLink
-//           to='/settings'
-//           className={({ isActive }) =>
-//             `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-//               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-//             }`
-//           }
-//         >
-//           <span className='material-symbols-outlined'>settings</span>
-//           <span className='text-sm'>Cài đặt</span>
-//         </NavLink>
-
-//         <NavLink
-//           to='/support'
-//           className={({ isActive }) =>
-//             `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-//               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-//             }`
-//           }
-//         >
-//           <span className='material-symbols-outlined'>help</span>
-//           <span className='text-sm'>Hỗ trợ</span>
-//         </NavLink>
-
-//         <button
-//           onClick={() => {
-//             /* xử lý đăng xuất */
-//           }}
-//           className='w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
-//         >
-//           <span className='material-symbols-outlined'>logout</span>
-//           <span className='text-sm'>Đăng xuất</span>
-//         </button>
-//       </div>
-//     </aside>
-//   )
-// }
-
-import { NavLink } from 'react-router-dom'
-
-export default function SidebarOwner() {
-  const getNavClass = ({ isActive }) =>
+  const getNavClass = ({ isActive }: { isActive: boolean }) =>
     isActive
       ? 'flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-900 font-bold border-l-4 border-blue-900 bg-surface hover:bg-secondary-container/20 transition-all duration-300'
       : 'flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 transition-all duration-300'
 
   return (
-    <aside className='hidden lg:flex flex-col p-6 space-y-8 h-screen w-64 fixed left-0 top-0 bg-surface-container-low shadow-sm z-50 overflow-y-auto'>
-      {/* Logo / Header */}
-      <div className='flex flex-col space-y-2'>
-        <div className='flex items-center space-x-3 mb-6'>
-          <div className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white'>
-            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
-              business
-            </span>
+    <aside
+      className={`hidden lg:flex flex-col h-screen fixed left-0 top-0 bg-surface-container-low shadow-sm z-50 overflow-hidden transition-all duration-300 border-r border-secondary-container/20 ${
+        isCollapsed ? 'w-20' : 'w-72'
+      }`}
+    >
+      {/* Header */}
+      <div className='p-4 flex items-center justify-between border-b border-secondary-container/20'>
+        {!isCollapsed && (
+          <div className='flex items-center gap-3 flex-1 min-w-0'>
+            <div className='w-11 h-11 bg-blue-900 rounded-2xl flex items-center justify-center text-white flex-shrink-0'>
+              <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+                home
+              </span>
+            </div>
+
+            <div className='min-w-0 flex-1'>
+              <h1 className='text-base font-extrabold text-blue-900 tracking-tight truncate'>HomeLink AI</h1>
+
+              <p className='text-[10px] font-semibold text-teal-700 uppercase tracking-[0.25em] truncate'>OWNER</p>
+            </div>
           </div>
-          <div>
-            <h1 className='text-xl font-extrabold text-blue-900 tracking-tight'>HomeLink AI</h1>
-            <p className='text-[10px] font-medium text-teal-700 uppercase tracking-widest'>Owner Portal</p>
-          </div>
-        </div>
+        )}
 
-        {/* Menu chính */}
-        <nav className='flex-1 space-y-1'>
-          {/* Tổng quan */}
-          <NavLink to='/homeowner' className={getNavClass}>
-            <span className='material-symbols-outlined'>dashboard</span>
-            <span className='text-sm font-manrope'>Tổng quan</span>
-          </NavLink>
-
-          {/* Quản lý tòa nhà */}
-          <NavLink to='/owner/buildings' className={getNavClass}>
-            <span className='material-symbols-outlined'>business_center</span>
-            <span className='text-sm font-manrope'>Quản lý tòa nhà</span>
-          </NavLink>
-
-          {/* Theo dõi hệ thống */}
-          <NavLink to='/owner/system-monitor' className={getNavClass}>
-            <span className='material-symbols-outlined'>monitor_heart</span>
-            <span className='text-sm font-manrope'>Theo dõi hệ thống</span>
-          </NavLink>
-
-          {/* Kế thừa từ Ban quản lý */}
-          <div className='pt-4 mt-2 border-t border-gray-200'>
-            <p className='text-[10px] font-bold uppercase tracking-widest text-slate-400 px-4 mb-2'>Quản lý vận hành</p>
-          </div>
-
-          <NavLink to='/owner/management/residents' className={getNavClass}>
-            <span className='material-symbols-outlined'>people</span>
-            <span className='text-sm font-manrope'>Quản lý cư dân</span>
-          </NavLink>
-
-          <NavLink to='/owner/management/apartments' className={getNavClass}>
-            <span className='material-symbols-outlined'>apartment</span>
-            <span className='text-sm font-manrope'>Quản lý căn hộ</span>
-          </NavLink>
-
-          <NavLink to='/owner/management/staff' className={getNavClass}>
-            <span className='material-symbols-outlined'>badge</span>
-            <span className='text-sm font-manrope'>Quản lý nhân viên</span>
-          </NavLink>
-
-          <NavLink to='/owner/management/services' className={getNavClass}>
-            <span className='material-symbols-outlined'>concierge</span>
-            <span className='text-sm font-manrope'>Quản lý dịch vụ</span>
-          </NavLink>
-
-          <NavLink to='/owner/management/invoices' className={getNavClass}>
-            <span className='material-symbols-outlined'>receipt_long</span>
-            <span className='text-sm font-manrope'>Quản lý hóa đơn</span>
-          </NavLink>
-
-          <NavLink to='/owner/management/reports' className={getNavClass}>
-            <span className='material-symbols-outlined'>analytics</span>
-            <span className='text-sm font-manrope'>Báo cáo & Thống kê</span>
-          </NavLink>
-
-          <NavLink to='/owner/management/notifications' className={getNavClass}>
-            <span className='material-symbols-outlined'>campaign</span>
-            <span className='text-sm font-manrope'>Quản lý thông báo</span>
-          </NavLink>
-
-          <NavLink to='/owner/management/qr' className={getNavClass}>
-            <span className='material-symbols-outlined'>qr_code_2</span>
-            <span className='text-sm font-manrope'>Quản lý QR</span>
-          </NavLink>
-
-          {/* Kế thừa từ Nhân viên bảo vệ */}
-          <div className='pt-4 mt-2 border-t border-gray-200'>
-            <p className='text-[10px] font-bold uppercase tracking-widest text-slate-400 px-4 mb-2'>
-              Kiểm soát an ninh
-            </p>
-          </div>
-
-          <NavLink to='/owner/security/scan' className={getNavClass}>
-            <span className='material-symbols-outlined'>qr_code_scanner</span>
-            <span className='text-sm font-manrope'>Quét QR</span>
-          </NavLink>
-
-          <NavLink to='/owner/security/history' className={getNavClass}>
-            <span className='material-symbols-outlined'>history</span>
-            <span className='text-sm font-manrope'>Lịch sử ra vào</span>
-          </NavLink>
-
-          <NavLink to='/owner/security/residents' className={getNavClass}>
-            <span className='material-symbols-outlined'>person_search</span>
-            <span className='text-sm font-manrope'>Tra cứu cư dân</span>
-          </NavLink>
-
-          <NavLink to='/owner/security/incident-report' className={getNavClass}>
-            <span className='material-symbols-outlined'>report_problem</span>
-            <span className='text-sm font-manrope'>Báo cáo sự cố</span>
-          </NavLink>
-
-          {/* Kế thừa từ Nhân viên vận hành */}
-          <div className='pt-4 mt-2 border-t border-gray-200'>
-            <p className='text-[10px] font-bold uppercase tracking-widest text-slate-400 px-4 mb-2'>Vận hành dịch vụ</p>
-          </div>
-
-          <NavLink to='/owner/operations/requests' className={getNavClass}>
-            <span className='material-symbols-outlined'>assignment</span>
-            <span className='text-sm font-manrope'>Yêu cầu từ cư dân</span>
-          </NavLink>
-
-          <NavLink to='/owner/operations/request-detail' className={getNavClass}>
-            <span className='material-symbols-outlined'>description</span>
-            <span className='text-sm font-manrope'>Chi tiết yêu cầu</span>
-          </NavLink>
-        </nav>
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className='p-2 hover:bg-secondary-container/20 rounded-lg text-slate-500 hover:text-blue-900 transition-colors flex-shrink-0'
+        >
+          <span className='material-symbols-outlined text-xl'>
+            {isCollapsed ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'}
+          </span>
+        </button>
       </div>
 
-      {/* Menu cuối */}
-      <div className='mt-auto space-y-1 pt-[20px] border-t border-gray-200'>
+      {/* Navigation */}
+      <nav className='flex-1 px-3 py-4 space-y-2 overflow-y-auto overflow-x-hidden'>
+        {menuGroups.map((group) => {
+          const isExpanded = expandedGroups.includes(group.label)
+
+          return (
+            <div key={group.label}>
+              {/* Group header */}
+              {!isCollapsed && (
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className='w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors'
+                >
+                  <div className='flex items-center gap-2 min-w-0 flex-1'>
+                    <span className='material-symbols-outlined text-[18px] flex-shrink-0'>{group.icon}</span>
+
+                    <span className='truncate text-left'>{group.label}</span>
+                  </div>
+
+                  <span
+                    className='material-symbols-outlined text-[18px] transition-transform duration-200 flex-shrink-0'
+                    style={{
+                      transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
+                    }}
+                  >
+                    expand_more
+                  </span>
+                </button>
+              )}
+
+              {(isCollapsed || isExpanded) && (
+                <div className={`space-y-1 ${!isCollapsed ? 'mt-2' : ''}`}>
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={getNavClass}
+                      title={isCollapsed ? item.label : ''}
+                    >
+                      <span className='material-symbols-outlined text-xl flex-shrink-0'>{item.icon}</span>
+
+                      {!isCollapsed && (
+                        <span className='text-sm font-medium truncate flex-1 min-w-0'>{item.label}</span>
+                      )}
+
+                      {isCollapsed && (
+                        <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+                          {item.label}
+                        </div>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </nav>
+
+      {/* Bottom menu */}
+      <div className='border-t border-secondary-container/20 pt-3 pb-4 px-3 space-y-1'>
         <NavLink
           to='/owner/community-chat'
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
+            `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 relative group ${
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
             }`
           }
         >
-          <span className='material-symbols-outlined'>forum</span>
-          <span className='text-sm'>Chat cộng đồng</span>
+          <span className='material-symbols-outlined text-xl flex-shrink-0'>forum</span>
+
+          {!isCollapsed && <span className='text-sm truncate flex-1'>Chat cộng đồng</span>}
         </NavLink>
 
         <NavLink
-          to='/owner/profile'
+          to='/profile'
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
+            `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 relative group ${
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
             }`
           }
         >
-          <span className='material-symbols-outlined'>account_circle</span>
-          <span className='text-sm'>Thông tin cá nhân</span>
+          <span className='material-symbols-outlined text-xl flex-shrink-0'>account_circle</span>
+
+          {!isCollapsed && <span className='text-sm truncate flex-1'>Thông tin cá nhân</span>}
         </NavLink>
 
         <NavLink
           to='/owner/settings'
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
+            `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 relative group ${
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
             }`
           }
         >
-          <span className='material-symbols-outlined'>settings</span>
-          <span className='text-sm'>Cài đặt</span>
+          <span className='material-symbols-outlined text-xl flex-shrink-0'>settings</span>
+
+          {!isCollapsed && <span className='text-sm truncate flex-1'>Cài đặt</span>}
         </NavLink>
 
         <button
-          onClick={() => {
-            /* xử lý đăng xuất */
-          }}
-          className='w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
+          onClick={handleLogout}
+          className='w-full flex items-center gap-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
         >
-          <span className='material-symbols-outlined'>logout</span>
-          <span className='text-sm'>Đăng xuất</span>
+          <span className='material-symbols-outlined text-xl flex-shrink-0'>logout</span>
+
+          {!isCollapsed && <span className='text-sm truncate flex-1'>Đăng xuất</span>}
         </button>
       </div>
     </aside>

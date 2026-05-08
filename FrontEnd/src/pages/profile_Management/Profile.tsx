@@ -12,7 +12,7 @@ import {
 import { yupResolver } from '@hookform/resolvers/yup'
 import { toast } from 'react-toastify'
 import Input from 'src/components/Input'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 // Helper function to get error message from axios-like error objects
 const getErrorMessage = (error: unknown): string | undefined => {
@@ -24,22 +24,23 @@ const getErrorMessage = (error: unknown): string | undefined => {
 }
 
 export default function Profile() {
-  const { setProfile } = useContext(AppContext)
+  const { setUser } = useContext(AppContext)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const navigate = useNavigate()
 
   const uploadAvatarMutation = useMutation({
     mutationFn: (file: File) => UserApi.uploadAvatar(file),
     onSuccess: (response) => {
       toast.success('Cập nhật avatar thành công!')
       // Cập nhật avatar URL trong state
-      setProfile((prev) =>
+      setUser((prev) =>
         prev
-          ? { ...prev, avatar: response.data.data.avatarUrl || prev.avatar }
+          ? {
+              ...prev,
+              avatarUrl: response.data.data.avatarUrl || prev.avatarUrl
+            }
           : prev
       )
       refetch()
@@ -79,6 +80,8 @@ export default function Profile() {
     queryFn: UserApi.getProfile
   })
   const dataProfile = data?.data?.data
+
+  console.log(dataProfile)
 
   const {
     register: registerPassword,
@@ -143,7 +146,7 @@ export default function Profile() {
     mutationFn: (body: UpdateProfileFormData) => UserApi.updateProfile(body),
     onSuccess: (response) => {
       toast.success('Cập nhật hồ sơ thành công!')
-      setProfile(response.data.data)
+      setUser(response.data.data)
       refetch()
       setIsModalOpen(false)
     },

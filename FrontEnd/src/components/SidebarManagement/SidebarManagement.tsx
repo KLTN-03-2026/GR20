@@ -1,131 +1,117 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
-export default function SidebarManagement() {
-  const getNavClass = ({ isActive }) =>
-    isActive
-      ? 'flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-900 font-bold border-l-4 border-blue-900 bg-surface hover:bg-secondary-container/20 transition-all duration-300'
-      : 'flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 transition-all duration-300'
+interface MenuItem {
+  path: string
+  label: string
+  icon: string
+}
+
+const mainMenuItems: MenuItem[] = [
+  { path: '/homemanagement', label: 'Tổng quan', icon: 'dashboard' },
+  { path: '/management/residents', label: 'Quản lý cư dân', icon: 'people' },
+  { path: '/management/apartments', label: 'Quản lý căn hộ', icon: 'apartment' },
+  { path: '/management/staff', label: 'Quản lý nhân viên', icon: 'badge' },
+  { path: '/management/services', label: 'Quản lý dịch vụ', icon: 'concierge' },
+  { path: '/management/requests', label: 'Quản lý yêu cầu', icon: 'assignment' },
+  { path: '/management/invoices', label: 'Quản lý hóa đơn', icon: 'receipt_long' },
+  { path: '/management/notifications', label: 'Gửi thông báo', icon: 'campaign' },
+  { path: '/management/qr-management', label: 'Quản lý QR', icon: 'qr_code_2' },
+  { path: '/management/reports', label: 'Báo cáo & Thống kê', icon: 'analytics' },
+  { path: '/management/community-chat', label: 'Chat cộng đồng', icon: 'forum' }
+]
+
+const bottomMenuItems: MenuItem[] = [
+  { path: '/management/profile', label: 'Thông tin cá nhân', icon: 'account_circle' },
+  { path: '/management/settings', label: 'Cài đặt', icon: 'settings' }
+]
+
+export default function SidebarManagementOptimized() {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
+  const getNavClass = ({ isActive }: { isActive: boolean }) => {
+    const baseClass = 'flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 relative group'
+    const activeClass = isActive
+      ? 'text-blue-900 font-bold border-l-4 border-blue-900 bg-surface'
+      : 'text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20'
+    return `${baseClass} ${activeClass}`
+  }
+
+  const renderNavItem = (item: MenuItem) => (
+    <NavLink key={item.path} to={item.path} className={getNavClass} title={isCollapsed ? item.label : ''}>
+      <span className='material-symbols-outlined text-xl flex-shrink-0'>{item.icon}</span>
+      {!isCollapsed && <span className='text-sm font-manrope truncate'>{item.label}</span>}
+
+      {/* Tooltip untuk collapsed state */}
+      {isCollapsed && (
+        <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+          {item.label}
+        </div>
+      )}
+    </NavLink>
+  )
 
   return (
-    <aside className='hidden lg:flex flex-col p-6 space-y-8 h-screen w-64 fixed left-0 top-0 bg-surface-container-low shadow-sm z-50 overflow-y-auto'>
-      {/* Logo / Header */}
-      <div className='flex flex-col space-y-2'>
-        <div className='flex items-center space-x-3 mb-6'>
-          <div className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white'>
-            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
-              admin_panel_settings
-            </span>
+    <aside
+      className={`hidden lg:flex flex-col h-screen fixed left-0 top-0 bg-surface-container-low shadow-sm z-50 overflow-y-auto transition-all duration-300 ${
+        isCollapsed ? 'w-20' : 'w-64'
+      }`}
+    >
+      {/* Header dengan logo */}
+      <div className='p-4 flex items-center justify-between'>
+        {!isCollapsed && (
+          <div className='flex items-center space-x-3 flex-1'>
+            <div className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white flex-shrink-0'>
+              <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+                admin_panel_settings
+              </span>
+            </div>
+            <div className='min-w-0'>
+              <h1 className='text-lg font-extrabold text-blue-900 tracking-tight truncate'>HomeLink AI</h1>
+              <p className='text-[9px] font-medium text-teal-700 uppercase tracking-widest truncate'>Management HQ</p>
+            </div>
           </div>
-          <div>
-            <h1 className='text-xl font-extrabold text-blue-900 tracking-tight'>HomeLink AI</h1>
-            <p className='text-[10px] font-medium text-teal-700 uppercase tracking-widest'>Management HQ</p>
-          </div>
-        </div>
+        )}
 
-        {/* Menu chính */}
-        <nav className='flex-1 space-y-1'>
-          {/* Quản lý tổng quan */}
-          <NavLink to='/homemanagement' className={getNavClass}>
-            <span className='material-symbols-outlined'>dashboard</span>
-            <span className='text-sm font-manrope'>Tổng quan</span>
-          </NavLink>
-
-          {/* Quản lý cư dân */}
-          <NavLink to='/management/residents' className={getNavClass}>
-            <span className='material-symbols-outlined'>people</span>
-            <span className='text-sm font-manrope'>Quản lý cư dân</span>
-          </NavLink>
-
-          {/* Quản lý căn hộ */}
-          <NavLink to='/management/apartments' className={getNavClass}>
-            <span className='material-symbols-outlined'>apartment</span>
-            <span className='text-sm font-manrope'>Quản lý căn hộ</span>
-          </NavLink>
-
-          {/* Quản lý nhân viên */}
-          <NavLink to='/management/staff' className={getNavClass}>
-            <span className='material-symbols-outlined'>badge</span>
-            <span className='text-sm font-manrope'>Quản lý nhân viên</span>
-          </NavLink>
-
-          {/* Quản lý dịch vụ */}
-          <NavLink to='/management/services' className={getNavClass}>
-            <span className='material-symbols-outlined'>concierge</span>
-            <span className='text-sm font-manrope'>Quản lý dịch vụ</span>
-          </NavLink>
-
-          {/* Quản lý yêu cầu */}
-          <NavLink to='/management/requests' className={getNavClass}>
-            <span className='material-symbols-outlined'>assignment</span>
-            <span className='text-sm font-manrope'>Quản lý yêu cầu</span>
-          </NavLink>
-
-          {/* Quản lý hóa đơn */}
-          <NavLink to='/management/invoices' className={getNavClass}>
-            <span className='material-symbols-outlined'>receipt_long</span>
-            <span className='text-sm font-manrope'>Quản lý hóa đơn</span>
-          </NavLink>
-
-          {/* Quản lý thông báo */}
-          <NavLink to='/management/notifications' className={getNavClass}>
-            <span className='material-symbols-outlined'>campaign</span>
-            <span className='text-sm font-manrope'>Gửi thông báo</span>
-          </NavLink>
-
-          {/* Quản lý QR */}
-          <NavLink to='/management/qr-management' className={getNavClass}>
-            <span className='material-symbols-outlined'>qr_code_2</span>
-            <span className='text-sm font-manrope'>Quản lý QR</span>
-          </NavLink>
-
-          {/* Báo cáo & Thống kê */}
-          <NavLink to='/management/reports' className={getNavClass}>
-            <span className='material-symbols-outlined'>analytics</span>
-            <span className='text-sm font-manrope'>Báo cáo & Thống kê</span>
-          </NavLink>
-
-          {/* Chat cộng đồng */}
-          <NavLink to='/management/community-chat' className={getNavClass}>
-            <span className='material-symbols-outlined'>forum</span>
-            <span className='text-sm font-manrope'>Chat cộng đồng</span>
-          </NavLink>
-        </nav>
+        {/* Toggle collapse button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className='p-2 hover:bg-secondary-container/20 rounded-lg text-slate-500 hover:text-blue-900 transition-colors flex-shrink-0 ml-auto'
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <span className='material-symbols-outlined text-xl'>
+            {isCollapsed ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'}
+          </span>
+        </button>
       </div>
 
-      {/* Menu cuối */}
-      <div className='mt-auto space-y-1 pt-[30px] border-t border-gray-200'>
-        <NavLink
-          to='/management/profile'
-          className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-            }`
-          }
-        >
-          <span className='material-symbols-outlined'>account_circle</span>
-          <span className='text-sm'>Thông tin cá nhân</span>
-        </NavLink>
+      {/* Navigation */}
+      <nav className='flex-1 px-3 space-y-1 overflow-y-auto scrollbar-thin'>
+        {mainMenuItems.map((item) => renderNavItem(item))}
+      </nav>
 
-        <NavLink
-          to='/management/settings'
-          className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-            }`
-          }
-        >
-          <span className='material-symbols-outlined'>settings</span>
-          <span className='text-sm'>Cài đặt</span>
-        </NavLink>
+      {/* Bottom menu */}
+      <div className='border-t border-gray-200 pt-3 pb-4 px-3 space-y-1'>
+        {bottomMenuItems.map((item) => renderNavItem(item))}
 
         <button
           onClick={() => {
             /* xử lý đăng xuất */
           }}
-          className='w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-50 transition-colors relative group ${
+            isCollapsed ? 'justify-center' : ''
+          }`}
+          title={isCollapsed ? 'Đăng xuất' : ''}
         >
-          <span className='material-symbols-outlined'>logout</span>
-          <span className='text-sm'>Đăng xuất</span>
+          <span className='material-symbols-outlined text-xl flex-shrink-0'>logout</span>
+          {!isCollapsed && <span className='text-sm truncate'>Đăng xuất</span>}
+
+          {/* Tooltip for collapsed state */}
+          {isCollapsed && (
+            <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+              Đăng xuất
+            </div>
+          )}
         </button>
       </div>
     </aside>

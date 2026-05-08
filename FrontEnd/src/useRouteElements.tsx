@@ -41,7 +41,6 @@ import HomePageSecurity from './pages/HomePageScurity/HomePageScurity'
 import HomePageAdmin from './pages/HomePageAdmin/HomePageAdmin'
 import HomePageStaff from './pages/HomePageStaff/HomePageStaff'
 import HomePageManager from './pages/HomePageManager/HomePageManager'
-import InvoicesPage from './pages/billing/InvoicesPage'
 import UserInvoicesPage from './pages/billing/UserInvoicesPage'
 import UserPaymentsPage from './pages/billing/UserPaymentsPage'
 
@@ -143,9 +142,9 @@ export default function useRouteElements() {
         {
           index: true,
           element: (
-            <DashboardLayoutProtect>
+            <DashboaedLayoutManager>
               <EmployeeManagement />
-            </DashboardLayoutProtect>
+            </DashboaedLayoutManager>
           )
         }
       ]
