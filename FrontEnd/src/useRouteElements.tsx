@@ -230,7 +230,6 @@
 
 import { Navigate, useRoutes } from 'react-router-dom'
 import { ROLES } from 'src/constants/roles'
-
 import Buildings from './pages/building management/Buildings'
 import Profile from './pages/profile_Management/Profile'
 import ScanQr from './pages/QRCODE_USER/Scanqr'

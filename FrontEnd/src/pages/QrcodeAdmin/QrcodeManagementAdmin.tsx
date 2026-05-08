@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate, createSearchParams, useLocation } from 'react-router-dom'
 import { qrApiAdmin } from 'src/apis/QrcodeAdmin/QrcodeAdmin.api'
-import type { historyQrcodeAdmin, historyQrcodeAdmin1, ListQRGuest } from 'src/types/qrcode.type'
+import type { historyQrcodeAdmin, historyQrcodeAdmin1 } from 'src/types/qrcode.type'
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useDebounce } from 'src/hooks/useDebounce'

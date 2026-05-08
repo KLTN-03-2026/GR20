@@ -433,7 +433,7 @@ export default function ViewAllHistoryQrcode() {
   const [resultFilter, setResultFilter] = useState(resultFromUrl)
   const [fromDate, setFromDate] = useState(fromDateFromUrl)
   const [toDate, setToDate] = useState(toDateFromUrl)
-  const [qrTypeFilter, setQrTypeFilter] = useState(qrTypeFromUrl) // 👈 Thêm
+  const [qrTypeFilter, setQrTypeFilter] = useState(qrTypeFromUrl)
 
   const debouncedSearch = useDebounce(searchInput, 500)
   const debouncedFromDate = useDebounce(fromDate, 500)
