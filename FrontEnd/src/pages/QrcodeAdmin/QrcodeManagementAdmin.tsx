@@ -299,7 +299,7 @@ export default function QrcodeManagementAdmin() {
       <main className='min-h-screen'>
         <div className='max-w-[1200px] mx-auto space-y-12'>
           {/* Header Section */}
-          <section className='flex flex-col md:flex-row md:items-end justify-between gap-6'>
+          <section className='px-5 flex flex-col md:flex-row md:items-end justify-between gap-6'>
             <div className='max-w-xl'>
               <span className='text-xs font-bold tracking-[0.2em] text-primary uppercase mb-2 block'>
                 Trung tâm bảo mật
@@ -423,7 +423,7 @@ export default function QrcodeManagementAdmin() {
               {/* Resident Table */}
               <div className='bg-surface-container-lowest rounded-[2rem] overflow-hidden'>
                 <div className='overflow-x-auto'>
-                  <table className='w-full text-left border-collapse'>
+                  <table className='w-[95%] mx-auto text-left border-collapse'>
                     <thead>
                       <tr className='bg-surface-container-low/50'>
                         <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Người dùng</th>
@@ -453,12 +453,19 @@ export default function QrcodeManagementAdmin() {
                           const statusBadge = getStatusBadge(item.qr_status)
                           return (
                             <tr key={item.user_id} className='group hover:bg-surface-container-low/20'>
-                              <td className='px-6 py-6 font-bold'>{item.user_name}</td>
-                              <td className='px-6 py-6 text-sm'>
+                              <td className='px-4 py-6 font-bold'>{item.user_name}</td>
+                              {/* <td className='px-6 py-6 text-sm'>
                                 <div>{item.user_email}</div>
                                 <div className='text-xs opacity-70 '>{item.user_phone || 'Chưa có SĐT'}</div>
+                              </td> */}
+                              <td className='px-4 py-6 text-sm w-[180px] max-w-[180px]'>
+                                <div className='truncate font-medium' title={item.user_email}>
+                                  {item.user_email}
+                                </div>
+
+                                <div className='text-xs opacity-70 truncate'>{item.user_phone || 'Chưa có SĐT'}</div>
                               </td>
-                              <td className='px-6 py-6'>
+                              <td className='px-4 py-6'>
                                 {item.apartment_code ? (
                                   <span className='px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold'>
                                     {item.apartment_code}
@@ -467,7 +474,7 @@ export default function QrcodeManagementAdmin() {
                                   <span className='text-xs italic'>Chưa có căn hộ</span>
                                 )}
                               </td>
-                              <td className='px-6 py-6'>
+                              <td className='px-4 py-6'>
                                 {item.qr_code ? (
                                   <div
                                     className='flex items-center gap-2 cursor-pointer group/code'
@@ -484,14 +491,14 @@ export default function QrcodeManagementAdmin() {
                                   <span className='text-xs italic'>Chưa có QR</span>
                                 )}
                               </td>
-                              <td className='px-6 py-6 text-center'>
+                              <td className='px-4 py-6 text-center'>
                                 <span
                                   className={`inline-flex px-4 py-1.5 rounded-full text-[10px] font-bold ${statusBadge.bgColor} ${statusBadge.textColor}`}
                                 >
                                   {statusBadge.text}
                                 </span>
                               </td>
-                              <td className='px-6 py-6 text-right'>
+                              <td className='px-4 py-6 text-right'>
                                 <p className='text-sm font-bold'>{formatDate(item.expires_at)}</p>
                                 <p className='text-[10px] opacity-70'>
                                   {item.qr_status === 'ACTIVE'
@@ -501,7 +508,7 @@ export default function QrcodeManagementAdmin() {
                                       : 'Đã thu hồi'}
                                 </p>
                               </td>
-                              <td className='px-6 py-6 text-right'>
+                              <td className='px-4 py-6 text-right'>
                                 <div className='flex justify-end gap-2'>
                                   <button
                                     onClick={() => navigate(`/admin/viewDetailResident/${item.user_id}`)}

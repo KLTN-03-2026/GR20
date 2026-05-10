@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 interface MenuGroup {
   label: string
@@ -39,7 +39,7 @@ const menuGroups: MenuGroup[] = [
         icon: 'apartment'
       },
       {
-        path: '/owner/security/residents',
+        path: '/residents',
         label: 'Tra cứu thông tin cư dân',
         icon: 'person_search'
       }
@@ -100,24 +100,14 @@ const menuGroups: MenuGroup[] = [
     icon: 'security',
     items: [
       {
-        path: '/qrcode',
+        path: '/admin/qrcodeAdmin',
         label: 'Quản lý QR',
         icon: 'qr_code_2'
       },
       {
-        path: '/owner/security/scan',
+        path: '/scanqr',
         label: 'Quét QR',
         icon: 'qr_code_scanner'
-      },
-      {
-        path: '/owner/security/history',
-        label: 'Lịch sử ra vào',
-        icon: 'history'
-      },
-      {
-        path: '/owner/security/incident-report',
-        label: 'Báo cáo sự cố',
-        icon: 'report_problem'
       },
       {
         path: '/owner/buildings',
@@ -166,19 +156,32 @@ export default function SidebarOwnerOptimized() {
       {/* Header */}
       <div className='p-4 flex items-center justify-between border-b border-secondary-container/20'>
         {!isCollapsed && (
-          <div className='flex items-center gap-3 flex-1 min-w-0'>
-            <div className='w-11 h-11 bg-blue-900 rounded-2xl flex items-center justify-center text-white flex-shrink-0'>
-              <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+          <Link
+            to={'/admin'}
+            className='flex items-center space-x-3 mb-3 group transition-all duration-300 hover:scale-[1.02]'
+          >
+            <div
+              className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white
+    transition-all duration-300 group-hover:bg-blue-700 group-hover:shadow-lg'
+            >
+              <span
+                className='material-symbols-outlined transition-transform duration-300 group-hover:rotate-6'
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
                 home
               </span>
             </div>
 
-            <div className='min-w-0 flex-1'>
-              <h1 className='text-base font-extrabold text-blue-900 tracking-tight truncate'>HomeLink AI</h1>
+            <div>
+              <h1 className='text-xl font-extrabold text-blue-900 tracking-tight transition-colors duration-300 group-hover:text-blue-700'>
+                HomeLink AI
+              </h1>
 
-              <p className='text-[10px] font-semibold text-teal-700 uppercase tracking-[0.25em] truncate'>OWNER</p>
+              <p className='text-[10px] font-medium text-teal-700 uppercase tracking-widest transition-colors duration-300 group-hover:text-teal-500'>
+                OWNER
+              </p>
             </div>
-          </div>
+          </Link>
         )}
 
         <button
@@ -191,7 +194,6 @@ export default function SidebarOwnerOptimized() {
         </button>
       </div>
 
-      {/* Navigation */}
       <nav className='flex-1 px-3 py-4 space-y-2 overflow-y-auto overflow-x-hidden'>
         {menuGroups.map((group) => {
           const isExpanded = expandedGroups.includes(group.label)
@@ -202,16 +204,29 @@ export default function SidebarOwnerOptimized() {
               {!isCollapsed && (
                 <button
                   onClick={() => toggleGroup(group.label)}
-                  className='w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 transition-colors'
+                  className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl
+    transition-all duration-300 border
+    ${
+      isExpanded
+        ? 'bg-blue-100   border-blue-300 text-blue-500 shadow-md'
+        : 'border-transparent text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20'
+    }`}
                 >
-                  <div className='flex items-center gap-2 min-w-0 flex-1'>
-                    <span className='material-symbols-outlined text-[18px] flex-shrink-0'>{group.icon}</span>
+                  <div className='flex items-center gap-3 min-w-0 flex-1'>
+                    <span
+                      className={`material-symbols-outlined text-[20px]
+        ${isExpanded ? 'text-blue-500' : 'text-slate-400'}`}
+                    >
+                      {group.icon}
+                    </span>
 
-                    <span className='truncate text-left'>{group.label}</span>
+                    <span className='truncate text-left text-[12px] font-extrabold uppercase tracking-wider'>
+                      {group.label}
+                    </span>
                   </div>
 
                   <span
-                    className='material-symbols-outlined text-[18px] transition-transform duration-200 flex-shrink-0'
+                    className='material-symbols-outlined text-[20px] transition-transform duration-300'
                     style={{
                       transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'
                     }}

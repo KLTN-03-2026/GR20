@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 
 export default function SidebarResident() {
   const getNavClass = ({ isActive }: { isActive: boolean }) =>
@@ -10,18 +10,32 @@ export default function SidebarResident() {
     <aside className='hidden lg:flex flex-col p-6 space-y-8 h-screen w-64 fixed left-0 top-0 bg-surface-container-low shadow-sm z-50'>
       {/* Logo / Header */}
       <div className='flex flex-col space-y-2'>
-        <div className='flex items-center space-x-3 mb-6'>
-          <div className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white'>
-            <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+        <Link
+          to={'/security'}
+          className='flex items-center space-x-3 mb-6 group transition-all duration-300 hover:scale-[1.02]'
+        >
+          <div
+            className='w-10 h-10 bg-blue-900 rounded-xl flex items-center justify-center text-white
+    transition-all duration-300 group-hover:bg-blue-700 group-hover:shadow-lg'
+          >
+            <span
+              className='material-symbols-outlined transition-transform duration-300 group-hover:rotate-6'
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
               home
             </span>
           </div>
-          <div>
-            <h1 className='text-xl font-extrabold text-blue-900 tracking-tight'>HomeLink AI</h1>
-            <p className='text-[10px] font-medium text-teal-700 uppercase tracking-widest'>My Home</p>
-          </div>
-        </div>
 
+          <div>
+            <h1 className='text-xl font-extrabold text-blue-900 tracking-tight transition-colors duration-300 group-hover:text-blue-700'>
+              HomeLink AI
+            </h1>
+
+            <p className='text-[10px] font-medium text-teal-700 uppercase tracking-widest transition-colors duration-300 group-hover:text-teal-500'>
+              My Home
+            </p>
+          </div>
+        </Link>
         {/* Menu chính */}
         <nav className='flex-1 space-y-1'>
           <NavLink to='/homeresident' className={getNavClass}>
@@ -58,14 +72,9 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>Lịch sử thanh toán</span>
           </NavLink>
 
-          <NavLink to='/resident/qr-management' className={getNavClass}>
+          <NavLink to='/resident/qrcode' className={getNavClass}>
             <span className='material-symbols-outlined'>qr_code</span>
             <span className='text-sm font-manrope'>Quản lý QR</span>
-          </NavLink>
-
-          <NavLink to='/resident/guest-qr' className={getNavClass}>
-            <span className='material-symbols-outlined'>qr_code_scanner</span>
-            <span className='text-sm font-manrope'>Tạo QR cho khách</span>
           </NavLink>
 
           <NavLink to='/resident/amenities' className={getNavClass}>
