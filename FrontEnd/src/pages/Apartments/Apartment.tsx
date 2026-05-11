@@ -264,7 +264,7 @@ export default function Apartment() {
                     </div>
                     <div className='col-span-2 flex justify-end gap-1'>
                       <button
-                        onClick={() => navigate(`/apartments/${item.id}`)}
+                        onClick={() => navigate(`/ApartmentDetail/${item.id}`)}
                         className='p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
                         title='Xem chi tiết'
                       >

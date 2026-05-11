@@ -33,9 +33,14 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>thông báo</span>
           </NavLink>
 
-          <NavLink to='/resident/apartment' className={getNavClass}>
+          <NavLink to='/MyApartment' className={getNavClass}>
             <span className='material-symbols-outlined'>apartment</span>
             <span className='text-sm font-manrope'>Thông tin căn hộ</span>
+          </NavLink>
+
+          <NavLink to='/MyContract' className={getNavClass}>
+            <span className='material-symbols-outlined'>contract</span>
+            <span className='text-sm font-manrope'>Thông tin hợp đồng</span>
           </NavLink>
 
           <NavLink to='/resident/maintenance-request' className={getNavClass}>
@@ -68,7 +73,7 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>Tạo QR cho khách</span>
           </NavLink>
 
-          <NavLink to='/resident/amenities' className={getNavClass}>
+          <NavLink to='/my-amenities' className={getNavClass}>
             <span className='material-symbols-outlined'>spa</span>
             <span className='text-sm font-manrope'>Tiện ích tòa nhà</span>
           </NavLink>

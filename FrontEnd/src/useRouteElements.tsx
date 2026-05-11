@@ -43,6 +43,16 @@ import HomePageStaff from './pages/HomePageStaff/HomePageStaff'
 import HomePageManager from './pages/HomePageManager/HomePageManager'
 import UserInvoicesPage from './pages/billing/UserInvoicesPage'
 import UserPaymentsPage from './pages/billing/UserPaymentsPage'
+import Apartment from './pages/Apartments/Apartment'
+import ApartmentDetail from './pages/Apartments/ApartmentDetail'
+import AddResidentModal from './pages/Apartments/AddResidentModal'
+import ApartmentForm from './pages/Apartments/ApartmentForm'
+import MyApartment from './pages/MyApartment/MyApartment'
+import MyContract from './pages/MyApartment/MyContract'
+import AmenityList from './pages/Amenities/AmenityList'
+import AmenityDetail from './pages/Amenities/AmenityDetail'
+import ContractList from './pages/Contracts/ContractList'
+import ContractDetail from './pages/Contracts/ContractDetail'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -396,6 +406,122 @@ export default function useRouteElements() {
         }
       ]
     },
+
+    //Apartment
+    {
+      path: '/Apartment',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <Apartment />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/ApartmentDetail/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ApartmentDetail />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/ApartmentForm',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ApartmentForm apartmentId={null} isOpen={true} onClose={() => window.history.back()} />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    //myApartment
+    {
+      path: '/MyApartment',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <MyApartment />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/MyContract',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <MyContract />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/amenities',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <AmenityList />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/my-amenities',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <AmenityList isResident={true} />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/amenities/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <AmenityDetail />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/my-amenities/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <AmenityDetail />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/contractList',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ContractList />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/contractList/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ContractDetail />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+
+
+
 
     // 404
     { path: '*', element: <Navigate to='/' replace /> }

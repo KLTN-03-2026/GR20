@@ -192,8 +192,11 @@ export default function ApartmentDetail() {
                 <img
                   alt={apartment.apartmentCode}
                   className='w-full h-full object-cover'
-                  crossOrigin="anonymous"
-                  src={(import.meta.env.VITE_DOMAIN_API + apartment.imageUrl) || 'https://via.placeholder.com/800x450?text=No+Image'}
+                  crossOrigin='anonymous'
+                  src={
+                    import.meta.env.VITE_DOMAIN_API + apartment.imageUrl ||
+                    'https://via.placeholder.com/800x450?text=No+Image'
+                  }
                 />
 
                 {/* Upload overlay */}
@@ -224,7 +227,10 @@ export default function ApartmentDetail() {
                 <div className='flex justify-between items-center mb-4'>
                   <h3 className='text-base font-semibold text-slate-800'>Danh sách cư dân</h3>
                   <button
-                    onClick={() => setShowAddResident(true)}
+                    onClick={() => {
+                      setEditingResident(null)
+                      setShowAddResident(true)
+                    }}
                     className='px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-all shadow-sm'
                   >
                     <span className='material-symbols-outlined text-lg mr-1 align-middle'>person_add</span>
@@ -275,7 +281,7 @@ export default function ApartmentDetail() {
                                   <button
                                     onClick={() => {
                                       setEditingResident(resident)
-                                      setShowAddResident(true)
+                                      setEditingResident(resident)
                                     }}
                                     className='w-full px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors'
                                   >
@@ -439,14 +445,7 @@ export default function ApartmentDetail() {
       </main>
       {/* Apartment Form Modal */}
       <ApartmentForm apartmentId={Number(id)} isOpen={showForm} onClose={() => setShowForm(false)} />
-
-      <AddResidentModal
-        apartmentId={Number(id)}
-        apartmentCode={apartment.apartmentCode}
-        isOpen={showAddResident}
-        onClose={() => setShowAddResident(false)}
-      />
-
+        
       <AddResidentModal
         apartmentId={Number(id)}
         apartmentCode={apartment.apartmentCode}

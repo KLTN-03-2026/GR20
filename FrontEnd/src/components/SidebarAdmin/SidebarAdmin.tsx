@@ -34,10 +34,10 @@ const menuGroups: MenuGroup[] = [
         icon: 'people'
       },
       {
-        path: '/owner/management/apartments',
+        path: '/Apartment',
         label: 'Quản lý căn hộ',
         icon: 'apartment'
-      },
+      },     
       {
         path: '/owner/security/residents',
         label: 'Tra cứu thông tin cư dân',
@@ -66,12 +66,12 @@ const menuGroups: MenuGroup[] = [
         icon: 'receipt_long'
       },
       {
-        path: '/owner/management/services',
+        path: '/admin/amenities',
         label: 'Quản lý tiện ích',
-        icon: 'home_repair_service'
+        icon: 'home_repair_service' 
       },
       {
-        path: '/owner/management/contracts',
+        path: '/admin/contractList',
         label: 'Quản lý hợp đồng',
         icon: 'description'
       }

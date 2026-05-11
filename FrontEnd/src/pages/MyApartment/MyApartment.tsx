@@ -182,7 +182,7 @@ export default function MyApartment() {
                       <span className='text-sm font-bold text-slate-800'>{formatCurrency(apartment.currentContract.monthlyRent)} VND</span>
                     </div>
                   </div>
-                  <button onClick={() => navigate('/my-contract')} className='w-full py-4 bg-blue-600 rounded-xl text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2'>
+                  <button onClick={() => navigate('/MyContract')} className='w-full py-4 bg-blue-600 rounded-xl text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2'>
                     <span className='material-symbols-outlined'>visibility</span>
                     Xem chi tiết hợp đồng
                   </button>
