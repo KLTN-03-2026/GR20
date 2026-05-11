@@ -1,5 +1,8 @@
 const repo = require("./resident.repository");
 const mapper = require("./resident.mapper");
+const {
+  getScopedBuildingIdsForList,
+} = require("../../utils/access/scoped-building-access");
 
 const createResident = async (reqBody) => {
   // Check if resident already exists for this user and apartment
@@ -20,18 +23,49 @@ const createResident = async (reqBody) => {
   };
 };
 
-const getAllResidents = async (query) => {
-  const { page = 0, size = 10, buildingId, status } = query;
+const getAllResidents = async (query, currentUser) => {
+  const { page = 0, size = 10, status } = query;
+  const sizeNum = Number(size);
+  const pageNum = Number(page);
 
-  const result = await repo.getAllResidents({ page, size, buildingId, status });
+  const scope = getScopedBuildingIdsForList(currentUser, query);
+
+  if (scope.deny) {
+    return {
+      data: [],
+      size: 0,
+      totalElements: 0,
+      totalPages: 0,
+      page: pageNum,
+      pageSize: sizeNum,
+    };
+  }
+
+  if (Array.isArray(scope.buildingIds) && scope.buildingIds.length === 0) {
+    return {
+      data: [],
+      size: 0,
+      totalElements: 0,
+      totalPages: 0,
+      page: pageNum,
+      pageSize: sizeNum,
+    };
+  }
+
+  const result = await repo.getAllResidents({
+    page: pageNum,
+    size: sizeNum,
+    buildingIds: scope.buildingIds,
+    status,
+  });
 
   return {
     data: result.rows.map(mapper.toListResponse),
     size: result.rows.length,
     totalElements: result.total,
-    totalPages: Math.ceil(result.total / size),
-    page: Number(page),
-    pageSize: Number(size),
+    totalPages: Math.ceil(result.total / sizeNum) || 0,
+    page: pageNum,
+    pageSize: sizeNum,
   };
 };
 

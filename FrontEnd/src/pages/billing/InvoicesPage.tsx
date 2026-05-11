@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { invoicesApi } from 'src/apis/billing_api/invoices.api'
+import { logResourceConsoleError } from 'src/utils/payment-console-log'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
   const apiErr = err?.response?.data
@@ -13,10 +14,12 @@ const getApiErrorMessage = (err: any, fallbackMessage: string) => {
     ['Validation failed', 'Dữ liệu không hợp lệ'],
     ['billingMonth and billingYear must be provided together', 'Tháng và năm lập hóa đơn phải được nhập cùng nhau'],
     ['Provide totalAmount, or provide billingMonth and billingYear to auto-calculate from meter readings', 'Cần nhập tổng tiền, hoặc nhập tháng/năm để hệ thống tự tính'],
+    ['auto-calculate from utilities and/or active RENT contract', 'Cần nhập tổng tiền, hoặc nhập tháng/năm để hệ thống tự tính (tiện ích và/hoặc hợp đồng thuê)'],
     ['Apartment not found', 'Không tìm thấy căn hộ'],
     ['No active utility meters found for this apartment', 'Căn hộ chưa có đồng hồ đang hoạt động'],
     ['No active pricing found for meter type', 'Không tìm thấy giá tiện ích đang áp dụng cho loại đồng hồ'],
     ['No meter readings found for this billing period', 'Không có chỉ số công tơ cho kỳ hóa đơn này'],
+    ['No billable lines', 'Không có khoản tính phí: cần chỉ số đồng hồ + giá tiện ích cho kỳ này, hoặc hợp đồng thuê (RENT) đang hiệu lực có tiền thuê'],
     ['Invoice not found or not cancelled', 'Không tìm thấy hóa đơn đã xóa để khôi phục'],
     ['Invoice not found', 'Không tìm thấy hóa đơn']
   ]
@@ -30,16 +33,6 @@ const logApiSuccess = (action: string, response: any) => {
     endpoint: response?.config?.url,
     method: response?.config?.method,
     data: response?.data
-  })
-}
-
-const logApiError = (action: string, err: any) => {
-  console.error(`[Invoices][${action}] error`, {
-    status: err?.response?.status,
-    endpoint: err?.config?.url || err?.response?.config?.url,
-    method: err?.config?.method || err?.response?.config?.method,
-    data: err?.response?.data,
-    message: err?.message
   })
 }
 
@@ -71,7 +64,7 @@ export default function InvoicesPage() {
       setErrorMsg(null)
     },
     onError: (err: any) => {
-      logApiError('Create', err)
+      logResourceConsoleError('Invoices', 'Create', err)
       setErrorMsg(getApiErrorMessage(err, 'Tạo hóa đơn thất bại'))
     }
   })
@@ -83,7 +76,7 @@ export default function InvoicesPage() {
       setErrorMsg(null)
     },
     onError: (err: any) => {
-      logApiError('Delete', err)
+      logResourceConsoleError('Invoices', 'Delete', err)
       setErrorMsg(getApiErrorMessage(err, 'Xóa hóa đơn thất bại'))
     }
   })
@@ -95,13 +88,13 @@ export default function InvoicesPage() {
       setErrorMsg(null)
     },
     onError: (err: any) => {
-      logApiError('Restore', err)
+      logResourceConsoleError('Invoices', 'Restore', err)
       setErrorMsg(getApiErrorMessage(err, 'Khôi phục hóa đơn thất bại'))
     }
   })
 
   if (isError) {
-    logApiError('GetAll', error)
+    logResourceConsoleError('Invoices', 'GetAll', error)
   }
   const summary = {
     total: list.length,

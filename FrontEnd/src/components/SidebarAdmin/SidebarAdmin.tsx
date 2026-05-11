@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 
 interface MenuGroup {
@@ -17,9 +17,14 @@ const menuGroups: MenuGroup[] = [
     icon: 'dashboard',
     items: [
       {
-        path: '/admin/',
+        path: '/admin',
         label: 'Tổng quan hệ thống',
         icon: 'analytics'
+      },
+      {
+        path: '/statistics',
+        label: 'Báo cáo thống kê',
+        icon: 'bar_chart'
       }
     ]
   },
@@ -46,6 +51,44 @@ const menuGroups: MenuGroup[] = [
     ]
   },
 
+  /** Tòa nhà + hóa đơn + tiện ích — các route `/admin/*` dùng chung ADMIN & Quản lý */
+  {
+    label: 'Tòa nhà & Tài chính',
+    icon: 'account_balance_wallet',
+    items: [
+      {
+        path: '/admin/buildings',
+        label: 'Quản lý tòa nhà',
+        icon: 'apartment'
+      },
+      {
+        path: '/admin/invoices',
+        label: 'Quản lý hóa đơn',
+        icon: 'receipt_long'
+      },
+      {
+        path: '/admin/payments',
+        label: 'Quản lý thanh toán',
+        icon: 'payments'
+      },
+      {
+        path: '/admin/utility-meters',
+        label: 'Quản lý đồng hồ',
+        icon: 'speed'
+      },
+      {
+        path: '/admin/meter-readings',
+        label: 'Quản lý chỉ số',
+        icon: 'insights'
+      },
+      {
+        path: '/admin/utility-pricing',
+        label: 'Quản lý giá tiện ích',
+        icon: 'sell'
+      }
+    ]
+  },
+
   {
     label: 'Vận hành & Dịch vụ',
     icon: 'build',
@@ -59,11 +102,6 @@ const menuGroups: MenuGroup[] = [
         path: '/owner/management/staff',
         label: 'Quản lý nhân viên',
         icon: 'badge'
-      },
-      {
-        path: '/owner/management/invoices',
-        label: 'Quản lý phí dịch vụ',
-        icon: 'receipt_long'
       },
       {
         path: '/owner/management/services',
@@ -82,11 +120,6 @@ const menuGroups: MenuGroup[] = [
     label: 'Báo cáo & Thống kê',
     icon: 'bar_chart',
     items: [
-      {
-        path: '/owner/management/reports',
-        label: 'Báo cáo thống kê',
-        icon: 'analytics'
-      },
       {
         path: '/owner/management/notifications',
         label: 'Quản lý thông báo',
@@ -120,11 +153,6 @@ const menuGroups: MenuGroup[] = [
         icon: 'report_problem'
       },
       {
-        path: '/owner/buildings',
-        label: 'Quản lý tòa nhà',
-        icon: 'business_center'
-      },
-      {
         path: '/owner/system-monitor',
         label: 'Theo dõi hệ thống',
         icon: 'monitor_heart'
@@ -133,10 +161,35 @@ const menuGroups: MenuGroup[] = [
   }
 ]
 
-export default function SidebarOwnerOptimized() {
+type SidebarVariant = 'admin' | 'manager'
+
+interface Props {
+  /** ADMIN: /admin*, QUẢN LÝ: /manager & cùng menu /admin/buildings … */
+  variant?: SidebarVariant
+}
+
+export default function SidebarOwnerOptimized({ variant = 'admin' }: Props) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Tổng quan'])
+  const subtitle = variant === 'manager' ? 'QUẢN LÝ' : 'ADMIN'
+  /** Mặc định mở nhóm có /admin/buildings để không phải tìm trong sidebar */
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Tổng quan', 'Tòa nhà & Tài chính'])
+
+  const dashboardPath = variant === 'manager' ? '/manager' : '/admin'
+  const resolvedMenuGroups = useMemo(
+    () =>
+      menuGroups.map((group) =>
+        group.label === 'Tổng quan'
+          ? {
+              ...group,
+              items: group.items.map((item) =>
+                item.path === '/admin' ? { ...item, path: dashboardPath } : item
+              ),
+            }
+          : group
+      ),
+    [dashboardPath]
+  )
 
   const toggleGroup = (groupLabel: string) => {
     setExpandedGroups((prev) =>
@@ -176,7 +229,9 @@ export default function SidebarOwnerOptimized() {
             <div className='min-w-0 flex-1'>
               <h1 className='text-base font-extrabold text-blue-900 tracking-tight truncate'>HomeLink AI</h1>
 
-              <p className='text-[10px] font-semibold text-teal-700 uppercase tracking-[0.25em] truncate'>OWNER</p>
+              <p className='text-[10px] font-semibold text-teal-700 uppercase tracking-[0.25em] truncate'>
+                {subtitle}
+              </p>
             </div>
           </div>
         )}
@@ -193,7 +248,7 @@ export default function SidebarOwnerOptimized() {
 
       {/* Navigation */}
       <nav className='flex-1 px-3 py-4 space-y-2 overflow-y-auto overflow-x-hidden'>
-        {menuGroups.map((group) => {
+        {resolvedMenuGroups.map((group) => {
           const isExpanded = expandedGroups.includes(group.label)
 
           return (
@@ -227,6 +282,7 @@ export default function SidebarOwnerOptimized() {
                     <NavLink
                       key={item.path}
                       to={item.path}
+                      end={item.path === '/admin' || item.path === '/manager'}
                       className={getNavClass}
                       title={isCollapsed ? item.label : ''}
                     >

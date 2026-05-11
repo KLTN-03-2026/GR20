@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { meterReadingsApi } from 'src/apis/utility_api/meter-readings.api'
 import { utilityMetersApi } from 'src/apis/utility_api/utility-meters.api'
+import { logResourceConsoleError } from 'src/utils/payment-console-log'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
   const apiErr = err?.response?.data
@@ -27,16 +28,6 @@ const logApiSuccess = (action: string, response: any) => {
     endpoint: response?.config?.url,
     method: response?.config?.method,
     data: response?.data
-  })
-}
-
-const logApiError = (action: string, err: any) => {
-  console.error(`[MeterReadings][${action}] error`, {
-    status: err?.response?.status,
-    endpoint: err?.config?.url || err?.response?.config?.url,
-    method: err?.config?.method || err?.response?.config?.method,
-    data: err?.response?.data,
-    message: err?.message
   })
 }
 
@@ -76,7 +67,7 @@ export default function MeterReadingsPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Create', err)
+      logResourceConsoleError('MeterReadings', 'Create', err)
       setScreenError(getApiErrorMessage(err, 'Lưu chỉ số thất bại'))
     }
   })
@@ -89,7 +80,7 @@ export default function MeterReadingsPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Delete', err)
+      logResourceConsoleError('MeterReadings', 'Delete', err)
       setScreenError(getApiErrorMessage(err, 'Xóa mềm chỉ số thất bại'))
     }
   })
@@ -101,7 +92,7 @@ export default function MeterReadingsPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Restore', err)
+      logResourceConsoleError('MeterReadings', 'Restore', err)
       setScreenError(getApiErrorMessage(err, 'Khôi phục chỉ số thất bại'))
     }
   })
@@ -117,13 +108,13 @@ export default function MeterReadingsPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Update', err)
+      logResourceConsoleError('MeterReadings', 'Update', err)
       setScreenError(getApiErrorMessage(err, 'Cập nhật chỉ số thất bại'))
     }
   })
 
-  if (isError) logApiError('GetAll', error)
-  if (isMetersError) logApiError('Meters', metersError)
+  if (isError) logResourceConsoleError('MeterReadings', 'GetAll', error)
+  if (isMetersError) logResourceConsoleError('MeterReadings', 'Meters', metersError)
   const list = data?.data?.data || []
   const totalPages = Number(data?.data?.totalPages || 0)
   const currentPage = Number(data?.data?.page || 0)

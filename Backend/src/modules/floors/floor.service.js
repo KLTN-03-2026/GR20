@@ -1,6 +1,7 @@
 const repo = require("./floor.repository");
 const mapper = require("./floor.mapper");
 const { AppError } = require("../../common/app-error");
+const { buildingIdsFromUser } = require("../../common/building-scope");
 const { parseCreateFloor, parseUpdateFloor } = require("./floor.request");
 
 // ================= CREATE =================
@@ -16,16 +17,21 @@ const createFloor = async (reqBody) => {
 };
 
 // ================= GET ALL =================
-const getAllFloors = async (query) => {
+const getAllFloors = async (query, user) => {
   const { page = 0, size = 10 } = query;
+  const buildingIds = buildingIdsFromUser(user);
 
-  const result = await repo.getAllFloors({ page, size });
+  const result = await repo.getAllFloors({
+    page: Number(page),
+    size: Number(size),
+    buildingIds,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),
     size: result.rows.length,
     totalElements: result.total,
-    totalPages: Math.ceil(result.total / size),
+    totalPages: Math.ceil(result.total / size) || 0,
     page: Number(page),
     pageSize: Number(size),
   };

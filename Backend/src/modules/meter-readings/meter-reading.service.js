@@ -1,4 +1,5 @@
 const { AppError } = require("../../common/app-error");
+const ERROR_CODES = require("./meter-reading-errors");
 const mapper = require("./meter-reading.mapper");
 const repo = require("./meter-reading.repository");
 const {
@@ -16,7 +17,8 @@ const withConsumption = (payload) => ({
 
 const createMeterReading = async (body) => {
   const parsed = withConsumption(parseCreateMeterReading(body));
-  if (parsed.consumption < 0) throw new AppError(400, "currentReading must be greater than or equal to previousReading");
+  if (parsed.consumption < 0)
+    throw new AppError(400, "currentReading must be greater than or equal to previousReading", undefined, ERROR_CODES.METER_READING_BELOW_PREVIOUS);
   const result = await repo.createMeterReading(mapper.toEntity(parsed));
   return { id: result.id };
 };
@@ -36,7 +38,7 @@ const getAllMeterReadings = async (query) => {
 
 const getMeterReadingById = async (id) => {
   const row = await repo.getMeterReadingById(parsePathId(id));
-  if (!row) throw new AppError(404, "Meter reading not found");
+  if (!row) throw new AppError(404, "Meter reading not found", undefined, ERROR_CODES.METER_READING_NOT_FOUND);
   return mapper.toResponse(row);
 };
 
@@ -75,7 +77,7 @@ const getMeterReadingsByUserAndMeterId = async (userId, meterId, query) => {
 const updateMeterReading = async (id, body) => {
   const parsedId = parsePathId(id);
   const current = await repo.getMeterReadingById(parsedId);
-  if (!current) throw new AppError(404, "Meter reading not found");
+  if (!current) throw new AppError(404, "Meter reading not found", undefined, ERROR_CODES.METER_READING_NOT_FOUND);
 
   const parsed = parseUpdateMeterReading(body);
   const patch = { ...parsed };
@@ -84,25 +86,31 @@ const updateMeterReading = async (id, body) => {
   const nextCurrent = patch.currentReading !== undefined ? Number(patch.currentReading) : Number(current.current_reading);
 
   if (nextCurrent < previous) {
-    throw new AppError(400, "currentReading must be greater than or equal to previousReading");
+    throw new AppError(400, "currentReading must be greater than or equal to previousReading", undefined, ERROR_CODES.METER_READING_BELOW_PREVIOUS);
   }
 
   patch.consumption = nextCurrent - previous;
 
   const row = await repo.updateMeterReading(parsedId, mapper.toEntity(patch));
-  if (!row) throw new AppError(404, "Meter reading not found");
+  if (!row) throw new AppError(404, "Meter reading not found", undefined, ERROR_CODES.METER_READING_NOT_FOUND);
   return mapper.toResponse(row);
 };
 
 const deleteMeterReading = async (id) => {
   const row = await repo.deleteMeterReading(parsePathId(id));
-  if (!row) throw new AppError(404, "Meter reading not found");
+  if (!row) throw new AppError(404, "Meter reading not found", undefined, ERROR_CODES.METER_READING_NOT_FOUND);
   return { id: row.id };
 };
 
 const restoreMeterReading = async (id) => {
   const row = await repo.restoreMeterReading(parsePathId(id));
-  if (!row) throw new AppError(404, "Meter reading not found or not deleted");
+  if (!row)
+    throw new AppError(
+      404,
+      "Meter reading not found or not deleted",
+      undefined,
+      ERROR_CODES.METER_READING_NOT_DELETED_FOR_RESTORE
+    );
   return { id: row.id };
 };
 

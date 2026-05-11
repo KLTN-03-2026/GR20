@@ -20,7 +20,7 @@ const createResident = async (resident) => {
   return result.rows[0];
 };
 
-const getAllResidents = async ({ page = 0, size = 10, buildingId, status }) => {
+const getAllResidents = async ({ page = 0, size = 10, buildingIds, status }) => {
   const offset = page * size;
   let dataQuery = `
     SELECT 
@@ -54,10 +54,10 @@ const getAllResidents = async ({ page = 0, size = 10, buildingId, status }) => {
   const queryParams = [];
   let paramIndex = 1;
 
-  if (buildingId) {
-    dataQuery += ` AND b.id = $${paramIndex}`;
-    countQuery += ` AND EXISTS (SELECT 1 FROM apartments a WHERE a.id = rp.apartment_id AND a.building_id = $${paramIndex})`;
-    queryParams.push(buildingId);
+  if (buildingIds && buildingIds.length > 0) {
+    dataQuery += ` AND b.id = ANY($${paramIndex}::bigint[])`;
+    countQuery += ` AND EXISTS (SELECT 1 FROM apartments a WHERE a.id = rp.apartment_id AND a.building_id = ANY($${paramIndex}::bigint[]))`;
+    queryParams.push(buildingIds);
     paramIndex++;
   }
 

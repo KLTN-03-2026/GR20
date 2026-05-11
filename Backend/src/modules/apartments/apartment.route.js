@@ -4,6 +4,9 @@ const controller = require("./apartment.controller");
 const multer = require('multer');
 const path = require('path');
 const { pool } = require("../../configs/database.config");
+const { authenticate } = require("../../middlewares/auth.middleware");
+
+router.use(authenticate);
 
 // Residents routes
 router.patch('/residents/:id/move-out', controller.moveOutResident);

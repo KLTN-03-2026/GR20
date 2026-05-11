@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { utilityPricingApi } from 'src/apis/utility_api/utility-pricing.api'
+import { logResourceConsoleError } from 'src/utils/payment-console-log'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
   const apiErr = err?.response?.data
@@ -36,16 +37,6 @@ const logApiSuccess = (action: string, response: any) => {
   })
 }
 
-const logApiError = (action: string, err: any) => {
-  console.error(`[UtilityPricing][${action}] error`, {
-    status: err?.response?.status,
-    endpoint: err?.config?.url || err?.response?.config?.url,
-    method: err?.config?.method || err?.response?.config?.method,
-    data: err?.response?.data,
-    message: err?.message
-  })
-}
-
 export default function UtilityPricingPage() {
   const queryClient = useQueryClient()
   const pageSize = 10
@@ -75,7 +66,7 @@ export default function UtilityPricingPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Create', err)
+      logResourceConsoleError('UtilityPricing', 'Create', err)
       setScreenError(getApiErrorMessage(err, 'Lưu giá thất bại'))
     }
   })
@@ -88,7 +79,7 @@ export default function UtilityPricingPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Delete', err)
+      logResourceConsoleError('UtilityPricing', 'Delete', err)
       setScreenError(getApiErrorMessage(err, 'Xóa mềm thất bại'))
     }
   })
@@ -100,7 +91,7 @@ export default function UtilityPricingPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Restore', err)
+      logResourceConsoleError('UtilityPricing', 'Restore', err)
       setScreenError(getApiErrorMessage(err, 'Khôi phục thất bại'))
     }
   })
@@ -116,13 +107,13 @@ export default function UtilityPricingPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Update', err)
+      logResourceConsoleError('UtilityPricing', 'Update', err)
       setScreenError(getApiErrorMessage(err, 'Cập nhật thất bại'))
     }
   })
 
   if (isError) {
-    logApiError('GetAll', error)
+    logResourceConsoleError('UtilityPricing', 'GetAll', error)
   }
   const list = data?.data?.data || []
   const totalPages = Number(data?.data?.totalPages || 0)

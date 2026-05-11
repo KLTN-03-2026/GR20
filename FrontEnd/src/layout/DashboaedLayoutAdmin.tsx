@@ -9,7 +9,7 @@ interface Props {
 export default function DashboaedLayoutAdmin({ children }: Props) {
   return (
     <div className='bg-surface text-on-surface min-h-screen flex'>
-      <SidebarOwnerOptimized />
+      <SidebarOwnerOptimized variant='admin' />
       <div className='flex-1 lg:ml-[270px] w-full'>
         <HeaderMainUser />
         <main className='px-6 py-4 max-w-screen-2xl mx-auto'>{children}</main>
