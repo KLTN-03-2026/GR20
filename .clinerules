@@ -1,0 +1,43 @@
+# 1. TƯ DUY VÀ QUY TRÌNH (CORE MANDATES)
+
+- Luôn luôn nói chuyện với người dùng bằng tiếng Việt
+- Bạn có thể nêu ra ý tưởng đề xuất và cần sự chấp thuận của người dùng
+- Trước khi chỉnh sửa bất kỳ file nào, hãy trình bày kế hoạch (Plan) ngắn gọn và nếu có cài thư viện hãy nói
+  rõ là bạn sẽ cài thư viện gì và tác dụng của thư viện đó rồi đợi xác nhận từ người dùng.
+- Ưu tiên sự đơn giản, tránh Over-engineering.
+- Luôn kiểm tra file `.clineignore` để không quét vào các thư mục rác.
+- Schema database nằm trong backend/src/db/schema.js
+
+# 2. KIẾN TRÚC DỰ ÁN (MODULAR ARCHITECTURE)
+
+- Dự án tuân thủ cấu trúc Modular, giảm thiểu sự phụ thuộc lẫn nhau (Tight Coupling).
+- Mỗi chức năng (employees , chat , ...) phải nằm trong một module riêng biệt.
+- Cấu trúc thư mục cho mỗi module backend tối thiểu phải có:
+  - `*.controller.js`: Chỉ xử lý request/response.
+  - `*.service.js`: Chứa logic nghiệp vụ (Business Logic).
+  - `*.route.js`: Định nghĩa endpoint.
+  - `*.repository.js`:Làm việc với database
+  - `*.request.js`: Bắt lỗi với zod.
+- Trước khi làm 1 chức năng mới hãy đọc xem 1 chức năng tương tự để lúc code có sự đồng bộ
+- Ví dụ như các file ở trong FrontEnd/src/apis sẽ giúp gửi yêu cầu đến backend
+- `*http.ts`để kết nối với backend dùng axios ở file `*config.ts`
+- Mấy file ở thư mục types dùng để lấy đúng dữ liệu bên backend
+
+# 3. TIÊU CHUẨN CODE (CODING STANDARDS)
+
+- **Ngôn ngữ:** backend dùng javascrips còn với frontend dùng typescrips còn với AI dùng python.
+- **Frontend (React):**
+  - Component nhỏ gọn, dễ tái sử dụng.
+  - Để đồng bộ với code cũ
+- **Backend (Node.js):**
+  - Sử dụng Async/Await và bọc trong try-catch hoặc middleware xử lý lỗi.
+  - Database: Sử dụng Drizzle ORM theo đúng schema đã định nghĩa.
+
+# 4. TƯƠNG TÁC VỚI HỆ THỐNG
+
+- Nếu gặp lỗi Terminal, hãy đọc log lỗi và tự đề xuất phương án sửa và chỉ người dùng cách sửa lỗi.
+
+# 5. ĐẶC THÙ DỰ ÁN (PROJECT SPECIFICS)
+
+- Đây là dự án "quản lý chung cư".
+- Chức năng nào liên quan tới AI thì hãy làm ở thư mục AI_Sever còn mấy chức năng khác làm ở thư mục backend

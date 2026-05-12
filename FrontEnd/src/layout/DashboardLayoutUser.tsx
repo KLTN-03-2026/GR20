@@ -1,7 +1,7 @@
 // src/layouts/DashboardLayout.tsx
 import React from 'react'
 import HeaderMainUser from 'src/components/HeaderMainUser/HeaderMainUser'
-
+import AIAssistantWidget from 'src/components/AIAssistantWidget'
 import SidebarResident from 'src/components/SidebarUser/SidebarUser'
 
 interface Props {
@@ -16,6 +16,7 @@ export default function DashboardLayoutUser({ children }: Props) {
         <HeaderMainUser />
         <main className='px-6 py-4 max-w-screen-2xl mx-auto'>{children}</main>
       </div>
+      <AIAssistantWidget />
     </div>
   )
 }
