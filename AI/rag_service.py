@@ -18,7 +18,7 @@ client = genai.Client(api_key=api_key)
 
 # Cập nhật model chuẩn xác nhất hiện tại
 EMBEDDING_MODEL = "gemini-embedding-001"  
-LLM_MODEL = "gemini-flash-lite-latest"        
+LLM_MODEL = "gemini-2.5-flash-lite"        
 
 DATA_DIR = "knowledge_data"
 VECTOR_DB_PATH = "vector_store/faiss_index.bin"
@@ -73,7 +73,7 @@ class RAGService:
         faiss.write_index(self.index, VECTOR_DB_PATH)
         print("✅ Đã tạo Vector Database (FAISS) thành công!")
 
-    def get_answer(self, user_question):
+    def get_answer(self, user_question,db_context=""):
         context_text = ""
 
         if self.index is not None and self.index.ntotal > 0:
@@ -90,7 +90,7 @@ class RAGService:
             
             context_text = "\n".join(retrieved_docs)
 
-        final_prompt = SYSTEM_PROMPT.format(context=context_text, question=user_question)
+        final_prompt = SYSTEM_PROMPT.format(context=context_text,db_context=db_context, question=user_question)
 
         try:
             response = client.models.generate_content(

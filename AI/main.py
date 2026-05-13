@@ -21,7 +21,7 @@ app.add_middleware(
 # 3. Định dạng dữ liệu đầu vào (Request Body)
 class ChatRequest(BaseModel):
     message: str
-
+    db_context: str = ""
 # 4. Định nghĩa Endpoint /chat
 @app.post("/api/ai/chat")
 async def chat_endpoint(request: ChatRequest):
@@ -29,7 +29,7 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Nội dung câu hỏi không được để trống")
     
     # Gọi service xử lý RAG
-    answer = rag_service.get_answer(request.message)
+    answer = rag_service.get_answer(request.message,request.db_context)
     
     return {
         "status": "success",
