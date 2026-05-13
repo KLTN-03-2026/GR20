@@ -76,27 +76,27 @@ import StatisticsReportPage from './pages/statistics/StatisticsReportPage'
 export default function useRouteElements() {
   const { user } = useContext(AppContext)
   const renderLayout = () => {
-  switch (user?.roles?.[0]) {
-    case ROLES.ADMIN:
-      return (
-        <DashboaedLayoutAdmin>
-          <GetResidentRequestList />
-        </DashboaedLayoutAdmin>
-      )
-    case ROLES.MANAGER:
-      return (
-        <DashboaedLayoutManager>
-          <GetResidentRequestList />
-        </DashboaedLayoutManager>
-      )
-    default:
-      return (
-        <DashboaedLayoutStaff>
-          <GetResidentRequestList />
-        </DashboaedLayoutStaff>
-      )
+    switch (user?.roles?.[0]) {
+      case ROLES.ADMIN:
+        return (
+          <DashboaedLayoutAdmin>
+            <GetResidentRequestList />
+          </DashboaedLayoutAdmin>
+        )
+      case ROLES.MANAGER:
+        return (
+          <DashboaedLayoutManager>
+            <GetResidentRequestList />
+          </DashboaedLayoutManager>
+        )
+      default:
+        return (
+          <DashboaedLayoutStaff>
+            <GetResidentRequestList />
+          </DashboaedLayoutStaff>
+        )
+    }
   }
-}
   const routeElements = useRoutes([
     // PUBLIC
     { path: '/login', element: <Login /> },
@@ -483,9 +483,30 @@ export default function useRouteElements() {
       path: '/residents',
       element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
       children: [
-        { index: true, element: <Getresidentlist /> },
-        { path: 'add', element: <Addresident /> },
-        { path: ':id', element: <ResidentDetail /> }
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdmin>
+              <Getresidentlist />
+            </DashboaedLayoutAdmin>
+          )
+        },
+        {
+          path: 'add',
+          element: (
+            <DashboaedLayoutAdmin>
+              <Addresident />
+            </DashboaedLayoutAdmin>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdmin>
+              <ResidentDetail />
+            </DashboaedLayoutAdmin>
+          )
+        }
       ]
     },
 
@@ -549,9 +570,9 @@ export default function useRouteElements() {
         {
           index: true,
           element: (
-            <DashboaedLayoutAdmin>
+            <DashboardLayoutUser>
               <UserPaymentsPage />
-            </DashboaedLayoutAdmin>
+            </DashboardLayoutUser>
           )
         }
       ]
@@ -559,33 +580,27 @@ export default function useRouteElements() {
     {
       path: '/Addresident',
       element: (
-        
-          <DashboardLayoutProtect>
-            <Addresident />
-          </DashboardLayoutProtect>
-        
+        <DashboardLayoutProtect>
+          <Addresident />
+        </DashboardLayoutProtect>
       )
     },
 
     {
       path: '/Getresidentlist',
       element: (
-        
-          <DashboaedLayoutAdmin>
-            <Getresidentlist />
-          </DashboaedLayoutAdmin>
-        
+        <DashboaedLayoutAdmin>
+          <Getresidentlist />
+        </DashboaedLayoutAdmin>
       )
     },
 
     {
       path: '/ResidentDetail/:id',
       element: (
-        
-          <DashboaedLayoutAdmin>
-            <ResidentDetail />
-          </DashboaedLayoutAdmin>
-        
+        <DashboaedLayoutAdmin>
+          <ResidentDetail />
+        </DashboaedLayoutAdmin>
       )
     },
 
@@ -603,7 +618,7 @@ export default function useRouteElements() {
         }
       ]
     },
-    
+
     {
       path: '/resident/MaintenanceRequestDetail/:id',
       element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,

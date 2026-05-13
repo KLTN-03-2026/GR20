@@ -138,16 +138,6 @@ const menuGroups: MenuGroup[] = [
         path: '/scanqr',
         label: 'Quét QR',
         icon: 'qr_code_scanner'
-      },
-      {
-        path: '/owner/buildings',
-        label: 'Quản lý tòa nhà',
-        icon: 'business_center'
-      },
-      {
-        path: '/owner/system-monitor',
-        label: 'Theo dõi hệ thống',
-        icon: 'monitor_heart'
       }
     ]
   }
