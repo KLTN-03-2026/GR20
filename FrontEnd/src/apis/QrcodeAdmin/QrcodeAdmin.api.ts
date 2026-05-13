@@ -41,11 +41,11 @@ export const qrApiAdmin = {
   deleteQrcodeAdmin(id: string) {
     return http.delete<SuccessResponseApi<deleteQrcodeId>>(`/api/qr/admin/personal/${id}`)
   },
-  updateQrcodeAdmin(id: string, body: { status: string; expiresAt: string; apartmentId?: string }) {
+  updateQrcodeAdmin(id: string, body: { status: string; expiresAt: string; apartmentId?: string; pin_code?: string }) {
     return http.put<SuccessResponseApi<deleteQrcodeId>>(`/api/qr/admin/personal/${id}`, body)
   },
-  postQrcodeAdmin(body: { userId: string; apartmentId?: string; expiresAt?: string }) {
-    return http.post('/api/qr/admin/personal', body)
+  postQrcodeAdmin(body: { userId: string; apartmentId?: string; expiresAt?: string; pinCode?: string }) {
+    return http.post<SuccessResponseApi<any>>('/api/qr/admin/personal', body)
   },
   //qr guest admin
   getAllResidents(params?: {
@@ -60,10 +60,17 @@ export const qrApiAdmin = {
   getDetailQrGuest(id: string) {
     return http.get<SuccessResponseApi<ListQRGuest>>(`/api/qr/admin/guest/${id}`)
   },
-  PostQrGuest(body: { hostUserId: string; apartmentId: string; validTo: string }) {
+  PostQrGuest(body: {
+    hostUserId: string
+    apartmentId: string
+    validTo: string
+    visitorName: string
+    visitorPhone: string
+    pinCode?: string
+  }) {
     return http.post<SuccessResponseApi<postQrGuest>>(`/api/qr/admin/guest`, body)
   },
-  PutQrQuest(body: { validTo: string; status: string }, id: string) {
+  PutQrQuest(body: { validTo: string; status: string; pin_code?: string }, id: string) {
     return http.put<SuccessResponseApi<ListQRGuest>>(`api/qr/admin/guest/${id}`, body)
   },
   DeleteQrGuest(id: string) {

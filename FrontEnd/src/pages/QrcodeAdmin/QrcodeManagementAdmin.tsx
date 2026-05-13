@@ -12,6 +12,7 @@ interface UpdateQrcodeParams {
   id: string
   status: string
   expiresAt: string
+  pin_code: string
 }
 
 interface PostQRcode {
@@ -38,7 +39,7 @@ export default function QrcodeManagementAdmin() {
 
   // Tab state
   const [activeTab, setActiveTab] = useState<'resident' | 'guest'>('resident')
-
+  const [updatePinCode, setUpdatePinCode] = useState('')
   // Update URL khi filter thay đổi (cho resident)
   useEffect(() => {
     const params: Record<string, string> = {
@@ -75,6 +76,7 @@ export default function QrcodeManagementAdmin() {
   const [historyResultFilter, setHistoryResultFilter] = useState('')
   const [historyFromDate, setHistoryFromDate] = useState('')
   const [historyToDate, setHistoryToDate] = useState('')
+  const [pinCode, setPinCode] = useState('')
   const debouncedHistorySearch = useDebounce(historySearchInput, 500)
   const debouncedHistoryResult = useDebounce(historyResultFilter, 300)
 
@@ -93,21 +95,6 @@ export default function QrcodeManagementAdmin() {
     placeholderData: keepPreviousData,
     staleTime: 3000 * 60
   })
-
-  // // Query danh sách guest QR
-  // const { data: guestData, isLoading: guestLoading } = useQuery({
-  //   queryKey: ['guest/list', guestPage, limitFromUrl, debouncedGuestSearch, debouncedGuestStatus],
-  //   queryFn: () =>
-  //     qrApiAdmin.getListGuest({
-  //       page: guestPage,
-  //       limit: Number(limitFromUrl),
-  //       search: debouncedGuestSearch || undefined,
-  //       status: debouncedGuestStatus || undefined
-  //     }),
-  //   placeholderData: keepPreviousData,
-  //   staleTime: 3000 * 60,
-  //   enabled: activeTab === 'guest'
-  // })
 
   const dataListQr: historyQrcodeAdmin[] = data?.data?.data || []
   // const guestList: ListQRGuest[] = guestData?.data?.data || []
@@ -168,19 +155,20 @@ export default function QrcodeManagementAdmin() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { status: string; expiresAt: string } }) =>
+    mutationFn: ({ id, body }: { id: string; body: { status: string; expiresAt: string; pin_code?: string } }) =>
       qrApiAdmin.updateQrcodeAdmin(id, body),
     onSuccess: () => {
       toast.success('Cập nhật mã QR thành công')
       queryClient.invalidateQueries({ queryKey: ['personal/list'] })
       setIsUpdateModalOpen(false)
       setSelectedItem(null)
+      setUpdatePinCode('')
     },
     onError: (error) => toast.error(error.message || 'Cập nhật thất bại')
   })
 
   const createMutation = useMutation({
-    mutationFn: (body: PostQRcode) => {
+    mutationFn: (body: PostQRcode & { pinCode?: string }) => {
       return qrApiAdmin.postQrcodeAdmin(body)
     },
     onSuccess: () => {
@@ -188,6 +176,7 @@ export default function QrcodeManagementAdmin() {
       queryClient.invalidateQueries({ queryKey: ['personal/list'] })
       setIsCreateModalOpen(false)
       setSelectedUserForCreate(null)
+      setPinCode('') // 👈 Reset PIN
     },
     onError: (error) => toast.error(error.message || 'Tạo QR thất bại')
   })
@@ -254,9 +243,11 @@ export default function QrcodeManagementAdmin() {
     setSelectedItem({
       id: item.qr_id,
       status: item.qr_status || 'ACTIVE',
-      expiresAt: item.expires_at || new Date().toISOString()
+      expiresAt: item.expires_at || new Date().toISOString(),
+      pin_code: item.pin_code || ''
     })
     setIsUpdateModalOpen(true)
+    setUpdatePinCode(item.pin_code || '')
   }
 
   const handleRevoke = (item: historyQrcodeAdmin) => {
@@ -299,7 +290,7 @@ export default function QrcodeManagementAdmin() {
       <main className='min-h-screen'>
         <div className='max-w-[1200px] mx-auto space-y-12'>
           {/* Header Section */}
-          <section className='flex flex-col md:flex-row md:items-end justify-between gap-6'>
+          <section className='px-5 flex flex-col md:flex-row md:items-end justify-between gap-6'>
             <div className='max-w-xl'>
               <span className='text-xs font-bold tracking-[0.2em] text-primary uppercase mb-2 block'>
                 Trung tâm bảo mật
@@ -423,7 +414,7 @@ export default function QrcodeManagementAdmin() {
               {/* Resident Table */}
               <div className='bg-surface-container-lowest rounded-[2rem] overflow-hidden'>
                 <div className='overflow-x-auto'>
-                  <table className='w-full text-left border-collapse'>
+                  <table className='w-[95%] mx-auto text-left border-collapse'>
                     <thead>
                       <tr className='bg-surface-container-low/50'>
                         <th className='px-6 py-5 text-[11px] font-extrabold uppercase tracking-widest'>Người dùng</th>
@@ -453,12 +444,16 @@ export default function QrcodeManagementAdmin() {
                           const statusBadge = getStatusBadge(item.qr_status)
                           return (
                             <tr key={item.user_id} className='group hover:bg-surface-container-low/20'>
-                              <td className='px-6 py-6 font-bold'>{item.user_name}</td>
-                              <td className='px-6 py-6 text-sm'>
-                                <div>{item.user_email}</div>
-                                <div className='text-xs opacity-70 '>{item.user_phone || 'Chưa có SĐT'}</div>
+                              <td className='px-4 py-6 font-bold'>{item.user_name}</td>
+
+                              <td className='px-4 py-6 text-sm w-[180px] max-w-[180px]'>
+                                <div className='truncate font-medium' title={item.user_email}>
+                                  {item.user_email}
+                                </div>
+
+                                <div className='text-xs opacity-70 truncate'>{item.user_phone || 'Chưa có SĐT'}</div>
                               </td>
-                              <td className='px-6 py-6'>
+                              <td className='px-4 py-6'>
                                 {item.apartment_code ? (
                                   <span className='px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold'>
                                     {item.apartment_code}
@@ -467,7 +462,7 @@ export default function QrcodeManagementAdmin() {
                                   <span className='text-xs italic'>Chưa có căn hộ</span>
                                 )}
                               </td>
-                              <td className='px-6 py-6'>
+                              <td className='px-4 py-6'>
                                 {item.qr_code ? (
                                   <div
                                     className='flex items-center gap-2 cursor-pointer group/code'
@@ -484,14 +479,14 @@ export default function QrcodeManagementAdmin() {
                                   <span className='text-xs italic'>Chưa có QR</span>
                                 )}
                               </td>
-                              <td className='px-6 py-6 text-center'>
+                              <td className='px-4 py-6 text-center'>
                                 <span
                                   className={`inline-flex px-4 py-1.5 rounded-full text-[10px] font-bold ${statusBadge.bgColor} ${statusBadge.textColor}`}
                                 >
                                   {statusBadge.text}
                                 </span>
                               </td>
-                              <td className='px-6 py-6 text-right'>
+                              <td className='px-4 py-6 text-right'>
                                 <p className='text-sm font-bold'>{formatDate(item.expires_at)}</p>
                                 <p className='text-[10px] opacity-70'>
                                   {item.qr_status === 'ACTIVE'
@@ -501,7 +496,7 @@ export default function QrcodeManagementAdmin() {
                                       : 'Đã thu hồi'}
                                 </p>
                               </td>
-                              <td className='px-6 py-6 text-right'>
+                              <td className='px-4 py-6 text-right'>
                                 <div className='flex justify-end gap-2'>
                                   <button
                                     onClick={() => navigate(`/admin/viewDetailResident/${item.user_id}`)}
@@ -779,12 +774,26 @@ export default function QrcodeManagementAdmin() {
                   className='w-full px-4 py-2 border rounded-lg'
                 />
               </div>
+
+              <div>
+                <label className='block text-sm font-bold mb-2'>Mã PIN (4 số)</label>
+                <input
+                  type='text'
+                  maxLength={4}
+                  pattern='[0-9]{4}'
+                  value={updatePinCode}
+                  onChange={(e) => setUpdatePinCode(e.target.value.replace(/[^0-9]/g, ''))}
+                  className='w-full px-4 py-2 border rounded-lg'
+                  placeholder='Nhập 4 số'
+                />
+              </div>
             </div>
             <div className='p-5 border-t flex justify-end gap-3'>
               <button
                 onClick={() => {
                   setIsUpdateModalOpen(false)
                   setSelectedItem(null)
+                  setUpdatePinCode('')
                 }}
                 className='px-4 py-2 bg-gray-200 rounded-lg'
               >
@@ -796,7 +805,11 @@ export default function QrcodeManagementAdmin() {
                   const expiresAt = (document.getElementById('expiresAt') as HTMLInputElement).value
                   updateMutation.mutate({
                     id: selectedItem.id,
-                    body: { status, expiresAt: new Date(expiresAt).toISOString() }
+                    body: {
+                      status,
+                      expiresAt: new Date(expiresAt).toISOString(),
+                      pin_code: updatePinCode || undefined // 👈 THÊM PIN
+                    }
                   })
                 }}
                 className='px-4 py-2 bg-primary text-white rounded-lg'
@@ -829,12 +842,26 @@ export default function QrcodeManagementAdmin() {
                   className='w-full px-4 py-2 border rounded-lg'
                 />
               </div>
+
+              <div>
+                <label className='block text-sm font-bold mb-2'>Mã PIN (4 số)</label>
+                <input
+                  type='text'
+                  maxLength={4}
+                  pattern='[0-9]{4}'
+                  value={pinCode}
+                  onChange={(e) => setPinCode(e.target.value.replace(/[^0-9]/g, ''))}
+                  className='w-full px-4 py-2 border rounded-lg'
+                  placeholder='Nhập 4 số'
+                />
+              </div>
             </div>
             <div className='p-5 border-t flex justify-end gap-3'>
               <button
                 onClick={() => {
                   setIsCreateModalOpen(false)
                   setSelectedUserForCreate(null)
+                  setPinCode('') // 👈 Reset PIN
                 }}
                 className='px-4 py-2 bg-gray-200 rounded-lg'
               >
@@ -846,7 +873,8 @@ export default function QrcodeManagementAdmin() {
                   createMutation.mutate({
                     userId: selectedUserForCreate.userId,
                     apartmentId: selectedUserForCreate.apartmentId,
-                    expiresAt: new Date(expiresAt).toISOString()
+                    expiresAt: new Date(expiresAt).toISOString(),
+                    pinCode: pinCode || undefined // 👈 THÊM PIN
                   })
                 }}
                 className='px-4 py-2 bg-green-500 text-white rounded-lg'
