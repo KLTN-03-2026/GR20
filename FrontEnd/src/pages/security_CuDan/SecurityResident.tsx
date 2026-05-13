@@ -80,7 +80,7 @@ export default function SecurityResident() {
   const totalElements = residentsResponse?.data?.totalElements || 0
   const totalPages = residentsResponse?.data?.totalPages || 1
 
-  const getAvatarUrl = (resident) => {
+  const getAvatarUrl = (resident: any) => {
     if (resident.avatarUrl) return resident.avatarUrl
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(resident.fullName)}&background=005ab7&color=fff&rounded=true`
   }
@@ -240,7 +240,7 @@ export default function SecurityResident() {
                           </td>
                           <td className='px-8 py-6 text-right'>
                             <button
-                              onClick={() => navigate(`/security/residents/${resident.id}`)}
+                              onClick={() => navigate(`/SecurityResident/${resident.id}`)}
                               className='px-4 py-1.5 text-xs font-bold text-primary hover:bg-primary/5 rounded-full transition-colors'
                             >
                               Xem chi tiết

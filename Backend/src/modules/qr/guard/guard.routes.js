@@ -8,6 +8,7 @@ router.use(verifyToken);
 router.use(requireRole(['Bảo vệ', 'GUARD', 'SECURITY']));
 
 router.get("/scan/:qrCode", controller.scanQr);
+router.post("/verify-pin", controller.verifyPin);
 router.get("/history", controller.getGuestQrHistory);
 
 module.exports = router;

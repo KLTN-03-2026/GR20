@@ -86,7 +86,7 @@ export const menuConfig: MenuItem[] = [
   {
     id: 'security-resident-lookup',
     name: 'Tra cứu cư dân',
-    path: '/residents',
+    path: '/SecurityResident',
     icon: 'badge',
     keywords: ['cư dân', 'tra cứu cư dân', 'resident', 'thông tin cư dân', 'căn hộ'],
     roles: ['Bảo vệ', 'ADMIN']

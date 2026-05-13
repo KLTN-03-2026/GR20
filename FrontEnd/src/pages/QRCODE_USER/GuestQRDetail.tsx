@@ -4,7 +4,6 @@ import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
 import { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { toast } from 'react-toastify'
-import type { HistoryModalProps } from 'src/types/qrcode.type'
 
 export default function GuestQRDetail() {
   const { id } = useParams()
@@ -19,19 +18,15 @@ export default function GuestQRDetail() {
     enabled: !!id
   })
 
-  // Query lịch sử (chỉ cần 1 lần)
+  // Query lịch sử (chỉ lấy 10 record đầu tiên)
   const { data: dataHistory, isLoading: isHistoryLoading } = useQuery({
     queryKey: [`guest-qrs/${id}/history`],
-    queryFn: () => QRCodeApi.getHistoryQrKhachId(id as string),
+    queryFn: () => QRCodeApi.getHistoryQrKhachId(id as string, { page: 1, limit: 10 }),
     enabled: !!id
   })
 
   const guestQR = data?.data?.data
-
   const historyData = dataHistory?.data?.data || []
-
-  // Lấy 10 lần quét gần nhất
-  const recentHistory = historyData.slice(0, 10)
   const totalElements = dataHistory?.data?.totalElements || 0
   const hasMore = totalElements > 10
 
@@ -315,7 +310,7 @@ export default function GuestQRDetail() {
                     <h3 className='text-lg font-bold text-on-surface tracking-tight'>Lịch sử quét</h3>
                     {totalElements > 0 && (
                       <span className='text-xs text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded-full'>
-                        {recentHistory.length} / {totalElements}
+                        {historyData.length} / {totalElements}
                       </span>
                     )}
                   </div>
@@ -333,10 +328,10 @@ export default function GuestQRDetail() {
                     <div className='flex justify-center py-12'>
                       <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
                     </div>
-                  ) : recentHistory.length === 0 ? (
+                  ) : historyData.length === 0 ? (
                     <div className='text-center py-12 text-on-surface-variant'>Chưa có lịch sử quét</div>
                   ) : (
-                    recentHistory.map((item) => {
+                    historyData.map((item) => {
                       const resultBadge = getResultBadge(item.result)
                       const directionIcon = getDirectionIcon(item.direction)
                       const dateTime = formatDateTime(item.scan_time)
@@ -379,57 +374,72 @@ export default function GuestQRDetail() {
         </div>
       </main>
 
-      {/* History Modal */}
+      {/* History Modal với phân trang */}
       {isHistoryModalOpen && (
         <HistoryModal
-          isOpen={isHistoryModalOpen}
+          // isOpen={isHistoryModalOpen}
           onClose={() => setIsHistoryModalOpen(false)}
-          historyData={historyData}
           guestQR={guestQR}
           formatDateTime={formatDateTime}
           getResultBadge={getResultBadge}
           getDirectionIcon={getDirectionIcon}
+          qrId={id!}
         />
       )}
     </div>
   )
 }
 
-// Modal Component để xem tất cả lịch sử
+// Modal Component với phân trang từ API
 function HistoryModal({
-  // isOpen,
   onClose,
-  historyData,
   guestQR,
   formatDateTime,
   getResultBadge,
-  getDirectionIcon
-}: HistoryModalProps) {
+  getDirectionIcon,
+  qrId
+}: {
+  onClose: () => void
+  guestQR: any
+  formatDateTime: (date: string) => string
+  getResultBadge: (result: string) => { text: string; bg: string; textColor: string }
+  getDirectionIcon: (direction: string) => { icon: string; color: string; text: string }
+  qrId: string
+}) {
+  const [currentPage, setCurrentPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [resultFilter, setResultFilter] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
-  // Filter dữ liệu
-  const filteredData = historyData.filter((item) => {
-    const matchesSearch =
-      !searchInput ||
-      item.gate?.toLowerCase().includes(searchInput.toLowerCase()) ||
-      item.scanned_by_name?.toLowerCase().includes(searchInput.toLowerCase())
-
-    const matchesResult = !resultFilter || item.result === resultFilter
-
-    const itemDate = item.scan_time ? new Date(item.scan_time).toISOString().split('T')[0] : ''
-    const matchesFromDate = !fromDate || itemDate >= fromDate
-    const matchesToDate = !toDate || itemDate <= toDate
-
-    return matchesSearch && matchesResult && matchesFromDate && matchesToDate
+  // Gọi API lịch sử với phân trang
+  const {
+    data: historyData,
+    isLoading,
+    refetch
+  } = useQuery({
+    queryKey: ['guest-history', qrId, currentPage, resultFilter, fromDate, toDate, searchInput],
+    queryFn: () =>
+      QRCodeApi.getHistoryQrKhachId(qrId, {
+        page: currentPage,
+        limit: pageSize,
+        result: resultFilter || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        search: searchInput || undefined
+      }),
+    enabled: !!qrId
   })
 
-  const totalPages = Math.ceil(filteredData.length / pageSize)
-  const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const historyList = historyData?.data?.data || []
+  const totalElements = historyData?.data?.totalElements || 0
+  const totalPages = historyData?.data?.totalPages || 0
+
+  // Reset page khi filter thay đổi
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchInput, resultFilter, fromDate, toDate])
 
   const handleResetFilters = () => {
     setSearchInput('')
@@ -439,15 +449,42 @@ function HistoryModal({
     setCurrentPage(1)
   }
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const getUsageText = (item: any) => {
+    if (item.used_entries !== undefined && item.max_entries !== undefined) {
+      return `${item.used_entries}/${item.max_entries}`
+    }
+    return '---'
+  }
+
+  if (isLoading && currentPage === 1 && historyList.length === 0) {
+    return (
+      <div className='fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
+        <div className='bg-surface rounded-2xl p-8'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto'></div>
+          <p className='mt-4 text-center'>Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className='fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4'>
-      <div className='bg-surface rounded-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden shadow-2xl'>
+      <div className='bg-surface rounded-2xl max-w-7xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col'>
         {/* Header */}
-        <div className='p-6 border-b border-outline-variant/10 flex justify-between items-start bg-surface-container-lowest'>
+        <div className='p-6 border-b border-outline-variant/10 flex justify-between items-start bg-surface-container-lowest flex-shrink-0'>
           <div>
             <h2 className='text-2xl font-bold text-on-surface'>Lịch sử quét QR</h2>
             <p className='text-sm mt-1 text-on-surface-variant'>
               Khách: <span className='font-semibold text-primary'>{guestQR.visitor_name}</span>
+              {totalElements > 0 && (
+                <span className='ml-2 text-xs bg-surface-container-high px-2 py-0.5 rounded-full'>
+                  Tổng: {totalElements} lượt
+                </span>
+              )}
             </p>
           </div>
           <button onClick={onClose} className='p-2 hover:bg-surface-container rounded-full transition-colors'>
@@ -456,47 +493,27 @@ function HistoryModal({
         </div>
 
         {/* Filters */}
-        <div className='flex flex-wrap gap-3 p-4 bg-surface-container-low border-b border-outline-variant/10'>
+        <div className='flex flex-wrap gap-3 p-4 bg-surface-container-low border-b border-outline-variant/10 flex-shrink-0'>
           <input
             type='text'
-            placeholder='Tìm kiếm cổng, người quét...'
+            placeholder='Tìm kiếm...'
             className='flex-1 min-w-[200px] px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
-          <select
-            className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
-            value={resultFilter}
-            onChange={(e) => {
-              setResultFilter(e.target.value)
-              setCurrentPage(1)
-            }}
-          >
-            <option value=''>Tất cả kết quả</option>
-            <option value='SUCCESS'>Thành công</option>
-            <option value='DENIED'>Từ chối</option>
-          </select>
+
           <input
             type='date'
             className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={(e) => setFromDate(e.target.value)}
           />
           <span className='material-symbols-outlined text-on-surface-variant/60 text-base self-center'>east</span>
           <input
             type='date'
             className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={(e) => setToDate(e.target.value)}
           />
           <button
             onClick={handleResetFilters}
@@ -506,115 +523,164 @@ function HistoryModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className='p-6 overflow-y-auto max-h-[calc(85vh-250px)]'>
-          {filteredData.length === 0 ? (
+        {/* Content - FIX: thêm flex-1 và overflow-y-auto */}
+        <div className='p-6 overflow-y-auto flex-1 min-h-0'>
+          {historyList.length === 0 ? (
             <div className='text-center py-12'>
               <span className='material-symbols-outlined text-5xl text-on-surface-variant/30'>history</span>
               <p className='mt-3 text-on-surface-variant'>Không có dữ liệu phù hợp</p>
             </div>
           ) : (
-            <table className='w-full text-left border-collapse'>
-              <thead>
-                <tr className='border-b border-outline-variant/10'>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>STT</th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Thời gian
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Hướng
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Tên chủ hộ
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Kết quả
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Người quét
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedData.map((item, index: number) => {
-                  const dateTime = formatDateTime(item.scan_time)
-                  const resultBadge = getResultBadge(item.result)
-                  const directionIcon = getDirectionIcon(item.direction)
-                  const rowNumber = (currentPage - 1) * pageSize + index + 1
-                  return (
-                    <tr
-                      key={item.id}
-                      className='border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors'
-                    >
-                      <td className='px-4 py-3 text-sm'>{rowNumber}</td>
-                      <td className='px-4 py-3 text-sm'>
-                        <div className='font-medium'>{dateTime.split(' ')[0]}</div>
-                        <div className='text-xs text-on-surface-variant'>{dateTime.split(' ')[1]}</div>
-                      </td>
-                      <td className='px-4 py-3'>
-                        <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
-                          {directionIcon.icon}
-                        </span>{' '}
-                        <span className='text-sm'>{directionIcon.text}</span>
-                      </td>
-                      <td className='px-4 py-3 text-sm'>{item.host_name || '---'}</td>
-                      <td className='px-4 py-3'>
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${resultBadge.bg} ${resultBadge.textColor}`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${resultBadge.bg}`}></span>
-                          {resultBadge.text}
-                        </span>
-                      </td>
-                      <td className='px-4 py-3 text-sm'>{item.scanned_by_name || '---'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className='overflow-x-auto'>
+              <table className='w-full text-left border-collapse min-w-[1000px]'>
+                <thead>
+                  <tr className='border-b border-outline-variant/10'>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      STT
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Thời gian
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Hướng
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Tên khách
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Thông tin khách
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Căn hộ
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Chủ nhà
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Kết quả
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Người quét
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyList.map((item, index: number) => {
+                    const dateTime = formatDateTime(item.scan_time)
+                    const resultBadge = getResultBadge(item.result)
+                    const directionIcon = getDirectionIcon(item.direction)
+                    const rowNumber = (currentPage - 1) * pageSize + index + 1
+                    return (
+                      <tr
+                        key={item.id}
+                        className='border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors'
+                      >
+                        <td className='px-4 py-3 text-sm'>{rowNumber}</td>
+                        <td className='px-4 py-3 text-sm'>
+                          <div className='font-medium'>{dateTime.split(' ')[0]}</div>
+                          <div className='text-xs text-on-surface-variant'>{dateTime.split(' ')[1]}</div>
+                        </td>
+                        <td className='px-4 py-3'>
+                          <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
+                            {directionIcon.icon}
+                          </span>
+                          <span className='text-sm ml-1'>{directionIcon.text}</span>
+                        </td>
+                        <td className='px-4 py-3 text-sm font-medium text-on-surface'>{item.visitor_name || '---'}</td>
+                        <td className='px-4 py-3 text-sm'>
+                          <div className='flex flex-col gap-0.5'>
+                            {item.visitor_phone && (
+                              <div className='flex items-center gap-1'>
+                                <span className='material-symbols-outlined text-xs text-on-surface-variant'>phone</span>
+                                <span className='text-xs'>{item.visitor_phone}</span>
+                              </div>
+                            )}
+                            {item.visitor_id_card && (
+                              <div className='flex items-center gap-1'>
+                                <span className='material-symbols-outlined text-xs text-on-surface-variant'>badge</span>
+                                <span className='text-xs font-mono'>{item.visitor_id_card}</span>
+                              </div>
+                            )}
+                            {!item.visitor_phone && !item.visitor_id_card && (
+                              <span className='text-xs text-on-surface-variant'>---</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className='px-4 py-3 text-sm'>
+                          <span className='px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-semibold'>
+                            {item.apartment_code || '---'}
+                          </span>
+                        </td>
+                        <td className='px-4 py-3 text-sm'>{item.host_name || '---'}</td>
+                        <td className='px-4 py-3'>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${resultBadge.bg} ${resultBadge.textColor}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${resultBadge.bg}`}></span>
+                            {resultBadge.text}
+                          </span>
+                        </td>
+                        <td className='px-4 py-3 text-sm'>{item.scanned_by_name || '---'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
-        {/* Pagination & Footer */}
-        {filteredData.length > 0 && (
-          <>
-            <div className='px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low flex justify-between items-center'>
-              <p className='text-xs text-on-surface-variant'>
-                Hiển thị {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredData.length)}{' '}
-                trên {filteredData.length}
-              </p>
-              <div className='flex gap-2'>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className='px-4 py-2 border border-outline-variant/30 rounded-lg text-sm font-medium hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-                >
-                  Trước
-                </button>
-                <span className='px-4 py-2 text-sm font-medium text-on-surface-variant'>
-                  {currentPage} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className='px-4 py-2 border border-outline-variant/30 rounded-lg text-sm font-medium hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-                >
-                  Sau
-                </button>
+        {/* Pagination - FIX: thêm flex-shrink-0 để không bị thu nhỏ */}
+        {totalPages > 1 && (
+          <div className='px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low flex justify-between items-center flex-wrap gap-3 flex-shrink-0'>
+            <p className='text-xs text-on-surface-variant'>
+              Trang {currentPage} / {totalPages}
+            </p>
+            <div className='flex gap-2'>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className='px-4 py-2 border border-outline-variant/30 rounded-lg text-sm font-medium hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                Trước
+              </button>
+              <div className='flex gap-1'>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum
+                  if (totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
+                  } else {
+                    pageNum = currentPage - 2 + i
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-primary text-white'
+                          : 'border border-outline-variant/30 hover:bg-surface-container'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
               </div>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className='px-4 py-2 border border-outline-variant/30 rounded-lg text-sm font-medium hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+              >
+                Sau
+              </button>
             </div>
-          </>
+          </div>
         )}
-
-        {/* Close Button */}
-        <div className='p-4 border-t border-outline-variant/10 bg-surface-container-lowest flex justify-end'>
-          <button
-            onClick={onClose}
-            className='px-6 py-2.5 bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high font-semibold transition-colors'
-          >
-            Đóng
-          </button>
-        </div>
       </div>
     </div>
   )

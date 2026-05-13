@@ -259,7 +259,7 @@ export default function useRouteElements() {
 
     // SECURITY
     {
-      path: '/residents',
+      path: '/SecurityResident/',
       element: <ProtectedRoute allowedRoles={[ROLES.SECURITY, ROLES.ADMIN, ROLES.MANAGER]} />,
       children: [
         {
