@@ -93,7 +93,12 @@ const getAllBuildings = async ({
     : "";
 
   const dataQuery = `
-    SELECT b.* ${apartmentsSql}
+    SELECT b.* ${apartmentsSql},
+    (SELECT COUNT(*)::int FROM floors f WHERE f.building_id = b.id) AS linked_floor_count,
+    (
+      SELECT COUNT(*)::int FROM apartments a
+      WHERE a.building_id = b.id AND a.status::text != 'MAINTENANCE'
+    ) AS linked_apartment_count
     FROM buildings b
     ${where}
     ORDER BY b.id ASC
@@ -113,9 +118,34 @@ const getAllBuildings = async ({
 
 // GET BY ID
 const getBuildingById = async (id) => {
-  const query = `SELECT * FROM buildings WHERE id = $1`;
+  const query = `
+    SELECT b.*,
+      (SELECT COUNT(*)::int FROM floors f WHERE f.building_id = b.id) AS linked_floor_count,
+      (
+        SELECT COUNT(*)::int FROM apartments a
+        WHERE a.building_id = b.id AND a.status::text != 'MAINTENANCE'
+      ) AS linked_apartment_count
+    FROM buildings b
+    WHERE b.id = $1
+  `;
   const result = await pool.query(query, [id]);
   return result.rows[0];
+};
+
+/** Số tầng / căn thực tế gắn với tòa (dùng trước khi đóng tòa) */
+const getBuildingResourceCounts = async (buildingId) => {
+  const floorRes = await pool.query(
+    `SELECT COUNT(*)::int AS c FROM floors WHERE building_id = $1`,
+    [buildingId]
+  );
+  const aptRes = await pool.query(
+    `SELECT COUNT(*)::int AS c FROM apartments WHERE building_id = $1 AND status::text != 'MAINTENANCE'`,
+    [buildingId]
+  );
+  return {
+    floorCount: Number(floorRes.rows[0]?.c || 0),
+    apartmentCount: Number(aptRes.rows[0]?.c || 0),
+  };
 };
 
 const updateBuilding = async (id, building) => {
@@ -204,6 +234,7 @@ module.exports = {
   createBuilding,
   getAllBuildings,
   getBuildingById,
+  getBuildingResourceCounts,
   updateBuilding,
   deleteBuilding,
 };

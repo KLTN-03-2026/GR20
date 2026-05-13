@@ -50,6 +50,8 @@ import InvoicesPage from './pages/billing/InvoicesPage'
 import InvoiceDetailAdminPage from './pages/billing/InvoiceDetailAdminPage'
 import PaymentsPage from './pages/billing/PaymentsPage'
 import PaymentDetailAdminPage from './pages/billing/PaymentDetailAdminPage'
+import ContractList from './pages/Contracts/ContractList'
+import ContractDetail from './pages/Contracts/ContractDetail'
 import UtilityMetersPage from './pages/utility/UtilityMetersPage'
 import MeterReadingsPage from './pages/utility/MeterReadingsPage'
 import UtilityPricingPage from './pages/utility/UtilityPricingPage'
@@ -57,8 +59,6 @@ import UserUtilityMetersPage from './pages/utility/UserUtilityMetersPage'
 import UserUtilityMeterDetailPage from './pages/utility/UserUtilityMeterDetailPage'
 import UserMeterReadingsPage from './pages/utility/UserMeterReadingsPage'
 import UserMeterReadingDetailPage from './pages/utility/UserMeterReadingDetailPage'
-import UserUtilityPricingPage from './pages/utility/UserUtilityPricingPage'
-import UserUtilityPricingDetailPage from './pages/utility/UserUtilityPricingDetailPage'
 import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
 import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManager'
 
@@ -467,28 +467,6 @@ export default function useRouteElements() {
       ]
     },
     {
-      path: '/utility-pricing',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityPricingPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityPricingDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-    {
       path: '/my-utility-meters',
       element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
       children: [
@@ -551,6 +529,28 @@ export default function useRouteElements() {
           element: (
             <DashboaedLayoutAdminOrManager>
               <BuildingDetailManagement />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/contracts',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <ContractList />
+            </DashboaedLayoutAdminOrManager>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <ContractDetail />
             </DashboaedLayoutAdminOrManager>
           )
         }

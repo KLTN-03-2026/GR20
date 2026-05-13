@@ -2,6 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { utilityPricingApi } from 'src/apis/utility_api/utility-pricing.api'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
+import {
+  ROW_ACTION_CANCEL,
+  ROW_ACTION_DELETE,
+  ROW_ACTION_EDIT,
+  ROW_ACTION_RESTORE,
+  ROW_ACTION_SAVE
+} from 'src/utils/row-action-buttons'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
   const apiErr = err?.response?.data
@@ -80,7 +87,7 @@ export default function UtilityPricingPage() {
     },
     onError: (err: any) => {
       logResourceConsoleError('UtilityPricing', 'Delete', err)
-      setScreenError(getApiErrorMessage(err, 'Xóa mềm thất bại'))
+      setScreenError(getApiErrorMessage(err, 'Xóa giá thất bại'))
     }
   })
   const restoreMutation = useMutation({
@@ -195,7 +202,7 @@ export default function UtilityPricingPage() {
           >
             <option value='ALL'>Trạng thái: tất cả</option>
             <option value='ACTIVE'>ACTIVE</option>
-            <option value='INACTIVE'>INACTIVE</option>
+            <option value='INACTIVE'>INACTIVE (dữ liệu cũ)</option>
           </select>
           <button
             type='button'
@@ -268,11 +275,12 @@ export default function UtilityPricingPage() {
                     </span>
                   </td>
                   <td className='px-4 py-3 text-right'>
-                    <div className='inline-flex gap-2'>
+                    <div className='flex flex-wrap justify-end gap-2'>
                       {editingId === item.id ? (
                         <>
                           <button
-                            className='rounded bg-green-100 px-2 py-1'
+                            type='button'
+                            className={ROW_ACTION_SAVE}
                             onClick={() => {
                               setScreenError(null)
                               updateMutation.mutate({
@@ -288,7 +296,8 @@ export default function UtilityPricingPage() {
                             Lưu
                           </button>
                           <button
-                            className='rounded bg-gray-100 px-2 py-1'
+                            type='button'
+                            className={ROW_ACTION_CANCEL}
                             onClick={() => {
                               setEditingId(null)
                               setEditingPrice('')
@@ -301,7 +310,8 @@ export default function UtilityPricingPage() {
                         </>
                       ) : (
                         <button
-                          className='rounded bg-yellow-100 px-2 py-1'
+                          type='button'
+                          className={ROW_ACTION_EDIT}
                           onClick={() => {
                             setEditingId(item.id)
                             setEditingPrice(String(item.pricePerUnit))
@@ -314,17 +324,26 @@ export default function UtilityPricingPage() {
                       )}
                       {item.isActive ? (
                         <button
-                          className='rounded bg-red-100 px-2 py-1'
+                          type='button'
+                          className={ROW_ACTION_DELETE}
                           onClick={() => {
+                            if (
+                              !window.confirm(
+                                'Xóa vĩnh viễn bản giá này? Hành động không hoàn tác.'
+                              )
+                            ) {
+                              return
+                            }
                             setScreenError(null)
                             deleteMutation.mutate(item.id)
                           }}
                         >
-                          Xóa mềm
+                          Xóa
                         </button>
                       ) : (
                         <button
-                          className='rounded bg-green-100 px-2 py-1'
+                          type='button'
+                          className={ROW_ACTION_RESTORE}
                           onClick={() => {
                             setScreenError(null)
                             restoreMutation.mutate(item.id)

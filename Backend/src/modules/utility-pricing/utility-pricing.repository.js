@@ -79,7 +79,7 @@ const updateUtilityPricing = async (id, entity) => {
 };
 
 const deleteUtilityPricing = async (id) => {
-  const result = await pool.query(`UPDATE utility_pricing SET is_active = false WHERE id = $1 AND is_active = true RETURNING id`, [id]);
+  const result = await pool.query(`DELETE FROM utility_pricing WHERE id = $1 RETURNING id`, [id]);
   return result.rows[0];
 };
 

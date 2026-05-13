@@ -91,6 +91,19 @@ const updateBuilding = async (id, reqBody) => {
 // DELETE
 const deleteBuilding = async (id) => {
   const parsedId = parsePathId(id);
+  const counts = await repo.getBuildingResourceCounts(parsedId);
+  if (counts.floorCount > 0 || counts.apartmentCount > 0) {
+    throw new AppError(
+      409,
+      "Cannot close building while it still has floors or active apartments. Remove them first.",
+      {
+        floorCount: counts.floorCount,
+        apartmentCount: counts.apartmentCount,
+      },
+      ERROR_CODES.BUILDING_HAS_LINKED_DATA
+    );
+  }
+
   const deleted = await repo.deleteBuilding(parsedId);
 
   if (!deleted) {

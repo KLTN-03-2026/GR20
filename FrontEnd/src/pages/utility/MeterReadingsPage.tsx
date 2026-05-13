@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { meterReadingsApi } from 'src/apis/utility_api/meter-readings.api'
 import { utilityMetersApi } from 'src/apis/utility_api/utility-meters.api'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
+import {
+  ROW_ACTION_CANCEL,
+  ROW_ACTION_DELETE,
+  ROW_ACTION_EDIT,
+  ROW_ACTION_RESTORE,
+  ROW_ACTION_SAVE
+} from 'src/utils/row-action-buttons'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
   const apiErr = err?.response?.data
@@ -16,6 +24,7 @@ const getApiErrorMessage = (err: any, fallbackMessage: string) => {
     ['Invalid meterId', 'Đồng hồ không hợp lệ'],
     ['Meter reading not found or not deleted', 'Không tìm thấy chỉ số đã xóa mềm để khôi phục'],
     ['Meter reading not found', 'Không tìm thấy bản ghi chỉ số'],
+    ['Căn hộ đang có cư dân', 'Căn hộ đang có cư dân, không được xóa chỉ số công tơ.'],
     ['currentReading must be greater than or equal to previousReading', 'Chỉ số mới phải lớn hơn hoặc bằng chỉ số cũ']
   ]
   const mapped = translatedMessages.find(([en]) => rawMessage.includes(en))
@@ -33,6 +42,7 @@ const logApiSuccess = (action: string, response: any) => {
 
 export default function MeterReadingsPage() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
   const pageSize = 10
   const [page, setPage] = useState(0)
   const [screenError, setScreenError] = useState<string | null>(null)
@@ -42,10 +52,28 @@ export default function MeterReadingsPage() {
   const [editingDate, setEditingDate] = useState('')
   const [editingPrevious, setEditingPrevious] = useState('')
   const [editingCurrent, setEditingCurrent] = useState('')
+
+  const invoiceContextParams = useMemo(() => {
+    const apt = searchParams.get('apartmentId')
+    const m = searchParams.get('billingMonth')
+    const y = searchParams.get('billingYear')
+    const out: { apartmentId?: number; billingMonth?: number; billingYear?: number } = {}
+    if (apt != null && apt !== '' && !Number.isNaN(Number(apt))) out.apartmentId = Number(apt)
+    if (m != null && y != null && m !== '' && y !== '' && !Number.isNaN(Number(m)) && !Number.isNaN(Number(y))) {
+      out.billingMonth = Number(m)
+      out.billingYear = Number(y)
+    }
+    return out
+  }, [searchParams])
+
+  useEffect(() => {
+    setPage(0)
+  }, [invoiceContextParams.apartmentId, invoiceContextParams.billingMonth, invoiceContextParams.billingYear])
+
   const { data, error, isError } = useQuery({
-    queryKey: ['meter-readings', page],
+    queryKey: ['meter-readings', page, invoiceContextParams],
     queryFn: async () => {
-      const response = await meterReadingsApi.getAll({ page, size: pageSize })
+      const response = await meterReadingsApi.getAll({ page, size: pageSize, ...invoiceContextParams })
       logApiSuccess('GetAll', response)
       return response
     }
@@ -81,7 +109,7 @@ export default function MeterReadingsPage() {
     },
     onError: (err: any) => {
       logResourceConsoleError('MeterReadings', 'Delete', err)
-      setScreenError(getApiErrorMessage(err, 'Xóa mềm chỉ số thất bại'))
+      setScreenError(getApiErrorMessage(err, 'Xóa chỉ số thất bại'))
     }
   })
   const restoreMutation = useMutation({
@@ -137,6 +165,30 @@ export default function MeterReadingsPage() {
     <div className='min-h-screen bg-slate-50 px-8 py-8'>
       <div className='mx-auto max-w-7xl'>
         <h2 className='mb-4 text-3xl font-extrabold tracking-tight text-slate-900'>Quản lý chỉ số hàng tháng</h2>
+        {(invoiceContextParams.apartmentId != null || invoiceContextParams.billingMonth != null) && (
+          <div className='mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-950'>
+            <p>
+              <span className='font-semibold'>Lọc theo hóa đơn:</span>{' '}
+              {invoiceContextParams.apartmentId != null && <>căn #{invoiceContextParams.apartmentId}</>}
+              {invoiceContextParams.billingMonth != null && (
+                <>
+                  {invoiceContextParams.apartmentId != null ? ' · ' : null}kỳ ghi chỉ số trong tháng{' '}
+                  {invoiceContextParams.billingMonth}/{invoiceContextParams.billingYear}
+                </>
+              )}
+            </p>
+            <button
+              type='button'
+              className='shrink-0 font-semibold text-blue-700 underline hover:text-blue-900'
+              onClick={() => {
+                setSearchParams({})
+                setPage(0)
+              }}
+            >
+              Xóa lọc
+            </button>
+          </div>
+        )}
         {(screenError || isError) && (
           <div className='mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600'>
             {screenError || getApiErrorMessage(error, 'Tải danh sách chỉ số thất bại')}
@@ -264,15 +316,16 @@ export default function MeterReadingsPage() {
                         item.deletedAt ? 'bg-slate-200 text-slate-700' : 'bg-green-100 text-green-700'
                       }`}
                     >
-                      {item.deletedAt ? 'INACTIVE' : 'ACTIVE'}
+                      {item.deletedAt ? 'INACTIVE (cũ)' : 'ACTIVE'}
                     </span>
                   </td>
                   <td className='px-4 py-3 text-right'>
-                    <div className='inline-flex gap-2'>
+                    <div className='flex flex-wrap justify-end gap-2'>
                       {editingId === item.id && !item.deletedAt ? (
                         <>
                           <button
-                            className='rounded bg-green-100 px-2 py-1'
+                            type='button'
+                            className={ROW_ACTION_SAVE}
                             onClick={() => {
                               setScreenError(null)
                               updateMutation.mutate({
@@ -288,7 +341,8 @@ export default function MeterReadingsPage() {
                             Lưu
                           </button>
                           <button
-                            className='rounded bg-gray-100 px-2 py-1'
+                            type='button'
+                            className={ROW_ACTION_CANCEL}
                             onClick={() => {
                               setEditingId(null)
                               setEditingDate('')
@@ -301,7 +355,8 @@ export default function MeterReadingsPage() {
                         </>
                       ) : (
                         <button
-                          className='rounded bg-yellow-100 px-2 py-1'
+                          type='button'
+                          className={ROW_ACTION_EDIT}
                           disabled={Boolean(item.deletedAt)}
                           onClick={() => {
                             if (item.deletedAt) return
@@ -316,7 +371,8 @@ export default function MeterReadingsPage() {
                       )}
                       {item.deletedAt ? (
                         <button
-                          className='rounded bg-green-100 px-2 py-1'
+                          type='button'
+                          className={ROW_ACTION_RESTORE}
                           onClick={() => {
                             setScreenError(null)
                             restoreMutation.mutate(item.id)
@@ -326,13 +382,21 @@ export default function MeterReadingsPage() {
                         </button>
                       ) : (
                         <button
-                          className='rounded bg-red-100 px-2 py-1'
+                          type='button'
+                          className={ROW_ACTION_DELETE}
                           onClick={() => {
+                            if (
+                              !window.confirm(
+                                'Xóa vĩnh viễn bản ghi chỉ số này? (Không thực hiện được nếu căn hộ còn cư dân.)'
+                              )
+                            ) {
+                              return
+                            }
                             setScreenError(null)
                             deleteMutation.mutate(item.id)
                           }}
                         >
-                          Xóa mềm
+                          Xóa
                         </button>
                       )}
                     </div>

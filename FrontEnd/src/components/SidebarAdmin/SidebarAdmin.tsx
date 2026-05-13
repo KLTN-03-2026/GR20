@@ -62,6 +62,11 @@ const menuGroups: MenuGroup[] = [
         icon: 'apartment'
       },
       {
+        path: '/admin/contracts',
+        label: 'Quản lý hợp đồng',
+        icon: 'description'
+      },
+      {
         path: '/admin/invoices',
         label: 'Quản lý hóa đơn',
         icon: 'receipt_long'

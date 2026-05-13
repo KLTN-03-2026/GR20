@@ -40,7 +40,7 @@ const updateMeterReading = async (req, res) => {
 const deleteMeterReading = async (req, res) => {
   try {
     const data = await service.deleteMeterReading(req.params.id);
-    res.json({ operationType: "Success", message: "Delete meter reading successfully", code: "OK", data, timestamp: new Date() });
+    res.json({ operationType: "Success", message: "Đã xóa chỉ số công tơ", code: "OK", data, timestamp: new Date() });
   } catch (err) { sendControllerError(res, err); }
 };
 const restoreMeterReading = async (req, res) => {

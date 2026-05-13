@@ -1,18 +1,36 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { useContext, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { meterReadingsApi } from 'src/apis/utility_api/meter-readings.api'
 import { AppContext } from 'src/contexts/app.context'
 
 export default function UserMeterReadingsPage() {
   const { user } = useContext(AppContext)
   const userId = String((user as any)?.id || (user as any)?._id || '')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [page, setPage] = useState(0)
   const pageSize = 10
 
+  const invoiceContextParams = useMemo(() => {
+    const apt = searchParams.get('apartmentId')
+    const m = searchParams.get('billingMonth')
+    const y = searchParams.get('billingYear')
+    const out: { apartmentId?: number; billingMonth?: number; billingYear?: number } = {}
+    if (apt != null && apt !== '' && !Number.isNaN(Number(apt))) out.apartmentId = Number(apt)
+    if (m != null && y != null && m !== '' && y !== '' && !Number.isNaN(Number(m)) && !Number.isNaN(Number(y))) {
+      out.billingMonth = Number(m)
+      out.billingYear = Number(y)
+    }
+    return out
+  }, [searchParams])
+
+  useEffect(() => {
+    setPage(0)
+  }, [invoiceContextParams.apartmentId, invoiceContextParams.billingMonth, invoiceContextParams.billingYear])
+
   const { data, error, isError, isLoading } = useQuery({
-    queryKey: ['user-meter-readings', userId, page],
-    queryFn: () => meterReadingsApi.getByUserId(userId, { page, size: pageSize }),
+    queryKey: ['user-meter-readings', userId, page, invoiceContextParams],
+    queryFn: () => meterReadingsApi.getByUserId(userId, { page, size: pageSize, ...invoiceContextParams }),
     enabled: Boolean(userId)
   })
 
@@ -61,6 +79,30 @@ export default function UserMeterReadingsPage() {
         <p className='mt-2 text-sm text-slate-500'>
           Theo dõi lịch sử ghi chỉ số các đồng hồ gắn với căn hộ của bạn — nhấn vào một dòng để xem chi tiết.
         </p>
+        {(invoiceContextParams.apartmentId != null || invoiceContextParams.billingMonth != null) && (
+          <div className='mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-950'>
+            <p>
+              <span className='font-semibold'>Đang xem chỉ số liên quan hóa đơn:</span>{' '}
+              {invoiceContextParams.apartmentId != null && <>căn #{invoiceContextParams.apartmentId}</>}
+              {invoiceContextParams.billingMonth != null && (
+                <>
+                  {invoiceContextParams.apartmentId != null ? ' · ' : null}tháng ghi chỉ số {invoiceContextParams.billingMonth}/
+                  {invoiceContextParams.billingYear}
+                </>
+              )}
+            </p>
+            <button
+              type='button'
+              className='shrink-0 font-semibold text-blue-700 underline hover:text-blue-900'
+              onClick={() => {
+                setSearchParams({})
+                setPage(0)
+              }}
+            >
+              Xóa lọc
+            </button>
+          </div>
+        )}
       </div>
 
       {isError && (
@@ -169,7 +211,9 @@ export default function UserMeterReadingsPage() {
           <span className='material-symbols-outlined mx-auto mb-3 block text-5xl text-slate-200'>electric_meter</span>
           <p className='font-semibold'>Chưa có bản ghi chỉ số</p>
           <p className='mx-auto mt-1 max-w-sm text-sm text-slate-400'>
-            Khi BQL nhập chỉ số cho đồng hộ tại căn của bạn, dữ liệu sẽ hiển thị tại đây.
+            {invoiceContextParams.billingMonth != null
+              ? 'Không có bản ghi chỉ số trong tháng này cho căn của bạn (hoặc bạn không có quyền xem căn được chọn).'
+              : 'Khi BQL nhập chỉ số cho đồng hộ tại căn của bạn, dữ liệu sẽ hiển thị tại đây.'}
           </p>
         </div>
       )}

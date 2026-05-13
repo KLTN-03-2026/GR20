@@ -26,11 +26,44 @@ const createMeterReading = async (entity) => {
   }
 };
 
-const getAllMeterReadings = async ({ page = 0, size = 10 } = {}) => {
-  const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM meter_readings`);
+const getAllMeterReadings = async ({ page = 0, size = 10, apartmentId, billingMonth, billingYear } = {}) => {
+  const hasPeriod = billingMonth != null && billingYear != null;
+  const hasApt = apartmentId != null && apartmentId !== undefined && String(apartmentId) !== "";
+
+  const params = [];
+  let idx = 1;
+  const cond = [];
+  if (hasApt) {
+    cond.push(`um.apartment_id = $${idx++}`);
+    params.push(Number(apartmentId));
+  }
+  if (hasPeriod) {
+    cond.push(`mr.reading_date >= make_date($${idx++}, $${idx++}, 1)`);
+    params.push(billingYear, billingMonth);
+    cond.push(`mr.reading_date < (make_date($${idx++}, $${idx++}, 1) + INTERVAL '1 month')`);
+    params.push(billingYear, billingMonth);
+  }
+
   const offset = page * size;
+  const whereClause = cond.length ? `WHERE ${cond.join(" AND ")}` : "";
+
+  if (hasApt || hasPeriod) {
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM meter_readings mr JOIN utility_meters um ON um.id = mr.meter_id ${whereClause}`,
+      params
+    );
+    const lim = idx;
+    const off = idx + 1;
+    const result = await pool.query(
+      `SELECT mr.* FROM meter_readings mr JOIN utility_meters um ON um.id = mr.meter_id ${whereClause} ORDER BY mr.reading_date DESC, mr.id DESC LIMIT $${lim} OFFSET $${off}`,
+      [...params, size, offset]
+    );
+    return { rows: result.rows, total: countResult.rows[0]?.total || 0 };
+  }
+
+  const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM meter_readings mr`);
   const result = await pool.query(
-    `SELECT * FROM meter_readings ORDER BY reading_date DESC, id DESC LIMIT $1 OFFSET $2`,
+    `SELECT mr.* FROM meter_readings mr ORDER BY mr.reading_date DESC, mr.id DESC LIMIT $1 OFFSET $2`,
     [size, offset]
   );
   return { rows: result.rows, total: countResult.rows[0]?.total || 0 };
@@ -41,7 +74,15 @@ const getMeterReadingById = async (id) => {
   return result.rows[0];
 };
 
-const getMeterReadingsByUserId = async ({ userId, page = 0, size = 10, meterType } = {}) => {
+const getMeterReadingsByUserId = async ({
+  userId,
+  page = 0,
+  size = 10,
+  meterType,
+  apartmentId,
+  billingMonth,
+  billingYear,
+} = {}) => {
   const conditions = [`rp.user_id = $1`, `rp.move_out_date IS NULL`, `mr.deleted_at IS NULL`];
   const values = [userId];
   let index = 2;
@@ -49,6 +90,18 @@ const getMeterReadingsByUserId = async ({ userId, page = 0, size = 10, meterType
   if (meterType) {
     conditions.push(`um.meter_type = $${index++}`);
     values.push(meterType);
+  }
+
+  if (apartmentId != null && apartmentId !== undefined) {
+    conditions.push(`um.apartment_id = $${index++}`);
+    values.push(Number(apartmentId));
+  }
+
+  if (billingMonth != null && billingYear != null) {
+    conditions.push(`mr.reading_date >= make_date($${index++}, $${index++}, 1)`);
+    values.push(billingYear, billingMonth);
+    conditions.push(`mr.reading_date < (make_date($${index++}, $${index++}, 1) + INTERVAL '1 month')`);
+    values.push(billingYear, billingMonth);
   }
 
   const whereClause = `WHERE ${conditions.join(" AND ")}`;
@@ -152,12 +205,59 @@ const updateMeterReading = async (id, entity) => {
   }
 };
 
+/**
+ * Xóa cứng bản ghi chỉ số. Không cho phép nếu căn hộ của đồng hồ còn cư dân ACTIVE.
+ */
 const deleteMeterReading = async (id) => {
-  const result = await pool.query(
-    `UPDATE meter_readings SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
-    [id]
-  );
-  return result.rows[0];
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const rRes = await client.query(
+      `
+      SELECT mr.id, um.apartment_id
+      FROM meter_readings mr
+      LEFT JOIN utility_meters um ON um.id = mr.meter_id
+      WHERE mr.id = $1
+      `,
+      [id],
+    );
+    const row = rRes.rows[0];
+    if (!row) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (row.apartment_id != null) {
+      const cRes = await client.query(
+        `SELECT COUNT(*)::int AS c FROM resident_profiles
+         WHERE apartment_id = $1 AND move_out_date IS NULL AND status = 'ACTIVE'`,
+        [row.apartment_id],
+      );
+      const cnt = cRes.rows[0]?.c ?? 0;
+      if (cnt > 0) {
+        await client.query("ROLLBACK");
+        throw new AppError(
+          400,
+          "Căn hộ đang có cư dân, không được xóa chỉ số công tơ.",
+          undefined,
+          ERROR_CODES.METER_READING_DELETE_BLOCKED_RESIDENTS,
+        );
+      }
+    }
+
+    await client.query(`DELETE FROM meter_readings WHERE id = $1`, [id]);
+    await client.query("COMMIT");
+    return { id: row.id };
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {
+      /* ignore */
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 const restoreMeterReading = async (id) => {
