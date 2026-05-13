@@ -65,6 +65,11 @@ export const residentApi = {
 
   getUserApartments(userId: string) {
     return http.get<ResidentSingleResponse<UserApartment[]>>(`${URL}/user/${userId}/apartments`)
+  },
+
+  /** Tạo tài khoản cư dân (role mặc định người dùng), chưa gắn căn hộ */
+  createResidentAccount(data: { fullName: string; phone: string; password: string; email?: string }) {
+    return http.post<ResidentSingleResponse<{ id: string }>>(`${URL}/accounts`, data)
   }
 }
 

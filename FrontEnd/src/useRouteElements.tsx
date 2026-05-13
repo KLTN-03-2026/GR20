@@ -578,15 +578,6 @@ export default function useRouteElements() {
       ]
     },
     {
-      path: '/Addresident',
-      element: (
-        <DashboardLayoutProtect>
-          <Addresident />
-        </DashboardLayoutProtect>
-      )
-    },
-
-    {
       path: '/Getresidentlist',
       element: (
         <DashboaedLayoutAdmin>
