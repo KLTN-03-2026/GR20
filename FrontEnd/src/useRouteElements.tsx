@@ -43,6 +43,11 @@ import HomePageStaff from './pages/HomePageStaff/HomePageStaff'
 import HomePageManager from './pages/HomePageManager/HomePageManager'
 import UserInvoicesPage from './pages/billing/UserInvoicesPage'
 import UserPaymentsPage from './pages/billing/UserPaymentsPage'
+import GetMaintenanceRequestList from './pages/maintenance request management/GetMaintenanceRequestList'
+import MaintenanceRequestDetail from './pages/maintenance request management/MaintenanceRequestDetail'
+import AddMaintenanceRequest from './pages/maintenance request management/AddMaintenanceRequest'
+import GetResidentRequestList from './pages/resident request management/GetResidentRequestList'
+import GetResidentRequestDetail from './pages/resident request management/GetResidentRequestDetail'
 
 export default function useRouteElements() {
   const routeElements = useRoutes([
@@ -389,14 +394,120 @@ export default function useRouteElements() {
         {
           index: true,
           element: (
-            <DashboardLayoutUser>
+            <DashboaedLayoutAdmin>
               <UserPaymentsPage />
+            </DashboaedLayoutAdmin>
+          )
+        }
+      ]
+    },
+    {
+      path: '/Addresident',
+      element: (
+        
+          <DashboardLayoutProtect>
+            <Addresident />
+          </DashboardLayoutProtect>
+        
+      )
+    },
+
+    {
+      path: '/Getresidentlist',
+      element: (
+        
+          <DashboaedLayoutAdmin>
+            <Getresidentlist />
+          </DashboaedLayoutAdmin>
+        
+      )
+    },
+
+    {
+      path: '/ResidentDetail/:id',
+      element: (
+        
+          <DashboaedLayoutAdmin>
+            <ResidentDetail />
+          </DashboaedLayoutAdmin>
+        
+      )
+    },
+
+    {
+      path: '/resident/GetMaintenanceRequestList',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <GetMaintenanceRequestList />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
+    },
+    
+    {
+      path: '/resident/MaintenanceRequestDetail/:id',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <MaintenanceRequestDetail />
             </DashboardLayoutUser>
           )
         }
       ]
     },
 
+    {
+      path: '/resident/AddMaintenanceRequest',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <AddMaintenanceRequest />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
+    },
+
+    {
+      path: '/GetResidentRequestList',
+      element: <ProtectedRoute allowedRoles={[ROLES.STAFF]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutStaff>
+              <GetResidentRequestList />
+            </DashboaedLayoutStaff>
+          )
+        }
+      ]
+    },
+
+    {
+      path: '/GetResidentRequestDetail/:id',
+      element: <ProtectedRoute allowedRoles={[ROLES.STAFF]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutStaff>
+              <GetResidentRequestDetail />
+            </DashboaedLayoutStaff>
+          )
+        }
+      ]
+    },
     // 404
     { path: '*', element: <Navigate to='/' replace /> }
   ])

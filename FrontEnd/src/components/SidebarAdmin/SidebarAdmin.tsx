@@ -29,7 +29,7 @@ const menuGroups: MenuGroup[] = [
     icon: 'groups',
     items: [
       {
-        path: '/owner/management/residents',
+        path: '/Getresidentlist',
         label: 'Quản lý cư dân',
         icon: 'people'
       },

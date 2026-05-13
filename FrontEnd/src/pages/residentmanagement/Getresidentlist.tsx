@@ -1,116 +1,9 @@
-// import React from "react";
-
-// export default function Getresidentlist() {
-//   return (
-//     <div className="bg-surface text-on-surface min-h-screen">
-      
-//       {/* TopNav */}
-//       <nav className="fixed top-0 w-full z-50 flex items-center justify-between px-6 py-3 bg-slate-50/70 backdrop-blur-xl shadow-sm">
-//         <div className="flex items-center gap-8">
-//           <span className="text-xl font-bold">Homelink Admin</span>
-//           <div className="hidden md:flex items-center bg-surface-container-low px-4 py-1.5 rounded-full border">
-//             <span className="material-symbols-outlined text-sm">search</span>
-//             <input
-//               className="bg-transparent border-none focus:ring-0 text-sm w-64"
-//               placeholder="Tìm kiếm cư dân..."
-//             />
-//           </div>
-//         </div>
-//       </nav>
-
-//       {/* Sidebar */}
-//       <aside className="fixed left-0 top-0 h-full w-64 bg-slate-50 border-r pt-20 hidden md:flex flex-col p-4">
-//         <h2 className="text-lg font-bold mb-6">Admin Portal</h2>
-
-//         <a className="flex items-center gap-3 px-4 py-3 hover:bg-slate-100 rounded-lg">
-//           <span className="material-symbols-outlined">dashboard</span>
-//           Dashboard
-//         </a>
-
-//         <a className="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-lg">
-//           <span className="material-symbols-outlined">group</span>
-//           Tenants
-//         </a>
-//       </aside>
-
-//       {/* Main */}
-//       <main className="md:ml-64 pt-24 px-6 pb-12">
-
-//         {/* Header */}
-//         <div className="flex justify-between mb-10">
-//           <div>
-//             <h1 className="text-3xl font-bold">Quản lý Cư dân</h1>
-//             <p className="text-sm text-gray-500">
-//               Quản lý thông tin cư dân trong hệ thống
-//             </p>
-//           </div>
-
-//           <button className="bg-blue-600 text-white px-6 py-2 rounded-full flex items-center gap-2">
-//             <span className="material-symbols-outlined">person_add</span>
-//             Thêm Cư dân
-//           </button>
-//         </div>
-
-//         {/* Filter */}
-//         <div className="bg-white p-6 rounded-xl mb-6 flex gap-4">
-//           <select className="p-2 border rounded">
-//             <option>Tất cả tòa nhà</option>
-//             <option>Building A</option>
-//             <option>Building B</option>
-//           </select>
-
-//           <select className="p-2 border rounded">
-//             <option>Trạng thái</option>
-//             <option>Active</option>
-//             <option>Inactive</option>
-//           </select>
-//         </div>
-
-//         {/* Table */}
-//         <div className="bg-white rounded-xl shadow overflow-hidden">
-//           <table className="w-full text-left">
-//             <thead className="bg-gray-100 text-xs uppercase">
-//               <tr>
-//                 <th className="p-4">ID</th>
-//                 <th className="p-4">Họ tên</th>
-//                 <th className="p-4">Căn hộ</th>
-//                 <th className="p-4">Tòa</th>
-//                 <th className="p-4">Vai trò</th>
-//                 <th className="p-4">Trạng thái</th>
-//               </tr>
-//             </thead>
-
-//             <tbody>
-//               <tr className="border-t hover:bg-gray-50">
-//                 <td className="p-4">#001</td>
-//                 <td className="p-4 font-semibold">Nguyễn Văn A</td>
-//                 <td className="p-4">A101</td>
-//                 <td className="p-4">Building A</td>
-//                 <td className="p-4 text-blue-600 font-bold">OWNER</td>
-//                 <td className="p-4 text-green-600 font-bold">ACTIVE</td>
-//               </tr>
-
-//               <tr className="border-t hover:bg-gray-50">
-//                 <td className="p-4">#002</td>
-//                 <td className="p-4 font-semibold">Trần Thị B</td>
-//                 <td className="p-4">B1201</td>
-//                 <td className="p-4">Building B</td>
-//                 <td className="p-4">MEMBER</td>
-//                 <td className="p-4 text-green-600 font-bold">ACTIVE</td>
-//               </tr>
-//             </tbody>
-//           </table>
-//         </div>
-//       </main>
-//     </div>
-//   );
-// }
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { residentApi } from 'src/apis/resident_api/residents.api'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
 import { toast } from 'react-toastify'
-import type { Resident } from 'src/types/resident.type'
+import type { Resident12 } from 'src/types/resident.type'
 import { useNavigate } from 'react-router-dom'
 
 
@@ -120,7 +13,7 @@ export default function Getresidentlist() {
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [page, setPage] = useState<number>(0)
   const pageSize = 10
-  const [selectedResident, setSelectedResident] = useState<Resident | null>(null)
+  const [selectedResident, setSelectedResident] = useState<Resident12 | null>(null)
   const navigate = useNavigate()
 
   // Lấy danh sách tòa nhà để lọc
@@ -141,7 +34,7 @@ export default function Getresidentlist() {
       return residentApi.getAllResidents(params)
     }
   })
-
+console.log(residentsData)
   const residents = residentsData?.data.data || []
   const totalElements = residentsData?.data.totalElements || 0
   const totalPages = residentsData?.data.totalPages || 0
@@ -244,7 +137,7 @@ export default function Getresidentlist() {
           </div>
 
           <button
-  onClick={() => navigate('/residents/add')}
+  onClick={() => navigate('/Addresident')}
   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full flex items-center gap-2 transition-all"
 >
   {/* <span className="material-symbols-outlined text-sm">person_add</span> */}
@@ -325,7 +218,7 @@ export default function Getresidentlist() {
                     </td>
                   </tr>
                 ) : (
-                  residents.map((resident: Resident) => (
+                  residents.map((resident) => (
                     <tr key={resident.id} className="hover:bg-gray-50 transition-colors">
                       <td className="p-4 text-sm font-mono text-gray-500">#{resident.id}</td>
                       <td className="p-4">
@@ -364,7 +257,7 @@ export default function Getresidentlist() {
                             <span className="material-symbols-outlined text-sm">delete</span>
                           </button>
                           <button
-                            onClick={() => navigate(`/residents/${resident.id}`)}
+                            onClick={() => navigate(`/ResidentDetail/${resident.id}`)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Xem chi tiết"
                           >
@@ -425,7 +318,7 @@ export default function Getresidentlist() {
               <div>
                 <p className="text-xs text-gray-500">Chủ hộ</p>
                 <p className="text-2xl font-bold">
-                  {residents.filter((r: Resident) => r.relationship === 'OWNER').length}
+                  {residents.filter((r) => r.relationship === 'OWNER').length}
                 </p>
               </div>
               {/* <span className="material-symbols-outlined text-3xl text-blue-500">home</span> */}
@@ -437,7 +330,7 @@ export default function Getresidentlist() {
               <div>
                 <p className="text-xs text-gray-500">Đang cư trú</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {residents.filter((r: Resident) => r.status === 'ACTIVE').length}
+                  {residents.filter((r: Resident12) => r.status === 'ACTIVE').length}
                 </p>
               </div>
               {/* <span className="material-symbols-outlined text-3xl text-green-500">check_circle</span> */}
@@ -449,7 +342,7 @@ export default function Getresidentlist() {
               <div>
                 <p className="text-xs text-gray-500">Đã chuyển đi</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {residents.filter((r: Resident) => r.status === 'MOVED_OUT').length}
+                  {residents.filter((r: Resident12) => r.status === 'MOVED_OUT').length}
                 </p>
               </div>
               {/* <span className="material-symbols-outlined text-3xl text-red-500">logout</span> */}
