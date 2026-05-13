@@ -22,7 +22,8 @@ const createResident = async (req, res) => {
 
 const getAllResidents = async (req, res) => {
   try {
-    const result = await service.getAllResidents(req.query);
+    const currentUser = req.user;
+    const result = await service.getAllResidents(req.query, currentUser);
 
     res.json({
       operationType: "Success",

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { apartmentsApi } from 'src/apis/apartment_api/apartments.api'
 import { UserApi } from 'src/apis/User/user.api'
 import { utilityMetersApi } from 'src/apis/utility_api/utility-meters.api'
+import { logResourceConsoleError } from 'src/utils/payment-console-log'
 import type { UtilityMeter } from 'src/types/utility-meter.type'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
@@ -30,16 +31,6 @@ const logApiSuccess = (action: string, response: any) => {
     endpoint: response?.config?.url,
     method: response?.config?.method,
     data: response?.data
-  })
-}
-
-const logApiError = (action: string, err: any) => {
-  console.error(`[UtilityMeter][${action}] error`, {
-    status: err?.response?.status,
-    endpoint: err?.config?.url || err?.response?.config?.url,
-    method: err?.config?.method || err?.response?.config?.method,
-    data: err?.response?.data,
-    message: err?.message
   })
 }
 
@@ -93,7 +84,7 @@ export default function UtilityMetersPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Save', err)
+      logResourceConsoleError('UtilityMeter', 'Save', err)
       setScreenError(getApiErrorMessage(err, 'Lưu đồng hồ thất bại'))
     }
   })
@@ -106,7 +97,7 @@ export default function UtilityMetersPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Delete', err)
+      logResourceConsoleError('UtilityMeter', 'Delete', err)
       setScreenError(getApiErrorMessage(err, 'Xóa mềm đồng hồ thất bại'))
     }
   })
@@ -118,14 +109,14 @@ export default function UtilityMetersPage() {
       setScreenError(null)
     },
     onError: (err: any) => {
-      logApiError('Restore', err)
+      logResourceConsoleError('UtilityMeter', 'Restore', err)
       setScreenError(getApiErrorMessage(err, 'Khôi phục đồng hồ thất bại'))
     }
   })
 
-  if (isError) logApiError('GetAll', error)
-  if (isApartmentError) logApiError('Apartments', apartmentError)
-  if (isUserError) logApiError('Users', userError)
+  if (isError) logResourceConsoleError('UtilityMeter', 'GetAll', error)
+  if (isApartmentError) logResourceConsoleError('UtilityMeter', 'Apartments', apartmentError)
+  if (isUserError) logResourceConsoleError('UtilityMeter', 'Users', userError)
 
   const list = data?.data?.data || []
   const totalPages = Number(data?.data?.totalPages || 0)

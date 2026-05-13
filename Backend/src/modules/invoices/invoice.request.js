@@ -15,7 +15,7 @@ const createInvoiceSchema = z.object({
   "billingMonth and billingYear must be provided together"
 ).refine(
   (v) => v.totalAmount !== undefined || (v.billingMonth !== undefined && v.billingYear !== undefined),
-  "Provide totalAmount, or provide billingMonth and billingYear to auto-calculate from meter readings"
+  "Provide totalAmount, or provide billingMonth and billingYear to auto-calculate from utilities and/or active RENT contract"
 );
 
 const updateInvoiceSchema = z

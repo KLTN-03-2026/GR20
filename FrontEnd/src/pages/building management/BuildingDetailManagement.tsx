@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { buildingAssignmentsApi } from 'src/apis/building_api/building-assignments.api'
 import { buildingImagesApi } from 'src/apis/building_api/building-images.api'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
@@ -57,8 +57,10 @@ const logApiError = (scope: string, action: string, error: any) => {
 
 export default function BuildingDetailManagement() {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { id = '' } = useParams()
+  const buildingsListPath = location.pathname.includes('/admin/buildings') ? '/admin/buildings' : '/buildings'
   const [activeTab, setActiveTab] = useState<TabKey>('images')
   const [screenError, setScreenError] = useState<string | null>(null)
   const [includeDeletedImages, setIncludeDeletedImages] = useState(false)
@@ -234,7 +236,7 @@ export default function BuildingDetailManagement() {
           <div>
             <button
               type='button'
-              onClick={() => navigate('/buildings')}
+              onClick={() => navigate(buildingsListPath)}
               className='mb-3 text-sm font-medium text-[#0052CC] hover:underline'
             >
               Quay lại danh sách tòa nhà

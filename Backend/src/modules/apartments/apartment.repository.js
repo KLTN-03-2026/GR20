@@ -28,7 +28,14 @@ const createApartment = async (apartment) => {
 };
 
 // ================= GET ALL =================
-const getAllApartments = async ({ page = 0, size = 10, buildingId, floorId, search }) => {
+/** buildingIds: null/undefined = không lọc theo tòa; mảng không rỗng = WHERE building_id = ANY(...) — giá trị do service truyền (service đọc JWT/query), layer này không đụng auth */
+const getAllApartments = async ({
+  page = 0,
+  size = 10,
+  floorId,
+  search,
+  buildingIds,
+}) => {
   const offset = page * size;
   const params = [];
   let paramIndex = 1;
@@ -40,13 +47,21 @@ const getAllApartments = async ({ page = 0, size = 10, buildingId, floorId, sear
     LEFT JOIN users u ON a.owner_user_id = u.id
     WHERE a.status != 'MAINTENANCE'
   `;
-  if (buildingId) { dataQuery += ` AND a.building_id = $${paramIndex}`; params.push(buildingId); paramIndex++; }
+  if (buildingIds && buildingIds.length > 0) {
+    dataQuery += ` AND a.building_id = ANY($${paramIndex}::bigint[])`;
+    params.push(buildingIds);
+    paramIndex++;
+  }
   if (floorId) { dataQuery += ` AND a.floor_id = $${paramIndex}`; params.push(floorId); paramIndex++; }
   if (search) { dataQuery += ` AND a.apartment_code ILIKE $${paramIndex}`; params.push(`%${search}%`); paramIndex++; }
   let countQuery = `SELECT COUNT(*) FROM apartments a WHERE a.status != 'MAINTENANCE'`;
   const countParams = [];
   let countParamIndex = 1;
-  if (buildingId) { countQuery += ` AND a.building_id = $${countParamIndex}`; countParams.push(buildingId); countParamIndex++; }
+  if (buildingIds && buildingIds.length > 0) {
+    countQuery += ` AND a.building_id = ANY($${countParamIndex}::bigint[])`;
+    countParams.push(buildingIds);
+    countParamIndex++;
+  }
   if (floorId) { countQuery += ` AND a.floor_id = $${countParamIndex}`; countParams.push(floorId); countParamIndex++; }
   if (search) { countQuery += ` AND a.apartment_code ILIKE $${countParamIndex}`; countParams.push(`%${search}%`); countParamIndex++; }
   dataQuery += ` ORDER BY f.floor_number ASC, a.apartment_code ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -260,6 +275,12 @@ const addResident = async (apartmentId, data) => {
 };
 
 module.exports = {
-  createApartment, getAllApartments, getApartmentsByBuilding, getApartmentsByFloor,
-  getApartmentById, updateApartment, deleteApartment, addResident,
+  createApartment,
+  getAllApartments,
+  getApartmentsByBuilding,
+  getApartmentsByFloor,
+  getApartmentById,
+  updateApartment,
+  deleteApartment,
+  addResident,
 };

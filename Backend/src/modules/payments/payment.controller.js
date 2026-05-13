@@ -1,87 +1,73 @@
-const { ZodError } = require("zod");
-const { AppError } = require("../../common/app-error");
+const { sendControllerError } = require("../../common/send-controller-error");
 const service = require("./payment.service");
-
-const sendError = (res, err) => {
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      code: "VALIDATION_ERROR",
-      message: "Validation failed",
-      errors: err.flatten().fieldErrors,
-      formErrors: err.flatten().formErrors,
-    });
-  }
-  if (err instanceof AppError) return res.status(err.statusCode).json({ code: "APP_ERROR", message: err.message, details: err.details });
-  return res.status(500).json({ code: "INTERNAL_ERROR", message: err.message });
-};
 
 const createPayment = async (req, res) => {
   try {
     const data = await service.createPayment(req.body);
     res.status(201).json({ operationType: "Success", message: "Create payment successfully", code: "CREATED", data, size: 1, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getAllPayments = async (req, res) => {
   try {
     const result = await service.getAllPayments(req.query);
     res.json({ operationType: "Success", message: "success", code: "OK", ...result, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentById = async (req, res) => {
   try {
     const data = await service.getPaymentById(req.params.id);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentDetailById = async (req, res) => {
   try {
     const data = await service.getPaymentDetailById(req.params.id);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 
 const getLatestPaymentByInvoiceId = async (req, res) => {
   try {
     const data = await service.getLatestPaymentByInvoiceId(req.params.invoiceId);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentsByUserId = async (req, res) => {
   try {
     const result = await service.getPaymentsByUserId(req.params.userId, req.query);
     res.json({ operationType: "Success", message: "success", code: "OK", ...result, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentByUserAndId = async (req, res) => {
   try {
     const data = await service.getPaymentByUserAndId(req.params.userId, req.params.id);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 
 const generateMbVietQrByInvoiceId = async (req, res) => {
   try {
     const data = await service.generateMbVietQrByInvoiceId(req.params.invoiceId);
     res.json({ operationType: "Success", message: "Generate VietQR successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const updatePayment = async (req, res) => {
   try {
     const data = await service.updatePayment(req.params.id, req.body);
     res.json({ operationType: "Success", message: "Update payment successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const deletePayment = async (req, res) => {
   try {
     const data = await service.deletePayment(req.params.id);
     res.json({ operationType: "Success", message: "Delete payment successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const restorePayment = async (req, res) => {
   try {
     const data = await service.restorePayment(req.params.id);
     res.json({ operationType: "Success", message: "Restore payment successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 
 const cassoWebhook = async (req, res) => {
@@ -112,7 +98,7 @@ const cassoWebhook = async (req, res) => {
     const data = await service.processCassoWebhook(req.body, secret);
     console.log("[CASSO][Webhook] result:", data);
     res.json({ operationType: "Success", message: "Webhook received", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 
 module.exports = {

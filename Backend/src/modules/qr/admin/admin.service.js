@@ -3,6 +3,7 @@ const QRCode = require("qrcode");
 const { v4: uuidv4 } = require("uuid");
 const { pool } = require("../../../configs/database.config");
 const mapper = require("../common/qr.mapper");
+const { buildingIdsFromUser } = require("../../../common/building-scope");
 
 // Kiểm tra user có thuộc căn hộ không
 const checkUserBelongsToApartment = async (userId, apartmentId) => {
@@ -18,7 +19,7 @@ const checkUserBelongsToApartment = async (userId, apartmentId) => {
   return result.rows.length > 0;
 };
 
-const getAllPersonalQrs = async (queryParams = {}) => {
+const getAllPersonalQrs = async (queryParams = {}, currentUser) => {
   const {
     page = 1,
     limit = 10,
@@ -27,13 +28,16 @@ const getAllPersonalQrs = async (queryParams = {}) => {
     hasQrOnly = false,
   } = queryParams;
 
-  const result = await repo.getAllPersonalQrs({
-    page: parseInt(page),
-    limit: parseInt(limit),
-    search: search || "",
-    status: status || "",
-    hasQrOnly: hasQrOnly === "true",
-  });
+  const result = await repo.getAllPersonalQrs(
+    {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+      status,
+      hasQrOnly: hasQrOnly === "true",
+    },
+    currentUser, // 👈 PASS DOWN
+  );
 
   return {
     data: result.data,

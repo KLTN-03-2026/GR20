@@ -1,7 +1,8 @@
 const { pool } = require("../common/base.repository");
+const { buildingIdsFromUser } = require("../../../common/building-scope");
 
 // Lấy danh sách personal QR
-const getAllPersonalQrs = async (options = {}) => {
+const getAllPersonalQrs = async (options = {}, currentUser) => {
   const {
     page = 1,
     limit = 10,
@@ -11,19 +12,25 @@ const getAllPersonalQrs = async (options = {}) => {
   } = options;
 
   const offset = (page - 1) * limit;
-  let conditions = [`u.role_id = 5`]; // role_id của "Người Dùng"
+
+  let conditions = [`u.role_id = 5`];
   let params = [];
   let paramIndex = 1;
 
-  if (search && search.trim()) {
-    conditions.push(
-      `(u.full_name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex} OR u.phone ILIKE $${paramIndex} OR COALESCE(a.apartment_code, '') ILIKE $${paramIndex})`,
-    );
+  // 1. SEARCH
+  if (search?.trim()) {
+    conditions.push(`
+      (u.full_name ILIKE $${paramIndex}
+      OR u.email ILIKE $${paramIndex}
+      OR u.phone ILIKE $${paramIndex}
+      OR COALESCE(a.apartment_code,'') ILIKE $${paramIndex})
+    `);
     params.push(`%${search.trim()}%`);
     paramIndex++;
   }
 
-  if (status && status.trim()) {
+  // 2. STATUS
+  if (status?.trim()) {
     if (hasQrOnly) {
       conditions.push(`qc.status = $${paramIndex}`);
     } else {
@@ -33,13 +40,62 @@ const getAllPersonalQrs = async (options = {}) => {
     paramIndex++;
   }
 
+  // 3. HAS QR ONLY
   if (hasQrOnly) {
     conditions.push(`qc.id IS NOT NULL`);
   }
 
-  const whereClause =
-    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  // 4. BUILDING SCOPE 🔥 (BẠN MUỐN BỎ VÀO ĐÂY)
+  const qBuildingId =
+    options.buildingId != null && options.buildingId !== ""
+      ? Number(options.buildingId)
+      : null;
 
+  const scope = currentUser ? buildingIdsFromUser(currentUser) : null;
+
+  if (scope === null) {
+    // ADMIN → nếu có query thì filter theo query
+    if (qBuildingId != null && !Number.isNaN(qBuildingId)) {
+      conditions.push(`a.building_id = $${paramIndex}`);
+      params.push(qBuildingId);
+      paramIndex++;
+    }
+  } else {
+    // USER / MANAGER
+    if (scope.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      };
+    }
+
+    if (qBuildingId != null && !Number.isNaN(qBuildingId)) {
+      if (scope.includes(qBuildingId)) {
+        conditions.push(`a.building_id = $${paramIndex}`);
+        params.push(qBuildingId);
+        paramIndex++;
+      } else {
+        return {
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        };
+      }
+    } else {
+      conditions.push(`a.building_id = ANY($${paramIndex})`);
+      params.push(scope);
+      paramIndex++;
+    }
+  }
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+  // 5. DATA QUERY
   const dataQuery = `
     SELECT 
       u.id AS user_id,
@@ -66,6 +122,7 @@ const getAllPersonalQrs = async (options = {}) => {
 
   const dataResult = await pool.query(dataQuery, [...params, limit, offset]);
 
+  // 6. COUNT QUERY
   const countQuery = `
     SELECT COUNT(DISTINCT u.id) as total
     FROM users u
@@ -78,24 +135,14 @@ const getAllPersonalQrs = async (options = {}) => {
 
   const countResult = await pool.query(countQuery, params);
 
+  const total = parseInt(countResult.rows[0]?.total || 0);
+
   return {
-    data: dataResult.rows.map((row) => ({
-      qr_id: row.qr_id,
-      user_id: row.user_id,
-      apartment_id: row.apartment_id,
-      qr_code: row.qr_code,
-      expires_at: row.expires_at,
-      qr_status: row.qr_status,
-      created_at: row.qr_created_at,
-      user_name: row.user_name,
-      user_email: row.user_email,
-      user_phone: row.user_phone,
-      apartment_code: row.apartment_code,
-    })),
-    total: parseInt(countResult.rows[0]?.total || 0),
-    page: page,
-    limit: limit,
-    totalPages: Math.ceil(parseInt(countResult.rows[0]?.total || 0) / limit),
+    data: dataResult.rows,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
   };
 };
 // Tạo personal QR

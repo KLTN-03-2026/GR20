@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
+import { logResourceConsoleError } from 'src/utils/payment-console-log'
 import ItemBuilding from './ItemBuilding'
 
 export default function Buildings() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
+  const buildingsListBase = location.pathname.startsWith('/admin/buildings') ? '/admin/buildings' : '/buildings'
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -41,16 +44,6 @@ export default function Buildings() {
       endpoint: response?.config?.url,
       method: response?.config?.method,
       data: response?.data
-    })
-  }
-
-  const logApiError = (action: string, error: any) => {
-    console.error(`[Building][${action}] error`, {
-      status: error?.response?.status,
-      endpoint: error?.config?.url || error?.response?.config?.url,
-      method: error?.config?.method || error?.response?.config?.method,
-      data: error?.response?.data,
-      message: error?.message
     })
   }
 
@@ -95,7 +88,7 @@ export default function Buildings() {
       setEditingId(null)
     },
     onError: (error: any) => {
-      logApiError('CreateOrUpdate', error)
+      logResourceConsoleError('Building', 'CreateOrUpdate', error)
       const msg = getApiErrorMessage(error, 'Không lưu được tòa nhà')
       setFormError(msg)
     }
@@ -108,7 +101,7 @@ export default function Buildings() {
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
     },
     onError: (error: any) => {
-      logApiError('Delete', error)
+      logResourceConsoleError('Building', 'Delete', error)
     }
   })
 
@@ -119,7 +112,7 @@ export default function Buildings() {
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
     },
     onError: (error: any) => {
-      logApiError('Reopen', error)
+      logResourceConsoleError('Building', 'Reopen', error)
     }
   })
 
@@ -155,7 +148,7 @@ export default function Buildings() {
   }
 
   if (isError) {
-    logApiError('GetAll', buildingsError)
+    logResourceConsoleError('Building', 'GetAll', buildingsError)
   }
 
   const summary = useMemo(
@@ -313,7 +306,7 @@ export default function Buildings() {
                         setFormError(null)
                       }}
                       onManageImages={(b) => {
-                        navigate(`/buildings/${b.id}`)
+                        navigate(`${buildingsListBase}/${b.id}`)
                       }}
                     />
                   ))}
