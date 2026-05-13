@@ -52,15 +52,15 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>Thông tin căn hộ</span>
           </NavLink>
 
-          <NavLink to='/resident/maintenance-request' className={getNavClass}>
+          <NavLink to='/resident/GetMaintenanceRequestList' className={getNavClass}>
             <span className='material-symbols-outlined'>build</span>
             <span className='text-sm font-manrope'>Gửi yêu cầu bảo trì</span>
           </NavLink>
 
-          <NavLink to='/resident/request-history' className={getNavClass}>
+          {/* <NavLink to='/resident/request-history' className={getNavClass}>
             <span className='material-symbols-outlined'>history</span>
             <span className='text-sm font-manrope'>Lịch sử yêu cầu</span>
-          </NavLink>
+          </NavLink> */}
 
           <NavLink to='/utility-pricing' className={getNavClass}>
             <span className='material-symbols-outlined'>sell</span>

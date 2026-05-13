@@ -86,7 +86,7 @@ export const menuConfig: MenuItem[] = [
   {
     id: 'security-resident-lookup',
     name: 'Tra cứu cư dân',
-    path: '/residents',
+    path: '/SecurityResident',
     icon: 'badge',
     keywords: ['cư dân', 'tra cứu cư dân', 'resident', 'thông tin cư dân', 'căn hộ'],
     roles: ['Bảo vệ', 'ADMIN']
@@ -170,6 +170,30 @@ export const menuConfig: MenuItem[] = [
     icon: 'payments',
     keywords: ['thanh toán', 'payment', 'trả tiền', 'giao dịch'],
     roles: ['Người Dùng']
+  },
+  {
+    id: 'maintenance-request',
+    name: 'Gửi yêu cầu bảo trì',
+    path: '/resident/GetMaintenanceRequestList',
+    icon: 'build',
+    keywords: ['bảo trì', 'yêu cầu bảo trì', 'gửi yêu cầu'],
+    roles: ['Người Dùng']
+  },
+  {
+    id: 'resident-request',
+    name: 'Quản lý yêu cầu cư dân',
+    path: '/GetResidentRequestList',
+    icon: 'build',
+    keywords: ['bảo trì', 'quản lý yêu cầu bảo trì', 'yêu cầu bảo trì', 'quản lý'],
+    roles: ['Nhân viên', 'ADMIN', 'Quản lý']
+  },
+  {
+    id: 'resident-management',
+    name: 'Quản lý cư dân',
+    path: '/Getresidentlist',
+    icon: 'people',
+    keywords: ['quản lý cư dân', 'quản', 'cư dân'],
+    roles: ['ADMIN', 'Quản lý']
   }
 ]
 

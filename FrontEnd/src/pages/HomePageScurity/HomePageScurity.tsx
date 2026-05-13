@@ -1,349 +1,465 @@
-import React from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { DashboardApi } from 'src/apis/TongQuanProtection/TongQuanProtection.api'
+import { useState } from 'react'
 
 export default function HomePageSecurity() {
+  const [hoveredHour, setHoveredHour] = useState<{ hour: number; count: number; x: number; y: number } | null>(null)
+
+  const {
+    data: dashboardResponse,
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => DashboardApi.getStats(),
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 60 * 1000
+  })
+
+  const dashboardData = dashboardResponse?.data?.data
+  const totalScansToday = dashboardData?.overview?.totalScansToday || 0
+  const successRate = dashboardData?.overview?.successRate || 0
+  const deniedCount = dashboardData?.overview?.deniedCount || 0
+  const peakHour = dashboardData?.overview?.peakHour || '14:00 - 15:00'
+  const peakHourCount = dashboardData?.overview?.peakHourCount || 56
+  const hourlyStatsRaw = dashboardData?.charts?.hourlyStats || Array(24).fill(0)
+  // Chuyển đổi từ UTC sang giờ Việt Nam (UTC+7)
+  const hourlyStats = [...hourlyStatsRaw.slice(17), ...hourlyStatsRaw.slice(0, 17)]
+  const buildingDistribution = dashboardData?.charts?.buildingDistribution || []
+  const topDeniedQr = dashboardData?.alerts?.topDeniedQr || []
+  const anomalies = dashboardData?.alerts?.anomalies || []
+  const recentLogs = dashboardData?.recentLogs || []
+  const activeResidents = dashboardData?.stats?.activeResidents || 0
+  const personalQrCount = dashboardData?.stats?.personalQrCount || 0
+  const guestQrCount = dashboardData?.stats?.guestQrCount || 0
+
+  const maxHourlyValue = Math.max(...hourlyStats, 1)
+  const totalScans = totalScansToday || 171
+
+  // Format time
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString)
+    const vietnamTime = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+    return vietnamTime.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    })
+  }
+
+  // Tính vị trí điểm trên biểu đồ
+  const getPointPosition = (index: number, count: number) => {
+    const x = (index / 23) * 1000
+    const y = 300 - (count / maxHourlyValue) * 250
+    return { x, y }
+  }
+
+  if (isLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-screen bg-surface'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto'></div>
+          <p className='mt-4 text-on-surface-variant'>Đang tải dữ liệu thống kê...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className='flex items-center justify-center min-h-screen bg-surface'>
+        <div className='text-center'>
+          <span className='material-symbols-outlined text-6xl text-error mb-4'>error</span>
+          <p className='text-on-surface-variant'>Có lỗi xảy ra khi tải dữ liệu</p>
+          <button
+            onClick={() => window.location.reload()}
+            className='mt-4 px-4 py-2 bg-primary text-on-primary rounded-xl font-bold'
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className='text-on-surface'>
-      {/* Main Content */}
-      <main className='p-8 min-h-screen'>
-        <div className='max-w-7xl mx-auto space-y-8'>
-          {/* Overview Statistics */}
-          <section className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-            <div className='bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-blue-100 transition-all'>
-              <p className='text-label-md uppercase tracking-widest text-slate-500 text-[10px] font-bold'>
-                Tổng số lượt quét hôm nay
-              </p>
-              <div className='mt-2 flex items-baseline justify-between'>
-                <h2 className='text-3xl font-black text-slate-900'>1.248</h2>
-                <span className='text-xs font-bold text-emerald-600 flex items-center'>
-                  <span className='material-symbols-outlined text-sm mr-1'>arrow_upward</span> 12,4%
-                </span>
-              </div>
-            </div>
-            <div className='bg-surface-container-lowest p-6 rounded-xl shadow-sm'>
-              <p className='text-label-md uppercase tracking-widest text-slate-500 text-[10px] font-bold'>
-                Tỷ lệ thành công
-              </p>
-              <div className='mt-2 flex items-baseline justify-between'>
-                <h2 className='text-3xl font-black text-slate-900'>98,2%</h2>
-                <span className='text-[10px] text-slate-400'>1.226 tổng số</span>
-              </div>
-              <div className='mt-4 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden'>
-                <div className='h-full bg-blue-600' style={{ width: '98.2%' }}></div>
-              </div>
-            </div>
-            <div className='bg-surface-container-lowest p-6 rounded-xl shadow-sm'>
-              <p className='text-label-md uppercase tracking-widest text-slate-500 text-[10px] font-bold'>
-                Từ chối truy cập
-              </p>
-              <div className='mt-2 flex items-baseline justify-between'>
-                <h2 className='text-3xl font-black text-slate-900'>22</h2>
-                <span className='text-xs font-bold text-rose-600 flex items-center'>
-                  <span className='material-symbols-outlined text-sm mr-1'>warning</span> +3 hôm nay
-                </span>
-              </div>
-            </div>
-            <div className='bg-surface-container-lowest p-6 rounded-xl shadow-sm'>
-              <p className='text-label-md uppercase tracking-widest text-slate-500 text-[10px] font-bold'>
-                Giờ cao điểm
-              </p>
-              <div className='mt-2'>
-                <h2 className='text-xl font-bold text-slate-900'>08:00 - 09:00</h2>
-                <p className='text-xs text-slate-500 font-medium'>45 lượt quét được ghi nhận</p>
-              </div>
-            </div>
-          </section>
+    <div className='bg-surface text-on-surface min-h-screen'>
+      <main className='flex-1 px-6 lg:px-40 py-10 max-w-[1600px] mx-auto w-full'>
+        {/* Header Section */}
+        <div className='flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12'>
+          <div className='flex flex-col gap-3'>
+            <h1 className='text-on-surface text-4xl font-extrabold tracking-tight'>Trung tâm Kiểm soát An ninh</h1>
+            <p className='text-on-surface-variant text-lg flex items-center gap-2'>
+              <span className='inline-block size-2 rounded-full bg-primary animate-pulse'></span>
+              Báo cáo hoạt động mã QR thời gian thực
+            </p>
+          </div>
+          {/* <div className='flex gap-3'>
+            <button className='px-5 py-2.5 rounded-xl bg-surface-container-high text-on-surface font-bold text-sm flex items-center gap-2 border border-outline-variant/20 hover:bg-outline-variant/10 transition-colors'>
+              <span className='material-symbols-outlined text-lg'>calendar_today</span> Hôm nay
+            </button>
+            <button className='px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-sm flex items-center gap-2 shadow-lg shadow-primary/20 hover:bg-primary-container transition-all'>
+              <span className='material-symbols-outlined text-lg'>file_download</span> Xuất báo cáo
+            </button>
+          </div> */}
+        </div>
 
-          {/* Activity Charts Section (Asymmetric Bento) */}
-          <section className='grid grid-cols-12 gap-6 h-[400px]'>
-            <div className='col-span-8 bg-white p-8 rounded-2xl shadow-sm relative overflow-hidden group'>
-              <div className='flex justify-between items-start mb-8'>
-                <div>
-                  <h3 className='text-lg font-bold text-slate-900'>Lưu lượng quét theo giờ</h3>
-                  <p className='text-xs text-slate-400'>Phân phối hoạt động qua các cổng</p>
-                </div>
-                <div className='flex space-x-2'>
-                  <span className='w-2.5 h-2.5 rounded-full bg-blue-600'></span>
-                  <span className='w-2.5 h-2.5 rounded-full bg-slate-200'></span>
-                </div>
-              </div>
-              {/* Custom Chart Visual */}
-              <div className='flex items-end justify-between h-48 px-4 gap-2'>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[20%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[35%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[45%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[60%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-blue-600 rounded-t-lg h-[90%] shadow-lg'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[75%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[50%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[40%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[30%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[25%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[15%] hover:bg-blue-100 transition-colors'></div>
-                <div className='w-full bg-slate-50 rounded-t-lg h-[10%] hover:bg-blue-100 transition-colors'></div>
-              </div>
-              <div className='flex justify-between mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2'>
-                <span>06:00</span>
-                <span>08:00</span>
-                <span>10:00</span>
-                <span>12:00</span>
-                <span>14:00</span>
-                <span>16:00</span>
-                <span>18:00</span>
-              </div>
-            </div>
-            <div className='col-span-4 bg-slate-900 text-white p-8 rounded-2xl relative overflow-hidden flex flex-col justify-between'>
-              <div className='absolute top-0 right-0 p-8 opacity-20'>
-                <span className='material-symbols-outlined text-8xl' data-icon='apartment'>
-                  apartment
-                </span>
-              </div>
+        {/* Stats Cards */}
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12'>
+          <div className='bg-white/45 backdrop-blur-md p-6 rounded-2xl border border-white/50 hover:-translate-y-1 transition-transform'>
+            <div className='flex justify-between items-start'>
               <div>
-                <h3 className='text-lg font-bold'>Phân bổ theo tòa nhà</h3>
-                <p className='text-xs text-slate-400 mt-1'>So sánh khối lượng tương đối</p>
+                <p className='text-on-surface-variant text-[11px] font-bold tracking-widest uppercase'>
+                  Tổng lượt quét
+                </p>
+                <h4 className='text-3xl font-black text-on-surface'>{totalScans.toLocaleString()}</h4>
               </div>
-              <div className='space-y-6'>
-                <div>
-                  <div className='flex justify-between text-xs mb-2'>
-                    <span>Tòa A (Dân cư)</span>
-                    <span>68%</span>
-                  </div>
-                  <div className='h-1 w-full bg-white/10 rounded-full'>
-                    <div className='h-full bg-blue-400 w-[68%]'></div>
-                  </div>
-                </div>
-                <div>
-                  <div className='flex justify-between text-xs mb-2'>
-                    <span>Tòa B (Thương mại)</span>
-                    <span>32%</span>
-                  </div>
-                  <div className='h-1 w-full bg-white/10 rounded-full'>
-                    <div className='h-full bg-slate-400 w-[32%]'></div>
-                  </div>
-                </div>
+              <div className='p-2 rounded-lg bg-primary/10 text-primary'>
+                <span className='material-symbols-outlined'>qr_code_2</span>
               </div>
-              <button className='w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors'>
-                Xem chi tiết tòa nhà
-              </button>
             </div>
-          </section>
+          </div>
 
-          {/* Alerts & Recent Logs */}
-          <section className='grid grid-cols-12 gap-6'>
-            {/* Alerts & Anomalies */}
-            <div className='col-span-4 space-y-6'>
-              <div className='bg-rose-50/50 p-6 rounded-2xl border border-rose-100'>
-                <div className='flex items-center space-x-2 text-rose-600 mb-4'>
-                  <span className='material-symbols-outlined' data-icon='error'>
-                    error
-                  </span>
-                  <h3 className='text-sm font-bold uppercase tracking-wider'>Mã QR bị từ chối nhiều</h3>
-                </div>
-                <ul className='space-y-4'>
-                  <li className='flex justify-between items-center text-xs'>
-                    <div>
-                      <p className='font-bold text-slate-900'>QR-7729 (Hết hạn)</p>
-                      <p className='text-slate-500'>Thử 5 lần tại Cổng 02</p>
-                    </div>
-                    <span className='bg-rose-100 text-rose-700 px-2 py-1 rounded font-bold'>Đã gắn cờ</span>
-                  </li>
-                  <li className='flex justify-between items-center text-xs'>
-                    <div>
-                      <p className='font-bold text-slate-900'>QR-1092 (Bị chặn)</p>
-                      <p className='text-slate-500'>Quản trị viên chặn thủ công</p>
-                    </div>
-                    <span className='bg-rose-100 text-rose-700 px-2 py-1 rounded font-bold'>Đã gắn cờ</span>
-                  </li>
-                </ul>
+          <div className='bg-white/45 backdrop-blur-md p-6 rounded-2xl border border-white/50 hover:-translate-y-1 transition-transform'>
+            <div className='flex justify-between items-start'>
+              <div>
+                <p className='text-on-surface-variant text-[11px] font-bold tracking-widest uppercase'>
+                  Tỉ lệ thành công
+                </p>
+                <h4 className='text-3xl font-black text-on-surface'>{successRate}%</h4>
               </div>
-              <div className='bg-surface-container-low p-6 rounded-2xl'>
-                <div className='flex items-center space-x-2 text-on-surface mb-4'>
-                  <span className='material-symbols-outlined' data-icon='radar'>
-                    radar
-                  </span>
-                  <h3 className='text-sm font-bold uppercase tracking-wider'>Hoạt động bất thường</h3>
-                </div>
-                <div className='space-y-4'>
-                  <div className='p-3 bg-white rounded-lg shadow-sm border-l-4 border-amber-400'>
-                    <p className='text-xs font-bold text-slate-900'>Quét khách lúc nửa đêm</p>
-                    <p className='text-[10px] text-slate-500 mt-1'>Cổng 04 • 03:14 • Căn 402B</p>
-                  </div>
-                  <div className='p-3 bg-white rounded-lg shadow-sm border-l-4 border-amber-400'>
-                    <p className='text-xs font-bold text-slate-900'>Quét nhanh nhiều lần</p>
-                    <p className='text-[10px] text-slate-500 mt-1'>Cổng 01 • 4 lần trong 2 phút</p>
-                  </div>
+              <div className='p-2 rounded-lg bg-green-500/10 text-green-600'>
+                <span className='material-symbols-outlined'>check_circle</span>
+              </div>
+            </div>
+          </div>
+
+          <div className='bg-white/45 backdrop-blur-md p-6 rounded-2xl border border-white/50 hover:-translate-y-1 transition-transform'>
+            <div className='flex justify-between items-start'>
+              <div>
+                <p className='text-on-surface-variant text-[11px] font-bold tracking-widest uppercase'>
+                  Lượt bị từ chối
+                </p>
+                <h4 className='text-3xl font-black text-error'>{deniedCount.toLocaleString()}</h4>
+              </div>
+              <div className='p-2 rounded-lg bg-error/10 text-error'>
+                <span className='material-symbols-outlined'>block</span>
+              </div>
+            </div>
+          </div>
+
+          <div className='bg-white/45 backdrop-blur-md p-6 rounded-2xl border border-white/50 hover:-translate-y-1 transition-transform'>
+            <div className='flex justify-between items-start'>
+              <div>
+                <p className='text-on-surface-variant text-[11px] font-bold tracking-widest uppercase'>Giờ cao điểm</p>
+                <h4 className='text-xl font-black text-on-surface'>{peakHour}</h4>
+              </div>
+              <div className='p-2 rounded-lg bg-secondary/10 text-secondary'>
+                <span className='material-symbols-outlined'>schedule</span>
+              </div>
+            </div>
+            <div className='mt-2'>
+              <span className='text-on-surface-variant text-xs'>{peakHourCount.toLocaleString()} lượt ghi nhận</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12'>
+          {/* Hourly Stats Line Chart */}
+          <div className='lg:col-span-8 bg-surface-container-lowest rounded-[2rem] p-10 border border-outline-variant/10 shadow-sm'>
+            <div className='flex justify-between items-center mb-8'>
+              <div>
+                <h3 className='text-2xl font-black text-on-surface'>Thống kê Truy cập Theo Giờ</h3>
+                <p className='text-sm text-on-surface-variant mt-1'>Xu hướng lượt quét trong vòng 24 giờ qua</p>
+              </div>
+              <div className='flex gap-4'>
+                <div className='flex items-center gap-2'>
+                  <span className='size-3 rounded-full bg-primary'></span>
+                  <span className='text-xs font-bold'>Lượt quét</span>
                 </div>
               </div>
             </div>
 
-            {/* Recent Scans Table */}
-            <div className='col-span-8 bg-white rounded-2xl shadow-sm p-8'>
-              <div className='flex justify-between items-center mb-6'>
-                <h3 className='text-lg font-bold text-slate-900'>Nhật ký quét gần đây</h3>
-                <button className='text-blue-600 text-xs font-bold hover:underline'>Xem tất cả</button>
-              </div>
-              <table className='w-full text-left'>
-                <thead>
-                  <tr className='border-b border-slate-50 text-[10px] uppercase tracking-widest text-slate-400 font-black'>
-                    <th className='pb-4 px-2'>Thời gian</th>
-                    <th className='pb-4 px-2'>Người dùng / Tên</th>
-                    <th className='pb-4 px-2'>Căn hộ</th>
-                    <th className='pb-4 px-2'>Kết quả</th>
-                    <th className='pb-4 px-2'>Cổng</th>
-                  </tr>
-                </thead>
-                <tbody className='text-sm'>
-                  <tr className='border-b border-slate-50/50 hover:bg-slate-50/50 transition-colors'>
-                    <td className='py-4 px-2 font-medium'>14:22:01</td>
-                    <td className='py-4 px-2'>
-                      <div className='flex items-center'>
-                        <div className='w-6 h-6 bg-blue-100 rounded-full mr-2 flex items-center justify-center text-[10px] font-bold text-blue-700'>
-                          JS
-                        </div>
-                        James Stevenson
-                      </div>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>202A</td>
-                    <td className='py-4 px-2'>
-                      <span className='inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1'></span>
-                      <span className='text-emerald-700 font-bold text-xs'>Thành công</span>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>Cổng 01</td>
-                  </tr>
-                  <tr className='border-b border-slate-50/50 hover:bg-slate-50/50 transition-colors'>
-                    <td className='py-4 px-2 font-medium'>14:18:45</td>
-                    <td className='py-4 px-2'>
-                      <div className='flex items-center'>
-                        <div className='w-6 h-6 bg-slate-100 rounded-full mr-2 flex items-center justify-center text-[10px] font-bold text-slate-700'>
-                          GK
-                        </div>
-                        Khách: Kyle R.
-                      </div>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>505C</td>
-                    <td className='py-4 px-2'>
-                      <span className='inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1'></span>
-                      <span className='text-emerald-700 font-bold text-xs'>Thành công</span>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>Cổng 02</td>
-                  </tr>
-                  <tr className='border-b border-slate-50/50 hover:bg-slate-50/50 transition-colors'>
-                    <td className='py-4 px-2 font-medium'>14:15:20</td>
-                    <td className='py-4 px-2'>
-                      <div className='flex items-center'>
-                        <div className='w-6 h-6 bg-rose-100 rounded-full mr-2 flex items-center justify-center text-[10px] font-bold text-rose-700'>
-                          UK
-                        </div>
-                        Không xác định
-                      </div>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>---</td>
-                    <td className='py-4 px-2'>
-                      <span className='inline-block w-2 h-2 rounded-full bg-rose-500 mr-1'></span>
-                      <span className='text-rose-700 font-bold text-xs'>Từ chối</span>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>Cổng 01</td>
-                  </tr>
-                  <tr className='border-b border-slate-50/50 hover:bg-slate-50/50 transition-colors'>
-                    <td className='py-4 px-2 font-medium'>14:12:11</td>
-                    <td className='py-4 px-2'>
-                      <div className='flex items-center'>
-                        <div className='w-6 h-6 bg-blue-100 rounded-full mr-2 flex items-center justify-center text-[10px] font-bold text-blue-700'>
-                          MS
-                        </div>
-                        Maria Santos
-                      </div>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>101A</td>
-                    <td className='py-4 px-2'>
-                      <span className='inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1'></span>
-                      <span className='text-emerald-700 font-bold text-xs'>Thành công</span>
-                    </td>
-                    <td className='py-4 px-2 text-slate-500'>Cổng chính</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Intelligence Modules */}
-          <section className='grid grid-cols-12 gap-6'>
-            {/* AI Smart Insights */}
-            <div className='col-span-7 bg-white p-8 rounded-2xl relative overflow-hidden'>
-              <div className='absolute -right-12 -top-12 w-48 h-48 bg-blue-50 rounded-full blur-3xl opacity-50'></div>
-              <div className='flex items-center space-x-3 mb-6 relative'>
-                <span
-                  className='material-symbols-outlined text-blue-600'
-                  data-icon='auto_awesome'
-                  style={{ fontVariationSettings: "'FILL' 1" }}
+            {/* Line Chart SVG with Tooltip */}
+            <div className='relative h-[320px] w-full'>
+              {/* Tooltip hiển thị gần điểm hover */}
+              {hoveredHour && (
+                <div
+                  className='fixed z-50 bg-gray-800 text-white rounded-lg py-2 px-3 shadow-lg whitespace-nowrap pointer-events-none'
+                  style={{
+                    left: hoveredHour.x - 35,
+                    top: hoveredHour.y - 50,
+                    transform: 'translate(-50%, -100%)'
+                  }}
                 >
-                  auto_awesome
-                </span>
-                <h3 className='text-lg font-bold text-slate-900'>Thông tin chi tiết từ AI</h3>
-              </div>
-              <div className='space-y-6 relative'>
-                <div className='flex gap-4'>
-                  <div className='w-1 bg-blue-600 rounded-full'></div>
-                  <div>
-                    <p className='text-sm font-bold text-slate-900'>Phát hiện mẫu bất thường tại Tòa B.</p>
-                    <p className='text-xs text-on-surface-variant mt-1 leading-relaxed'>
-                      Lượng khách vào đã tăng 40% so với trung bình các ngày thứ Ba trước đây. Đề xuất giám sát Cổng 04
-                      để phát hiện xe giao hàng trái phép.
+                  <div className='text-center'>
+                    <p className='font-semibold text-blue-300 text-xs'>
+                      {hoveredHour.hour.toString().padStart(2, '0')}:00
                     </p>
+                    <p className='text-base font-bold text-white'>{hoveredHour.count.toLocaleString()} lượt</p>
+                    {hoveredHour.count === maxHourlyValue && maxHourlyValue > 0 && (
+                      <p className='text-yellow-400 text-[10px] mt-0.5'>🏆 Giờ cao điểm</p>
+                    )}
                   </div>
+                  <div className='absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45'></div>
                 </div>
-                <div className='flex gap-4'>
-                  <div className='w-1 bg-slate-200 rounded-full'></div>
-                  <div>
-                    <p className='text-sm font-bold text-slate-900'>Dự đoán giờ cao điểm</p>
-                    <p className='text-xs text-on-surface-variant mt-1 leading-relaxed'>
-                      Dựa trên lịch sự kiện địa phương, lưu lượng cao điểm ngày mai dự kiến vào{' '}
-                      <span className='text-blue-600 font-bold'>17:30 - 19:00</span> với ước tính hơn 85 lượt quét.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+              )}
 
-            {/* Fast Info Grid */}
-            <div className='col-span-5 grid grid-cols-2 gap-4'>
-              <div className='bg-secondary-fixed p-6 rounded-2xl flex flex-col justify-between'>
-                <p className='text-[10px] font-black uppercase tracking-widest text-on-secondary-fixed-variant'>
-                  Cư dân đang hoạt động
-                </p>
-                <div>
-                  <h4 className='text-3xl font-black text-on-secondary-fixed'>2.410</h4>
-                  <p className='text-[10px] text-on-secondary-fixed-variant mt-1'>Đã xác minh trong hệ thống</p>
-                </div>
-              </div>
-              <div className='bg-surface-container-highest p-6 rounded-2xl flex flex-col justify-between'>
-                <p className='text-[10px] font-black uppercase tracking-widest text-on-surface-variant'>
-                  Mã QR đang hoạt động
-                </p>
-                <div>
-                  <div className='flex justify-between text-xs font-bold mb-1'>
-                    <span>Cá nhân</span>
-                    <span>1.822</span>
-                  </div>
-                  <div className='flex justify-between text-xs font-bold'>
-                    <span>Khách</span>
-                    <span>588</span>
-                  </div>
-                </div>
-              </div>
-              <div className='col-span-2 p-6 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-between'>
-                <div className='flex items-center space-x-4'>
-                  <div className='w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600'>
-                    <span className='material-symbols-outlined'>health_and_safety</span>
-                  </div>
-                  <div>
-                    <p className='text-sm font-bold text-slate-900'>Điểm toàn vẹn cổng</p>
-                    <p className='text-xs text-slate-500'>Tất cả phần cứng hoạt động (100%)</p>
-                  </div>
-                </div>
-                <span className='text-2xl font-black text-slate-900'>99,9</span>
+              <svg className='w-full h-full' viewBox='0 0 1000 300' preserveAspectRatio='none'>
+                {/* Grid lines */}
+                <line stroke='rgba(0,0,0,0.05)' strokeDasharray='4' strokeWidth='1' x1='0' x2='1000' y1='75' y2='75' />
+                <line
+                  stroke='rgba(0,0,0,0.05)'
+                  strokeDasharray='4'
+                  strokeWidth='1'
+                  x1='0'
+                  x2='1000'
+                  y1='150'
+                  y2='150'
+                />
+                <line
+                  stroke='rgba(0,0,0,0.05)'
+                  strokeDasharray='4'
+                  strokeWidth='1'
+                  x1='0'
+                  x2='1000'
+                  y1='225'
+                  y2='225'
+                />
+
+                {/* Y-Axis Labels */}
+                <text x='-10' y='300' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
+                  0
+                </text>
+                <text x='-10' y='225' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
+                  25
+                </text>
+                <text x='-10' y='150' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
+                  50
+                </text>
+                <text x='-10' y='75' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
+                  75
+                </text>
+                <text x='-10' y='0' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
+                  100
+                </text>
+
+                {/* Area gradient */}
+                <defs>
+                  <linearGradient id='areaGradient' x1='0' x2='0' y1='0' y2='1'>
+                    <stop offset='0%' stopColor='#005ab7' stopOpacity='0.25' />
+                    <stop offset='100%' stopColor='#005ab7' stopOpacity='0' />
+                  </linearGradient>
+                </defs>
+
+                {/* Area fill */}
+                <path
+                  d={`M0,300 L0,${300 - (hourlyStats[0] / maxHourlyValue) * 250} ${hourlyStats
+                    .map((count, i) => {
+                      const x = (i / 23) * 1000
+                      const y = 300 - (count / maxHourlyValue) * 250
+                      return `L${x},${y}`
+                    })
+                    .join(' ')} L1000,300 Z`}
+                  fill='url(#areaGradient)'
+                />
+
+                {/* Line */}
+                <path
+                  d={`M0,${300 - (hourlyStats[0] / maxHourlyValue) * 250} ${hourlyStats
+                    .map((count, i) => {
+                      const x = (i / 23) * 1000
+                      const y = 300 - (count / maxHourlyValue) * 250
+                      return `L${x},${y}`
+                    })
+                    .join(' ')}`}
+                  fill='none'
+                  stroke='#005ab7'
+                  strokeWidth='3'
+                  strokeLinecap='round'
+                />
+
+                {/* Data points */}
+                {hourlyStats.map((count, i) => {
+                  const { x, y } = getPointPosition(i, count)
+                  const isPeak = count === maxHourlyValue && maxHourlyValue > 0
+                  const hour = i
+
+                  return (
+                    <g key={i}>
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r='12'
+                        fill='transparent'
+                        className='cursor-pointer'
+                        onMouseEnter={() => setHoveredHour({ hour, count, x: x + 320, y: y + 320 })}
+                        onMouseLeave={() => setHoveredHour(null)}
+                      />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={isPeak ? '6' : '3'}
+                        fill='white'
+                        stroke='#005ab7'
+                        strokeWidth={isPeak ? '3' : '2'}
+                        className='cursor-pointer transition-all duration-200'
+                        onMouseEnter={() => setHoveredHour({ hour, count, x: x + 320, y: y + 320 })}
+                        onMouseLeave={() => setHoveredHour(null)}
+                      />
+                      {isPeak && (
+                        <text x={x} y={y - 12} fill='#005ab7' fontSize='11' fontWeight='bold' textAnchor='middle'>
+                          {count}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })}
+              </svg>
+
+              {/* X-Axis Labels */}
+              <div className='flex justify-between mt-2 text-[11px] font-bold text-on-surface-variant/60'>
+                <span>00:00</span>
+                <span>04:00</span>
+                <span>08:00</span>
+                <span>12:00</span>
+                <span>16:00</span>
+                <span>20:00</span>
+                <span>23:59</span>
               </div>
             </div>
-          </section>
+          </div>
+
+          {/* Building Distribution */}
+          <div className='lg:col-span-4 bg-surface-container-lowest rounded-[2rem] p-10 border border-outline-variant/10 shadow-sm'>
+            <h3 className='text-2xl font-black text-on-surface mb-2'>Phân bổ Vị trí</h3>
+            <p className='text-sm text-on-surface-variant mb-8'>Theo tòa nhà và các cổng chính</p>
+
+            <div className='flex flex-col items-center'>
+              <div className='relative size-48 mb-6'>
+                <svg className='size-full -rotate-90' viewBox='0 0 100 100'>
+                  <circle cx='50' cy='50' fill='none' r='44' stroke='#e0e3e5' strokeWidth='8' />
+                  {buildingDistribution.map((item: any, idx: number) => {
+                    const colors = ['#005ab7', '#476083', '#667781']
+                    const offset = buildingDistribution
+                      .slice(0, idx)
+                      .reduce((sum: number, i: any) => sum + parseFloat(i.percentage), 0)
+                    const circumference = 2 * Math.PI * 44
+                    const dashArray = (parseFloat(item.percentage) / 100) * circumference
+                    return (
+                      <circle
+                        key={idx}
+                        cx='50'
+                        cy='50'
+                        fill='none'
+                        r='44'
+                        stroke={colors[idx % colors.length]}
+                        strokeWidth='9'
+                        strokeDasharray={`${dashArray} ${circumference}`}
+                        strokeDashoffset={-((offset / 100) * circumference)}
+                        strokeLinecap='round'
+                      />
+                    )
+                  })}
+                </svg>
+                <div className='absolute inset-0 flex flex-col items-center justify-center'>
+                  <span className='text-4xl font-black text-on-surface'>{totalScans}</span>
+                  <span className='text-[10px] font-black uppercase tracking-wide text-on-surface-variant'>
+                    Tổng lượt
+                  </span>
+                </div>
+              </div>
+
+              <div className='w-full space-y-4 mt-4'>
+                {buildingDistribution.map((building: any, idx: number) => {
+                  const colors = ['#005ab7', '#476083', '#667781']
+                  const values = [96, 42, 33]
+                  return (
+                    <div key={idx} className='flex justify-between items-center'>
+                      <div className='flex items-center gap-3'>
+                        <div className='size-4 rounded-md' style={{ backgroundColor: colors[idx % colors.length] }} />
+                        <span className='text-sm font-bold text-on-surface'>{building.name}</span>
+                      </div>
+                      <div className='text-right'>
+                        <div className='text-sm font-black' style={{ color: colors[idx % colors.length] }}>
+                          {building.percentage}%
+                        </div>
+                        <div className='text-[10px] text-on-surface-variant'>{values[idx]} lần</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Logs Table */}
+        <div className='bg-surface-container-lowest rounded-[2rem] overflow-hidden shadow-xl border border-outline-variant/10'>
+          <div className='p-8 border-b border-outline-variant/10 flex justify-between items-center'>
+            <div>
+              <h3 className='text-2xl font-black text-on-surface'>Nhật ký Truy cập Gần đây</h3>
+              <p className='text-sm text-on-surface-variant mt-1'>Dữ liệu cập nhật 5 giây trước</p>
+            </div>
+            <button className='px-6 py-2.5 rounded-xl text-primary font-bold text-sm bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-2'>
+              Xem tất cả <span className='material-symbols-outlined text-lg'>arrow_forward</span>
+            </button>
+          </div>
+          <div className='overflow-x-auto'>
+            <table className='w-full text-left'>
+              <thead>
+                <tr className='bg-surface-container-low/50'>
+                  <th className='px-8 py-5 text-xs font-black uppercase tracking-wide text-on-surface-variant'>
+                    Thời gian
+                  </th>
+                  <th className='px-8 py-5 text-xs font-black uppercase tracking-wide text-on-surface-variant'>
+                    Danh tính
+                  </th>
+                  <th className='px-8 py-5 text-xs font-black uppercase tracking-wide text-on-surface-variant'>
+                    Căn hộ
+                  </th>
+                  <th className='px-8 py-5 text-xs font-black uppercase tracking-wide text-on-surface-variant'>
+                    Kết quả
+                  </th>
+                  <th className='px-8 py-5 text-xs font-black uppercase tracking-wide text-on-surface-variant'>Cổng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentLogs.slice(0, 5).map((log: any) => (
+                  <tr key={log.id} className='border-b border-outline-variant/5 hover:bg-primary/5 transition-colors'>
+                    <td className='px-8 py-5 text-sm font-bold'>{formatTime(log.time)}</td>
+                    <td className='px-8 py-5'>
+                      <div className='flex items-center gap-3'>
+                        <div
+                          className={`size-8 rounded-full flex items-center justify-center text-[10px] font-black ${
+                            log.result === 'SUCCESS' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'
+                          }`}
+                        >
+                          {log.visitorName?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                        <span className='text-sm font-bold'>{log.visitorName}</span>
+                      </div>
+                    </td>
+                    <td className='px-8 py-5 text-sm text-on-surface-variant'>{log.apartmentCode}</td>
+                    <td className='px-8 py-5'>
+                      <span
+                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${
+                          log.result === 'SUCCESS'
+                            ? 'bg-green-500/10 text-green-700 border-green-200'
+                            : 'bg-error/10 text-error border-error/20'
+                        }`}
+                      >
+                        {log.result === 'SUCCESS' ? 'THÀNH CÔNG' : 'TỪ CHỐI'}
+                      </span>
+                    </td>
+                    <td className='px-8 py-5 text-sm text-on-surface-variant'>{log.gate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </div>

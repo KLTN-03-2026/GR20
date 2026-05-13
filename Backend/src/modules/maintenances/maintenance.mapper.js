@@ -8,7 +8,7 @@ const toEntity = (req) => {
     building_id: req.buildingId,
     apartment_id: req.apartmentId,
     unit: req.unit,
-    reported_by: req.reportedBy,
+    reported_by: req.reported_by,
     reporter_name: req.reporterName,
     reporter_phone: req.reporterPhone,
     reported_at: req.reportedAt || new Date(),
