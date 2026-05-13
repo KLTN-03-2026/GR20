@@ -150,6 +150,8 @@ const deleteApartment = async (req, res) => {
 // ADD Resident
 const addResident = async (req, res) => {
   try {
+    console.log('📝 ADD RESIDENT BODY:', JSON.stringify(req.body));
+    console.log('📝 APARTMENT ID:', req.params.id);
     const data = await service.addResident(req.params.id, req.body);
     res.status(201).json({
       operationType: "Success",
@@ -158,6 +160,8 @@ const addResident = async (req, res) => {
       data,
     });
   } catch (err) {
+     console.log('❌ ADD RESIDENT ERROR:', err.message);
+    console.log('❌ FULL ERROR:', err);
     sendError(res, err);
   }
 };

@@ -6,6 +6,63 @@ export interface Visitor {
   idCard: string
 }
 
+interface historyData {
+  apartment_code: string
+  building_name: string
+  direction: string
+  gate: string
+  host_name: string
+  id: string
+  max_entries: number
+  qr_code: string
+  result: string
+  scan_time: string
+  scanned_by: string
+  scanned_by_name: string
+  used_entries: number
+  valid_from: string
+  valid_to: string
+  visitor_id_card: string
+  visitor_name: string
+  visitor_phone: string
+}
+
+interface GuestQR {
+  apartment_code: string
+  created_at: string
+  id: string
+  is_active: boolean
+  max_entries: number
+  original_valid_to: string
+  qr_code: string
+  qr_image: string
+  status: string
+  used_entries: number
+  valid_from: string
+  valid_to: string
+  visitor_id_card: string
+  visitor_name: string
+  visitor_phone: string
+}
+
+export interface HistoryModalProps {
+  isOpen: boolean
+  onClose: () => void
+  historyData: historyData[]
+  guestQR: GuestQR
+  formatDateTime: (dateString: string) => string
+  getResultBadge: (result: string) => {
+    text: string
+    bg: string
+    textColor: string
+  }
+  getDirectionIcon: (direction: string) => {
+    icon: string
+    color: string
+    text: string
+  }
+}
+
 export interface QRGuestDetail {
   id: string
   qr_code: string

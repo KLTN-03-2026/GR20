@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useLocation } from 'react-router-dom';
-import http from 'src/utils/http';
-import ContractForm from './ContractForm';
-import DeleteContractModal from './DeleteContractModal';
+import React, { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate, useLocation } from 'react-router-dom'
+import http from 'src/utils/http'
+import ContractForm from './ContractForm'
+import DeleteContractModal from './DeleteContractModal'
 
 export default function ContractList() {
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const detailBase = pathname.startsWith('/admin') ? '/admin/contracts' : '/contracts';
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const detailBase = pathname.startsWith('/admin') ? '/admin/contracts' : '/contracts'
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deleteCode, setDeleteCode] = useState('')
   const [deleteStatus, setDeleteStatus] = useState('')
@@ -24,65 +24,74 @@ export default function ContractList() {
   const { data } = useQuery({
     queryKey: ['contracts', statusFilter, typeFilter, currentPage, searchTerm],
     queryFn: () => {
-      const params: any = { page: currentPage, size: pageSize };
-      if (statusFilter) params.status = statusFilter;
-      if (typeFilter) params.contractType = typeFilter;
-      if (searchTerm.trim()) params.search = searchTerm.trim();
-      return http.get('/api/contracts', { params });
-    },
-  });
+      const params: any = { page: currentPage, size: pageSize }
+      if (statusFilter) params.status = statusFilter
+      if (typeFilter) params.contractType = typeFilter
+      if (searchTerm.trim()) params.search = searchTerm.trim()
+      return http.get('/api/contracts', { params })
+    }
+  })
 
-  const contracts = data?.data?.data || [];
-  const totalItems = data?.data?.total || 0;
-  const totalPages = data?.data?.totalPages || Math.ceil(totalItems / pageSize) || 1;
+  const contracts = data?.data?.data || []
+  const totalItems = data?.data?.total || 0
+  const totalPages = data?.data?.totalPages || Math.ceil(totalItems / pageSize) || 1
 
   // Stats
-  const activeCount = contracts.filter((c: any) => c.status === 'ACTIVE').length;
+  const activeCount = contracts.filter((c: any) => c.status === 'ACTIVE').length
   const expiringCount = contracts.filter((c: any) => {
-    if (c.status !== 'ACTIVE') return false;
-    const daysLeft = Math.ceil((new Date(c.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    return daysLeft <= 30 && daysLeft > 0;
-  }).length;
+    if (c.status !== 'ACTIVE') return false
+    const daysLeft = Math.ceil((new Date(c.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    return daysLeft <= 30 && daysLeft > 0
+  }).length
 
   // Helpers
   const getInitials = (name: string) => {
-    if (!name) return '';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  };
+    if (!name) return ''
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '---';
-    return new Date(dateStr).toLocaleDateString('vi-VN');
-  };
+    if (!dateStr) return '---'
+    return new Date(dateStr).toLocaleDateString('vi-VN')
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
-        return { label: 'PENDING', className: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' };
+        return { label: 'PENDING', className: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' }
       case 'ACTIVE':
-        return { label: 'ACTIVE', className: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' };
+        return { label: 'ACTIVE', className: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' }
       case 'EXPIRED':
-        return { label: 'EXPIRED', className: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' };
+        return { label: 'EXPIRED', className: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' }
       case 'TERMINATED':
-        return { label: 'TERMINATED', className: 'bg-red-100 text-red-700', dot: 'bg-red-500' };
+        return { label: 'TERMINATED', className: 'bg-red-100 text-red-700', dot: 'bg-red-500' }
       default:
-        return { label: status, className: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' };
+        return { label: status, className: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' }
     }
-  };
+  }
 
   const getTypeBadge = (type: string) => {
     switch (type) {
-      case 'RENT': return 'bg-blue-50 text-blue-700';
-      case 'OWNERSHIP': return 'bg-purple-50 text-purple-700';
-      case 'TRANSFER': return 'bg-amber-50 text-amber-700';
-      default: return 'bg-slate-50 text-slate-600';
+      case 'RENT':
+        return 'bg-blue-50 text-blue-700'
+      case 'OWNERSHIP':
+        return 'bg-purple-50 text-purple-700'
+      case 'TRANSFER':
+        return 'bg-amber-50 text-amber-700'
+      default:
+        return 'bg-slate-50 text-slate-600'
     }
-  };
+  }
 
   return (
-    <div className='ml-64 min-h-screen'>
+    <div className=' min-h-screen'>
       {/* Content */}
-      <div className='p-10 max-w-7xl mx-auto'>
+      <div className='max-w-7xl mx-auto'>
         {/* Page Header */}
         <div className='flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10'>
           <div>
@@ -245,6 +254,7 @@ export default function ContractList() {
                       <div className='flex items-center justify-end gap-1'>
                         <button
                           onClick={() => navigate(`/admin/contractList/${contract.id}`)}
+                          // onClick={() => navigate(`ttt/${contract.id}`)}
                           className='p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
                         >
                           <span className='material-symbols-outlined text-lg'>visibility</span>

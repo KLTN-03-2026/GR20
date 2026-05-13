@@ -45,16 +45,19 @@ import UserInvoicesPage from './pages/billing/UserInvoicesPage'
 import UserPaymentsPage from './pages/billing/UserPaymentsPage'
 import Apartment from './pages/Apartments/Apartment'
 import ApartmentDetail from './pages/Apartments/ApartmentDetail'
-import AddResidentModal from './pages/Apartments/AddResidentModal'
 import ApartmentForm from './pages/Apartments/ApartmentForm'
 import MyApartment from './pages/MyApartment/MyApartment'
 import MyContract from './pages/MyApartment/MyContract'
 import AmenityList from './pages/Amenities/AmenityList'
 import AmenityDetail from './pages/Amenities/AmenityDetail'
+
+import { useContext } from 'react'
+import { AppContext } from './contexts/app.context'
 import ContractList from './pages/Contracts/ContractList'
 import ContractDetail from './pages/Contracts/ContractDetail'
 
 export default function useRouteElements() {
+  const { user } = useContext(AppContext)
   const routeElements = useRoutes([
     // PUBLIC
     { path: '/login', element: <Login /> },
@@ -119,11 +122,24 @@ export default function useRouteElements() {
       children: [
         {
           index: true,
-          element: (
-            <DashboardLayoutUser>
-              <Profile />
-            </DashboardLayoutUser>
-          )
+          element:
+            user?.roles?.[0] === ROLES.ADMIN ? (
+              <DashboaedLayoutAdmin>
+                <Profile />
+              </DashboaedLayoutAdmin>
+            ) : user?.roles?.[0] === ROLES.RESIDENT ? (
+              <DashboardLayoutUser>
+                <Profile />
+              </DashboardLayoutUser>
+            ) : user?.roles?.[0] === ROLES.SECURITY ? (
+              <DashboardLayoutProtect>
+                <Profile />
+              </DashboardLayoutProtect>
+            ) : (
+              <DashboaedLayoutStaff>
+                <Profile />
+              </DashboaedLayoutStaff>
+            )
         }
       ]
     },
@@ -162,7 +178,7 @@ export default function useRouteElements() {
 
     // QR USER
     {
-      path: '/qrcode',
+      path: '/resident/qrcode',
       element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT, ROLES.ADMIN, ROLES.MANAGER]} />,
       children: [
         {
@@ -218,18 +234,22 @@ export default function useRouteElements() {
       ]
     },
 
-    // SCAN
     {
       path: '/scanqr',
       element: <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN, ROLES.SECURITY]} />,
       children: [
         {
           index: true,
-          element: (
-            <DashboardLayoutProtect>
-              <ScanQr />
-            </DashboardLayoutProtect>
-          )
+          element:
+            user?.roles?.[0] === ROLES.ADMIN ? (
+              <DashboaedLayoutAdmin>
+                <ScanQr />
+              </DashboaedLayoutAdmin>
+            ) : (
+              <DashboardLayoutProtect>
+                <ScanQr />
+              </DashboardLayoutProtect>
+            )
         }
       ]
     },
@@ -246,16 +266,21 @@ export default function useRouteElements() {
 
     // SECURITY
     {
-      path: '/security/residents',
+      path: '/residents',
       element: <ProtectedRoute allowedRoles={[ROLES.SECURITY, ROLES.ADMIN, ROLES.MANAGER]} />,
       children: [
         {
           index: true,
-          element: (
-            <DashboardLayoutProtect>
-              <SecurityResident />
-            </DashboardLayoutProtect>
-          )
+          element:
+            user?.roles?.[0] === ROLES.SECURITY ? (
+              <DashboardLayoutProtect>
+                <SecurityResident />
+              </DashboardLayoutProtect>
+            ) : (
+              <DashboaedLayoutAdmin>
+                <SecurityResident />
+              </DashboaedLayoutAdmin>
+            )
         },
         {
           path: ':id',
@@ -310,7 +335,7 @@ export default function useRouteElements() {
 
     // ADMIN QR
     {
-      path: '/qrcodeAdmin',
+      path: '/admin/qrcodeAdmin',
       element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
       children: [
         {
@@ -318,6 +343,48 @@ export default function useRouteElements() {
           element: (
             <DashboaedLayoutAdmin>
               <QrcodeManagementAdmin />
+            </DashboaedLayoutAdmin>
+          )
+        }
+      ]
+    },
+    {
+      path: '/ContractList',
+      element: <ProtectedRoute />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdmin>
+              <ContractList />
+            </DashboaedLayoutAdmin>
+          )
+        }
+      ]
+    },
+    {
+      path: '/ContractList/:id',
+      element: <ProtectedRoute />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdmin>
+              <ContractDetail />
+            </DashboaedLayoutAdmin>
+          )
+        }
+      ]
+    },
+    {
+      path: '/abc',
+      element: <ProtectedRoute />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdmin>
+              <MyContract />
             </DashboaedLayoutAdmin>
           )
         }

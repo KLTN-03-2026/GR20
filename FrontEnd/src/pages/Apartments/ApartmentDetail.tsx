@@ -83,9 +83,11 @@ export default function ApartmentDetail() {
   const [showForm, setShowForm] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  const apartmentId = Number(id)
+
   const { data, isLoading } = useQuery({
-    queryKey: ['apartment', id],
-    queryFn: () => apartmentApi.getApartmentById(Number(id)),
+    queryKey: ['apartment', apartmentId],
+    queryFn: () => apartmentApi.getApartmentById(Number(apartmentId)),
     enabled: !!id
   })
 
@@ -281,7 +283,8 @@ export default function ApartmentDetail() {
                                   <button
                                     onClick={() => {
                                       setEditingResident(resident)
-                                      setEditingResident(resident)
+                                      setShowAddResident(true)
+                                      setOpenMenuId(null)
                                     }}
                                     className='w-full px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors'
                                   >
@@ -445,7 +448,7 @@ export default function ApartmentDetail() {
       </main>
       {/* Apartment Form Modal */}
       <ApartmentForm apartmentId={Number(id)} isOpen={showForm} onClose={() => setShowForm(false)} />
-        
+
       <AddResidentModal
         apartmentId={Number(id)}
         apartmentCode={apartment.apartmentCode}

@@ -7,8 +7,8 @@ interface AddResidentModalProps {
   apartmentCode: string;
   isOpen: boolean;
   onClose: () => void;
-  resident?: any; // 🆕 Truyền vào khi sửa
-  hasOwner?: boolean; // 🆕 Kiểm tra đã có OWNER chưa
+  resident?: any;
+  hasOwner?: boolean;
 }
 
 interface FormData {
@@ -41,7 +41,6 @@ export default function AddResidentModal({
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // 🆕 Load data khi sửa
   useEffect(() => {
     if (resident) {
       setFormData({
@@ -65,35 +64,34 @@ export default function AddResidentModal({
         if (message.includes('Email')) setErrors({ email: message });
         else if (message.includes('Số điện thoại') || message.includes('SDT')) setErrors({ phone: message });
         else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message });
+        else if (message.includes('Căn hộ chưa có chủ hộ')) setErrors({ relationship: message });
         else setErrors({ fullName: message });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['apartments'] });
       setFormData(initialFormData);
       setErrors({});
       onClose();
+      window.location.reload();
     },
   });
 
-  // 🆕 Update mutation
   const updateMutation = useMutation({
     mutationFn: (data: any) => http.put(`/api/apartments/residents/${resident?.id}`, data),
     onError: (err: any) => {
       const message = err.response?.data?.message;
       if (message) {
         if (message.includes('Email')) setErrors({ email: message });
+        else if (message.includes('Số điện thoại') || message.includes('SDT')) setErrors({ phone: message });
         else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message });
         else setErrors({ fullName: message });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['apartments'] });
       setFormData(initialFormData);
       setErrors({});
       onClose();
+      window.location.reload();
     },
   });
 
@@ -142,7 +140,6 @@ export default function AddResidentModal({
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
-  // 🆕 Nếu đã có OWNER → ẩn option OWNER khi sửa
   const availableRelationships = (isEdit && hasOwner && resident?.relationship !== 'OWNER') 
     ? relationshipOptions.filter(r => r.value !== 'OWNER')
     : relationshipOptions;
@@ -173,7 +170,6 @@ export default function AddResidentModal({
 
         <form onSubmit={handleSubmit}>
           <div className="px-8 py-6 space-y-5">
-            {/* Họ tên */}
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                 Họ và tên <span className="text-red-400">*</span>
@@ -182,23 +178,13 @@ export default function AddResidentModal({
                 <span className="absolute inset-y-0 left-3 flex items-center text-slate-300">
                   <span className="material-symbols-outlined text-lg">person</span>
                 </span>
-                <input
-                  type="text"
-                  value={formData.fullName}
-                  onChange={(e) => handleChange('fullName', e.target.value)}
+                <input type="text" value={formData.fullName} onChange={(e) => handleChange('fullName', e.target.value)}
                   className={`w-full bg-slate-50 border ${errors.fullName ? 'border-red-300' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-slate-300`}
-                  placeholder="Nguyễn Văn A"
-                />
+                  placeholder="Nguyễn Văn A" />
               </div>
-              {errors.fullName && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">warning</span>
-                  {errors.fullName}
-                </p>
-              )}
+              {errors.fullName && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-sm">warning</span>{errors.fullName}</p>}
             </div>
 
-            {/* SĐT + Email */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
@@ -208,20 +194,11 @@ export default function AddResidentModal({
                   <span className="absolute inset-y-0 left-3 flex items-center text-slate-300">
                     <span className="material-symbols-outlined text-lg">call</span>
                   </span>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
+                  <input type="tel" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)}
                     className={`w-full bg-slate-50 border ${errors.phone ? 'border-red-300' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-slate-300`}
-                    placeholder="0901234567"
-                  />
+                    placeholder="0901234567" />
                 </div>
-                {errors.phone && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">warning</span>
-                    {errors.phone}
-                  </p>
-                )}
+                {errors.phone && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-sm">warning</span>{errors.phone}</p>}
               </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Email</label>
@@ -229,75 +206,38 @@ export default function AddResidentModal({
                   <span className="absolute inset-y-0 left-3 flex items-center text-slate-300">
                     <span className="material-symbols-outlined text-lg">mail</span>
                   </span>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
+                  <input type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)}
                     className={`w-full bg-slate-50 border ${errors.email ? 'border-red-300' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-slate-300`}
-                    placeholder="email@example.com"
-                  />
+                    placeholder="email@example.com" />
                 </div>
-                {errors.email && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">warning</span>
-                    {errors.email}
-                  </p>
-                )}
+                {errors.email && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-sm">warning</span>{errors.email}</p>}
               </div>
             </div>
 
-            {/* Mối quan hệ + Ngày vào */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Mối quan hệ
-                </label>
-                <select
-                  value={formData.relationship}
-                  onChange={(e) => handleChange('relationship', e.target.value)}
-                  className={`w-full bg-slate-50 border ${errors.relationship ? 'border-red-300' : 'border-slate-200'} rounded-xl px-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all`}
-                >
-                  {availableRelationships.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Mối quan hệ</label>
+                <select value={formData.relationship} onChange={(e) => handleChange('relationship', e.target.value)}
+                  className={`w-full bg-slate-50 border ${errors.relationship ? 'border-red-300' : 'border-slate-200'} rounded-xl px-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all`}>
+                  {availableRelationships.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
-                {errors.relationship && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">warning</span>
-                    {errors.relationship}
-                  </p>
-                )}
+                {errors.relationship && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-sm">warning</span>{errors.relationship}</p>}
               </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                   Ngày vào ở <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="date"
-                  value={formData.moveInDate}
-                  onChange={(e) => handleChange('moveInDate', e.target.value)}
-                  className={`w-full bg-slate-50 border ${errors.moveInDate ? 'border-red-300' : 'border-slate-200'} rounded-xl px-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all`}
-                />
-                {errors.moveInDate && (
-                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">warning</span>
-                    {errors.moveInDate}
-                  </p>
-                )}
+                <input type="date" value={formData.moveInDate} onChange={(e) => handleChange('moveInDate', e.target.value)}
+                  className={`w-full bg-slate-50 border ${errors.moveInDate ? 'border-red-300' : 'border-slate-200'} rounded-xl px-4 py-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all`} />
+                {errors.moveInDate && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-sm">warning</span>{errors.moveInDate}</p>}
               </div>
             </div>
           </div>
 
-          {/* Footer */}
           <div className="px-8 py-5 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-3 rounded-b-2xl">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-full transition-colors">
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              disabled={addMutation.isPending || updateMutation.isPending}
-              className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-slate-200 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
-            >
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200/50 rounded-full transition-colors">Hủy bỏ</button>
+            <button type="submit" disabled={addMutation.isPending || updateMutation.isPending}
+              className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-full shadow-lg shadow-slate-200 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2">
               {(addMutation.isPending || updateMutation.isPending) ? (
                 <><span className="material-symbols-outlined animate-spin text-sm">sync</span> Đang lưu...</>
               ) : isEdit ? (

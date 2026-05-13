@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { SecurityApi } from 'src/apis/Security_api/security.api'
 import { qrApiAdmin } from 'src/apis/QrcodeAdmin/QrcodeAdmin.api'
@@ -8,7 +8,7 @@ import { useDebounce } from 'src/hooks/useDebounce'
 export default function ViewDetailResident() {
   const { id } = useParams()
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
-
+  const navigate = useNavigate()
   // History filters
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1)
   const [historyPageSize] = useState(10)
@@ -126,10 +126,12 @@ export default function ViewDetailResident() {
           {/* Header Section */}
           <div className='flex flex-col md:flex-row md:items-end justify-between gap-6'>
             <div className='space-y-2'>
-              <nav className='flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400'>
-                <span>Cư dân</span>
-                <span className='material-symbols-outlined text-[10px]'>chevron_right</span>
-                <span className='text-primary'>Hồ sơ cư dân</span>
+              <nav
+                onClick={() => navigate(-1)}
+                className='flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate cursor-pointer hover:text-green-300 transition-colors'
+              >
+                <span className='material-symbols-outlined text-sm'>arrow_back</span>
+                <span>Quay lại</span>
               </nav>
               <h2 className='text-4xl font-extrabold text-on-surface tracking-tight'>{data.personalInfo.fullName}</h2>
               <p className='text-on-surface-variant flex items-center gap-2'>
