@@ -40,7 +40,7 @@ const updateUtilityMeter = async (req, res) => {
 const deleteUtilityMeter = async (req, res) => {
   try {
     const data = await service.deleteUtilityMeter(req.params.id);
-    res.json({ operationType: "Success", message: "Delete utility meter successfully", code: "OK", data, timestamp: new Date() });
+    res.json({ operationType: "Success", message: "Đã xóa đồng hồ tiện ích", code: "OK", data, timestamp: new Date() });
   } catch (err) { sendControllerError(res, err); }
 };
 const restoreUtilityMeter = async (req, res) => {

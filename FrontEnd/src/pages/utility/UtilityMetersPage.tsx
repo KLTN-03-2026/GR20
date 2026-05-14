@@ -4,6 +4,11 @@ import { apartmentsApi } from 'src/apis/apartment_api/apartments.api'
 import { UserApi } from 'src/apis/User/user.api'
 import { utilityMetersApi } from 'src/apis/utility_api/utility-meters.api'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
+import {
+  ROW_ACTION_DELETE,
+  ROW_ACTION_EDIT,
+  ROW_ACTION_RESTORE
+} from 'src/utils/row-action-buttons'
 import type { UtilityMeter } from 'src/types/utility-meter.type'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
@@ -19,7 +24,8 @@ const getApiErrorMessage = (err: any, fallbackMessage: string) => {
     ['meterCode already exists', 'Mã đồng hồ đã tồn tại'],
     ['Invalid apartmentId', 'Căn hộ không hợp lệ'],
     ['Utility meter not found or not inactive', 'Không tìm thấy đồng hồ đã xóa mềm để khôi phục'],
-    ['Utility meter not found', 'Không tìm thấy đồng hồ tiện ích']
+    ['Utility meter not found', 'Không tìm thấy đồng hồ tiện ích'],
+    ['Căn hộ đang có cư dân', 'Căn hộ đang có cư dân, không được xóa đồng hồ tiện ích']
   ]
   const mapped = translatedMessages.find(([en]) => rawMessage.includes(en))
   return mapped?.[1] || rawMessage
@@ -98,7 +104,7 @@ export default function UtilityMetersPage() {
     },
     onError: (err: any) => {
       logResourceConsoleError('UtilityMeter', 'Delete', err)
-      setScreenError(getApiErrorMessage(err, 'Xóa mềm đồng hồ thất bại'))
+      setScreenError(getApiErrorMessage(err, 'Xóa đồng hồ thất bại'))
     }
   })
   const restoreMutation = useMutation({
@@ -200,7 +206,7 @@ export default function UtilityMetersPage() {
         >
           <option value='ALL'>Trạng thái: tất cả</option>
           <option value='ACTIVE'>ACTIVE</option>
-          <option value='INACTIVE'>INACTIVE (đã xóa mềm)</option>
+          <option value='INACTIVE'>INACTIVE (dữ liệu cũ)</option>
           <option value='BROKEN'>BROKEN</option>
         </select>
       </div>
@@ -302,11 +308,14 @@ export default function UtilityMetersPage() {
                 <td className='px-4 py-3'>{item.installedDate || 'Chưa có'}</td>
                 <td className='px-4 py-3'>{item.status}</td>
                 <td className='px-4 py-3 text-right'>
-                  <div className='flex justify-end gap-2'>
-                    <button className='rounded bg-slate-100 px-2 py-1' onClick={() => setSelected(item)}>Sửa</button>
+                  <div className='flex flex-wrap justify-end gap-2'>
+                    <button type='button' className={ROW_ACTION_EDIT} onClick={() => setSelected(item)}>
+                      Sửa
+                    </button>
                     {item.status === 'INACTIVE' ? (
                       <button
-                        className='rounded bg-green-100 px-2 py-1'
+                        type='button'
+                        className={ROW_ACTION_RESTORE}
                         onClick={() => {
                           setScreenError(null)
                           restoreMutation.mutate(item.id)
@@ -316,13 +325,21 @@ export default function UtilityMetersPage() {
                       </button>
                     ) : (
                       <button
-                        className='rounded bg-red-100 px-2 py-1'
+                        type='button'
+                        className={ROW_ACTION_DELETE}
                         onClick={() => {
+                          if (
+                            !window.confirm(
+                              'Xóa vĩnh viễn đồng hồ này và các chỉ số liên quan? (Không thực hiện được nếu căn hộ còn cư dân.)'
+                            )
+                          ) {
+                            return
+                          }
                           setScreenError(null)
                           deleteMutation.mutate(item.id)
                         }}
                       >
-                        Xóa mềm
+                        Xóa
                       </button>
                     )}
                   </div>

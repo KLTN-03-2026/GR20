@@ -29,7 +29,16 @@ const parseMeterReadingListQuery = (query) =>
     .object({
       page: z.coerce.number().int().min(0).default(0),
       size: z.coerce.number().int().min(1).max(100).default(10),
+      apartmentId: z.coerce.number().int().positive().optional(),
+      billingMonth: z.coerce.number().int().min(1).max(12).optional(),
+      billingYear: z.coerce.number().int().min(2000).max(2100).optional(),
     })
+    .refine(
+      (d) =>
+        (d.billingMonth === undefined && d.billingYear === undefined) ||
+        (d.billingMonth !== undefined && d.billingYear !== undefined),
+      { message: "billingMonth and billingYear must be provided together", path: ["billingYear"] }
+    )
     .parse(query || {});
 const parseMeterReadingUserQuery = (query) =>
   z
@@ -41,7 +50,16 @@ const parseMeterReadingUserQuery = (query) =>
       fromYear: z.coerce.number().int().min(2000).max(2100).optional(),
       toMonth: z.coerce.number().int().min(1).max(12).optional(),
       toYear: z.coerce.number().int().min(2000).max(2100).optional(),
+      apartmentId: z.coerce.number().int().positive().optional(),
+      billingMonth: z.coerce.number().int().min(1).max(12).optional(),
+      billingYear: z.coerce.number().int().min(2000).max(2100).optional(),
     })
+    .refine(
+      (d) =>
+        (d.billingMonth === undefined && d.billingYear === undefined) ||
+        (d.billingMonth !== undefined && d.billingYear !== undefined),
+      { message: "billingMonth and billingYear must be provided together", path: ["billingYear"] }
+    )
     .parse(query || {});
 
 module.exports = { parsePathId, parseCreateMeterReading, parseUpdateMeterReading, parseMeterReadingListQuery, parseMeterReadingUserQuery };

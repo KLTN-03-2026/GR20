@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AppContext } from 'src/contexts/app.context'
 import { invoiceItemsApi } from 'src/apis/billing_api/invoice-items.api'
@@ -45,13 +45,24 @@ export default function UserPaymentDetailPage() {
   const { user } = useContext(AppContext)
   const userId = String((user as any)?.id || (user as any)?._id || '')
 
+  const bankTransferAwaitingWebhookRef = useRef(false)
+  const cashConfirmSuccessRef = useRef(false)
+  const didRedirectToSuccessRef = useRef(false)
+
   const [payError, setPayError] = useState<string | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH')
 
   const paymentQuery = useQuery({
     queryKey: ['user-payment-detail', userId, id],
     queryFn: () => paymentsApi.getByUserIdAndPaymentId(userId, String(id)),
-    enabled: Boolean(userId && id)
+    enabled: Boolean(userId && id),
+    refetchInterval: (q) => {
+      const r = q.state.data?.data?.data as PayRow | undefined
+      if (!bankTransferAwaitingWebhookRef.current) return false
+      if (!r || String(r.status).toUpperCase() !== 'PENDING') return false
+      return 4000
+    },
+    refetchOnWindowFocus: true
   })
 
   const row = paymentQuery.data?.data?.data as PayRow | null
@@ -98,6 +109,34 @@ export default function UserPaymentDetailPage() {
   })
 
   useEffect(() => {
+    bankTransferAwaitingWebhookRef.current = false
+    cashConfirmSuccessRef.current = false
+    didRedirectToSuccessRef.current = false
+  }, [id])
+
+  useEffect(() => {
+    if (showCheckout && pending && selectedMethod === 'BANK_TRANSFER' && vietQrQuery.isSuccess) {
+      bankTransferAwaitingWebhookRef.current = true
+    }
+    if (selectedMethod === 'CASH' && pending) {
+      bankTransferAwaitingWebhookRef.current = false
+    }
+  }, [showCheckout, pending, selectedMethod, vietQrQuery.isSuccess])
+
+  useEffect(() => {
+    if (!id || !userId || !row) return
+    if (String(row.status).toUpperCase() !== 'SUCCESS') return
+    if (didRedirectToSuccessRef.current) return
+    if (!bankTransferAwaitingWebhookRef.current && !cashConfirmSuccessRef.current) return
+    didRedirectToSuccessRef.current = true
+    toast.success('Thanh toán thành công')
+    void queryClient.invalidateQueries({ queryKey: ['user-payments'] })
+    void queryClient.invalidateQueries({ queryKey: ['user-invoices'] })
+    void queryClient.invalidateQueries({ queryKey: ['user-payment-detail', userId, id] })
+    navigate(`/payments/${id}/success`, { replace: true })
+  }, [row, row?.status, id, userId, navigate, queryClient])
+
+  useEffect(() => {
     if (selectedMethod === 'BANK_TRANSFER') setPayError(null)
   }, [selectedMethod])
 
@@ -120,12 +159,11 @@ export default function UserPaymentDetailPage() {
       })
     },
     onSuccess: () => {
+      cashConfirmSuccessRef.current = true
       queryClient.invalidateQueries({ queryKey: ['user-invoices'] })
       queryClient.invalidateQueries({ queryKey: ['user-payments'] })
       queryClient.invalidateQueries({ queryKey: ['user-payment-detail', userId, id] })
       setPayError(null)
-      toast.success('Thanh toán thành công')
-      navigate(`/payments/${id}`, { replace: true })
     },
     onError: (err: unknown) => {
       logPaymentConsoleError('confirm-cash', err)
@@ -292,8 +330,7 @@ export default function UserPaymentDetailPage() {
             <div className='rounded-xl border border-blue-100 bg-white p-4'>
               <p className='text-sm font-semibold text-slate-800'>Quét mã QR để chuyển khoản</p>
               <p className='mt-1 text-xs text-slate-600'>
-                Mã được tạo sẵn theo khoản phải trả. Sau khi chuyển, ngân hàng xác nhận thì trạng thái sẽ cập nhật — bạn có thể tải
-                lại trang hoặc quay sau vài phút.
+                Mã được tạo sẵn theo khoản phải trả. Sau khi chuyển khoản, hệ thống tự kiểm tra vài giây một lần — khi ngân hàng xác nhận bạn sẽ được chuyển sang trang hoàn tất thanh toán.
               </p>
               {vietQrQuery.isLoading && (
                 <div className='mt-4 flex items-center justify-center gap-2 py-8 text-sm text-slate-500'>
@@ -382,8 +419,8 @@ export default function UserPaymentDetailPage() {
               <span className='text-[10px] font-bold uppercase tracking-widest text-blue-100'>Homelink AI Insight</span>
             </div>
             <p className='text-sm text-white/90'>
-              Tiền mặt: sau khi xác nhận, danh sách cập nhật ngay. Chuyển khoản: đợi ngân hàng đối soát hoặc tải lại trang để kiểm
-              tra trạng thái.
+              Tiền mặt: sau khi xác nhận, chuyển sang trang hoàn tất. Chuyển khoản: hệ thống tự làm mới trạng thái khi nhận được
+              tiền (webhook ngân hàng).
             </p>
           </div>
         </div>

@@ -103,6 +103,28 @@ export default function UserInvoiceDetailPage() {
           {code} · Căn hộ #{inv.apartmentId} · Kỳ{' '}
           {inv.billingMonth != null && inv.billingYear != null ? `${inv.billingMonth}/${inv.billingYear}` : '—'}
         </p>
+        <div className='mt-4 flex flex-wrap gap-3'>
+          <Link
+            to={
+              inv.billingMonth != null && inv.billingYear != null
+                ? `/my-meter-readings?apartmentId=${encodeURIComponent(String(inv.apartmentId))}&billingMonth=${encodeURIComponent(String(inv.billingMonth))}&billingYear=${encodeURIComponent(String(inv.billingYear))}`
+                : '/my-meter-readings'
+            }
+            className='inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-800 shadow-sm transition hover:bg-blue-100'
+          >
+            <span className='material-symbols-outlined text-lg'>electric_meter</span>
+            {inv.billingMonth != null && inv.billingYear != null
+              ? 'Xem chỉ số đồng hồ kỳ hóa đơn này'
+              : 'Xem chỉ số đồng hồ của tôi'}
+          </Link>
+          <Link
+            to='/my-utility-meters'
+            className='inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50'
+          >
+            <span className='material-symbols-outlined text-lg'>speed</span>
+            Đồng hồ tại căn
+          </Link>
+        </div>
       </div>
 
       <div className='relative mb-8 flex flex-col justify-between gap-6 overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm md:flex-row md:items-center md:p-8'>

@@ -137,6 +137,40 @@ const updateInvoiceTotalAmount = async (invoiceId, totalAmount, client = pool) =
   await client.query(`UPDATE invoices SET total_amount = $1 WHERE id = $2`, [totalAmount, invoiceId]);
 };
 
+/** Hóa đơn tự động (có kỳ) chưa thanh toán có dòng tiền gắn meter_id — cần tính lại khi xóa đồng hồ. */
+const getUnpaidAutomatedInvoiceIdsByMeterId = async (meterId, client = pool) => {
+  const result = await client.query(
+    `
+      SELECT DISTINCT i.id
+      FROM invoices i
+      JOIN invoice_items ii ON ii.invoice_id = i.id
+      WHERE ii.meter_id = $1
+        AND i.status IN ('PENDING', 'OVERDUE')
+        AND i.billing_month IS NOT NULL
+        AND i.billing_year IS NOT NULL
+    `,
+    [meterId]
+  );
+  return result.rows.map((r) => r.id);
+};
+
+const deleteInvoiceItemsByInvoiceId = async (invoiceId, client = pool) => {
+  await client.query(`DELETE FROM invoice_items WHERE invoice_id = $1`, [invoiceId]);
+};
+
+const updatePendingPaymentsAmountForInvoice = async (invoiceId, amount, client = pool) => {
+  await client.query(
+    `
+      UPDATE payments
+      SET amount = $1
+      WHERE invoice_id = $2
+        AND status = 'PENDING'
+        AND deleted_at IS NULL
+    `,
+    [amount, invoiceId]
+  );
+};
+
 const withTransaction = async (fn) => {
   const client = await pool.connect();
   try {
@@ -260,6 +294,9 @@ module.exports = {
   createInvoiceItem,
   createPendingPaymentForInvoice,
   updateInvoiceTotalAmount,
+  getUnpaidAutomatedInvoiceIdsByMeterId,
+  deleteInvoiceItemsByInvoiceId,
+  updatePendingPaymentsAmountForInvoice,
   withTransaction,
   getAllInvoices,
   getInvoiceById,

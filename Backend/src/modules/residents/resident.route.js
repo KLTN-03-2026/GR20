@@ -21,6 +21,9 @@ router.get('/me/apartments', residentController.getMyApartments);
 // POST /api/residents
 router.post('/', residentController.createResident);
 
+// POST /api/residents/accounts — tạo user (role mặc định: người dùng), chưa gắn căn hộ
+router.post('/accounts', residentController.createResidentAccount);
+
 // GET /api/residents/:id
 router.get('/:id', residentController.getResidentById);
 

@@ -47,6 +47,36 @@ const menuGroups: MenuGroup[] = [
         path: '/admin/buildings',
         label: 'Quản lý tòa nhà',
         icon: 'location_city'
+      },
+      {
+        path: '/admin/contracts',
+        label: 'Quản lý hợp đồng',
+        icon: 'description'
+      },
+      {
+        path: '/admin/invoices',
+        label: 'Quản lý hóa đơn',
+        icon: 'receipt_long'
+      },
+      {
+        path: '/admin/payments',
+        label: 'Quản lý thanh toán',
+        icon: 'payments'
+      },
+      {
+        path: '/admin/utility-meters',
+        label: 'Quản lý đồng hồ',
+        icon: 'speed'
+      },
+      {
+        path: '/admin/meter-readings',
+        label: 'Quản lý chỉ số',
+        icon: 'insights'
+      },
+      {
+        path: '/admin/utility-pricing',
+        label: 'Quản lý giá tiện ích',
+        icon: 'sell'
       }
     ]
   },

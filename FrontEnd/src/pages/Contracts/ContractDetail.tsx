@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import http from 'src/utils/http';
@@ -49,10 +49,10 @@ export default function ContractDetail() {
 
   if (isLoading) {
     return (
-      <div className="ml-64 pt-24 flex items-center justify-center min-h-screen">
-        <div className="flex items-center gap-3 text-slate-400">
-          <span className="material-symbols-outlined animate-spin">sync</span>
-          <span className="text-sm">Đang tải dữ liệu...</span>
+      <div className='flex min-h-[40vh] items-center justify-center'>
+        <div className='flex items-center gap-3 text-slate-400'>
+          <span className='material-symbols-outlined animate-spin'>sync</span>
+          <span className='text-sm'>Đang tải dữ liệu...</span>
         </div>
       </div>
     );
@@ -60,11 +60,11 @@ export default function ContractDetail() {
 
   if (!contract) {
     return (
-      <div className="ml-64 pt-24 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">error_outline</span>
-          <p className="text-slate-500 font-semibold">Không tìm thấy hợp đồng</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-blue-600 text-sm font-bold hover:underline">Quay lại</button>
+      <div className='flex min-h-[40vh] flex-col items-center justify-center'>
+        <div className='text-center'>
+          <span className='material-symbols-outlined text-4xl text-slate-300 mb-2'>error_outline</span>
+          <p className='text-slate-500 font-semibold'>Không tìm thấy hợp đồng</p>
+          <button onClick={() => navigate(-1)} className='mt-4 text-blue-600 text-sm font-bold hover:underline'>Quay lại</button>
         </div>
       </div>
     );
@@ -74,7 +74,7 @@ export default function ContractDetail() {
   const progressPercent = Math.min(100, Math.round((months / 12) * 100));
 
   return (
-    <div className='ml-64 min-h-screen'>
+    <div className='pb-10'>
       {/* Top Header */}
       <header className='sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center justify-between'>
         <div className='flex items-center gap-4'>

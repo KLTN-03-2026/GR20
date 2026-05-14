@@ -62,11 +62,6 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>Lịch sử yêu cầu</span>
           </NavLink> */}
 
-          <NavLink to='/utility-pricing' className={getNavClass}>
-            <span className='material-symbols-outlined'>sell</span>
-            <span className='text-sm font-manrope'>Giá tiện ích</span>
-          </NavLink>
-
           <NavLink to='/my-utility-meters' className={getNavClass}>
             <span className='material-symbols-outlined'>speed</span>
             <span className='text-sm font-manrope'>Đồng hồ của tôi</span>

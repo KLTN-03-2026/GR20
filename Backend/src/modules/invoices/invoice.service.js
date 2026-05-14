@@ -1,41 +1,27 @@
+const { pool } = require("../../configs/database.config");
 const { AppError } = require("../../common/app-error");
 const ERROR_CODES = require("./invoice-errors");
 const repo = require("./invoice.repository");
 const mapper = require("./invoice.mapper");
 const { parsePathId, parseCreateInvoice, parseUpdateInvoice, parseInvoiceListQuery, parseInvoiceUserQuery } = require("./invoice.request");
 
-const createInvoice = async (body) => {
-  const payload = parseCreateInvoice(body);
-  const entity = mapper.toEntity(payload);
-
-  if (payload.totalAmount !== undefined) {
-    return repo.withTransaction(async (client) => {
-      const result = await repo.createInvoice(entity, client);
-      const amount = Number(payload.totalAmount);
-      const payment = await repo.createPendingPaymentForInvoice({ invoiceId: result.id, amount }, client);
-      return { id: result.id, paymentId: payment.id };
-    });
-  }
-
-  const apartment = await repo.getApartmentById(payload.apartmentId);
-  if (!apartment)
-    throw new AppError(404, "Apartment not found", undefined, ERROR_CODES.APARTMENT_NOT_FOUND_FOR_INVOICE);
-
-  const rentContract = await repo.getActiveRentContractForBillingMonth(
-    payload.apartmentId,
-    payload.billingMonth,
-    payload.billingYear
-  );
+/**
+ * @param {{ apartmentId: number, billingMonth: number, billingYear: number }} params
+ * @param {import("pg").PoolClient} [client]
+ * @returns {Promise<Array<{ meterId: number | null, itemName: string, amount: number }>>}
+ */
+const buildCalculatedInvoiceLines = async ({ apartmentId, billingMonth, billingYear }, client = pool) => {
+  const rentContract = await repo.getActiveRentContractForBillingMonth(apartmentId, billingMonth, billingYear, client);
   const rentAmount = rentContract ? Number(rentContract.monthly_rent) : 0;
 
-  const meters = await repo.getActiveMetersByApartment(payload.apartmentId);
+  const meters = await repo.getActiveMetersByApartment(apartmentId, client);
 
   const calculatedItems = [];
   for (const meter of meters) {
-    const reading = await repo.getLatestReadingByMonth(meter.id, payload.billingMonth, payload.billingYear);
+    const reading = await repo.getLatestReadingByMonth(meter.id, billingMonth, billingYear, client);
     if (!reading) continue;
 
-    const pricing = await repo.getActivePriceByMeterTypeAtDate(meter.meter_type, reading.reading_date);
+    const pricing = await repo.getActivePriceByMeterTypeAtDate(meter.meter_type, reading.reading_date, client);
     if (!pricing) {
       throw new AppError(
         400,
@@ -62,7 +48,7 @@ const createInvoice = async (body) => {
     const amount = Number((consumption * Number(pricing.price_per_unit)).toFixed(2));
     calculatedItems.push({
       meterId: meter.id,
-      itemName: `${meter.meter_type} ${payload.billingMonth}/${payload.billingYear}`,
+      itemName: `${meter.meter_type} ${billingMonth}/${billingYear}`,
       amount,
     });
   }
@@ -70,10 +56,89 @@ const createInvoice = async (body) => {
   if (rentAmount > 0) {
     calculatedItems.push({
       meterId: null,
-      itemName: `Tiền thuê tháng ${payload.billingMonth}/${payload.billingYear}`,
+      itemName: `Tiền thuê tháng ${billingMonth}/${billingYear}`,
       amount: Number(rentAmount.toFixed(2)),
     });
   }
+
+  return calculatedItems;
+};
+
+/** Sau khi xóa đồng hồ: tính lại dòng tiền / tổng / thanh toán PENDING cho hóa đơn tự động chưa trả. */
+const recalculateUnpaidAutomatedInvoiceById = async (invoiceId) => {
+  const inv = await repo.getInvoiceById(invoiceId);
+  if (!inv || !["PENDING", "OVERDUE"].includes(inv.status)) return;
+  if (inv.billing_month == null || inv.billing_year == null) return;
+
+  await repo.withTransaction(async (client) => {
+    const calculatedItems = await buildCalculatedInvoiceLines(
+      {
+        apartmentId: inv.apartment_id,
+        billingMonth: inv.billing_month,
+        billingYear: inv.billing_year,
+      },
+      client
+    );
+
+    await repo.deleteInvoiceItemsByInvoiceId(inv.id, client);
+
+    if (calculatedItems.length === 0) {
+      await repo.updateInvoiceTotalAmount(inv.id, 0, client);
+      await repo.updatePendingPaymentsAmountForInvoice(inv.id, 0, client);
+      return;
+    }
+
+    for (const item of calculatedItems) {
+      await repo.createInvoiceItem(
+        {
+          invoiceId: inv.id,
+          itemName: item.itemName,
+          amount: item.amount,
+          meterId: item.meterId,
+        },
+        client
+      );
+    }
+    const totalAmount = Number(calculatedItems.reduce((sum, item) => sum + item.amount, 0).toFixed(2));
+    await repo.updateInvoiceTotalAmount(inv.id, totalAmount, client);
+    await repo.updatePendingPaymentsAmountForInvoice(inv.id, totalAmount, client);
+  });
+};
+
+const listUnpaidAutomatedInvoiceIdsByMeterId = (meterId) => repo.getUnpaidAutomatedInvoiceIdsByMeterId(meterId);
+
+const recalculateUnpaidAutomatedInvoiceByIds = async (invoiceIds) => {
+  for (const id of invoiceIds) {
+    try {
+      await recalculateUnpaidAutomatedInvoiceById(id);
+    } catch (err) {
+      console.error("[invoice] Recalculate after meter change failed", { invoiceId: id, err });
+    }
+  }
+};
+
+const createInvoice = async (body) => {
+  const payload = parseCreateInvoice(body);
+  const entity = mapper.toEntity(payload);
+
+  if (payload.totalAmount !== undefined) {
+    return repo.withTransaction(async (client) => {
+      const result = await repo.createInvoice(entity, client);
+      const amount = Number(payload.totalAmount);
+      const payment = await repo.createPendingPaymentForInvoice({ invoiceId: result.id, amount }, client);
+      return { id: result.id, paymentId: payment.id };
+    });
+  }
+
+  const apartment = await repo.getApartmentById(payload.apartmentId);
+  if (!apartment)
+    throw new AppError(404, "Apartment not found", undefined, ERROR_CODES.APARTMENT_NOT_FOUND_FOR_INVOICE);
+
+  const calculatedItems = await buildCalculatedInvoiceLines({
+    apartmentId: payload.apartmentId,
+    billingMonth: payload.billingMonth,
+    billingYear: payload.billingYear,
+  });
 
   if (calculatedItems.length === 0) {
     throw new AppError(
@@ -172,6 +237,9 @@ const restoreInvoice = async (id) => {
 
 module.exports = {
   createInvoice,
+  buildCalculatedInvoiceLines,
+  listUnpaidAutomatedInvoiceIdsByMeterId,
+  recalculateUnpaidAutomatedInvoiceByIds,
   getAllInvoices,
   getInvoiceById,
   getInvoicesByUserId,
