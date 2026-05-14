@@ -117,6 +117,43 @@ const recalculateUnpaidAutomatedInvoiceByIds = async (invoiceIds) => {
   }
 };
 
+/** Sau khi ghi chỉ số: tạo mới hoặc cập nhật lại hóa đơn kỳ tương ứng (nếu có thể tính). */
+const syncInvoiceAfterMeterReadingCreated = async (meterId, readingDateStr) => {
+  const mRes = await pool.query(`SELECT apartment_id FROM utility_meters WHERE id = $1`, [Number(meterId)]);
+  const apartmentId = mRes.rows[0]?.apartment_id;
+  if (apartmentId == null) return;
+
+  const pRes = await pool.query(
+    `SELECT EXTRACT(MONTH FROM $1::date)::int AS m, EXTRACT(YEAR FROM $1::date)::int AS y`,
+    [readingDateStr]
+  );
+  const billingMonth = Number(pRes.rows[0]?.m);
+  const billingYear = Number(pRes.rows[0]?.y);
+  if (!Number.isFinite(billingMonth) || !Number.isFinite(billingYear)) return;
+
+  const existing = await repo.getEditableInvoiceForApartmentPeriod(apartmentId, billingMonth, billingYear);
+  try {
+    if (existing) {
+      await recalculateUnpaidAutomatedInvoiceById(existing.id);
+      return;
+    }
+    await createInvoice({
+      apartmentId,
+      billingMonth,
+      billingYear,
+    });
+  } catch (err) {
+    console.error("[invoice] syncInvoiceAfterMeterReadingCreated", {
+      meterId,
+      readingDateStr,
+      apartmentId,
+      billingMonth,
+      billingYear,
+      err: err?.message,
+    });
+  }
+};
+
 const createInvoice = async (body) => {
   const payload = parseCreateInvoice(body);
   const entity = mapper.toEntity(payload);
@@ -240,6 +277,7 @@ module.exports = {
   buildCalculatedInvoiceLines,
   listUnpaidAutomatedInvoiceIdsByMeterId,
   recalculateUnpaidAutomatedInvoiceByIds,
+  syncInvoiceAfterMeterReadingCreated,
   getAllInvoices,
   getInvoiceById,
   getInvoicesByUserId,

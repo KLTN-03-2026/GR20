@@ -3,6 +3,7 @@ const router = express.Router();
 const controller = require("./meter-reading.controller");
 
 router.post("/", controller.createMeterReading);
+router.get("/suggest-previous", controller.getSuggestedPreviousReading);
 router.get("/", controller.getAllMeterReadings);
 router.get("/user/:userId", controller.getMeterReadingsByUserId);
 router.get("/user/:userId/by-meter/:meterId", controller.getMeterReadingsByUserAndMeterId);

@@ -1,5 +1,14 @@
 const { sendControllerError } = require("../../common/send-controller-error");
+const { AppError } = require("../../common/app-error");
 const service = require("./payment.service");
+const PAY_ERR = require("./payment-errors");
+
+const assertUserIdMatchesParam = (req) => {
+  const uid = req.user?.id != null ? String(req.user.id) : req.user?.sub != null ? String(req.user.sub) : "";
+  if (!uid || uid !== String(req.params.userId)) {
+    throw new AppError(403, "Không được phép truy cập thanh toán của tài khoản khác.", undefined, PAY_ERR.PAYMENT_FORBIDDEN_SCOPE);
+  }
+};
 
 const createPayment = async (req, res) => {
   try {
@@ -34,14 +43,31 @@ const getLatestPaymentByInvoiceId = async (req, res) => {
 };
 const getPaymentsByUserId = async (req, res) => {
   try {
+    assertUserIdMatchesParam(req);
     const result = await service.getPaymentsByUserId(req.params.userId, req.query);
     res.json({ operationType: "Success", message: "success", code: "OK", ...result, timestamp: new Date() });
   } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentByUserAndId = async (req, res) => {
   try {
+    assertUserIdMatchesParam(req);
     const data = await service.getPaymentByUserAndId(req.params.userId, req.params.id);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
+  } catch (err) { sendControllerError(res, err); }
+};
+
+const submitUserCashDeclaration = async (req, res) => {
+  try {
+    assertUserIdMatchesParam(req);
+    const data = await service.submitUserCashDeclaration(req.params.userId, req.params.id);
+    res.json({
+      operationType: "Success",
+      message: "Đã gửi thông tin nộp tiền mặt. Ban quản lý sẽ xác nhận khi nhận đủ tiền.",
+      code: "OK",
+      data,
+      size: 1,
+      timestamp: new Date(),
+    });
   } catch (err) { sendControllerError(res, err); }
 };
 
@@ -109,6 +135,7 @@ module.exports = {
   getLatestPaymentByInvoiceId,
   getPaymentsByUserId,
   getPaymentByUserAndId,
+  submitUserCashDeclaration,
   generateMbVietQrByInvoiceId,
   updatePayment,
   deletePayment,

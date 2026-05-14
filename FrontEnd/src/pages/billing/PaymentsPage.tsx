@@ -59,7 +59,6 @@ export default function PaymentsPage() {
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'SUCCESS' | 'FAILED'>('ALL')
   const [filterMethod, setFilterMethod] = useState<'ALL' | 'CASH' | 'BANK_TRANSFER'>('ALL')
   const [filterDeleted, setFilterDeleted] = useState<'HIDE_DELETED' | 'SHOW_ALL'>('SHOW_ALL')
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
 
   const { data, error, isLoading, isError } = useQuery({
     queryKey: ['payments', page, filterStatus, filterMethod, filterDeleted],
@@ -87,18 +86,6 @@ export default function PaymentsPage() {
     deleted: list.filter((p: Payment) => Boolean(p.deletedAt)).length
   }
 
-  const createMutation = useMutation({
-    mutationFn: (payload: any) => paymentsApi.create(payload),
-    onSuccess: (response) => {
-      logApiSuccess('Create', response)
-      queryClient.invalidateQueries({ queryKey: ['payments'] })
-      setScreenError(null)
-    },
-    onError: (err: any) => {
-      logApiError('Create', err)
-      setScreenError(getApiErrorMessage(err, 'Tạo thanh toán thất bại'))
-    }
-  })
   const deleteMutation = useMutation({
     mutationFn: (id: string) => paymentsApi.delete(id),
     onSuccess: (response) => {
@@ -146,13 +133,6 @@ export default function PaymentsPage() {
             >
               Quản lý hóa đơn
             </Link>
-            <button
-              type='button'
-              onClick={() => setIsCreateOpen(true)}
-              className='inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700'
-            >
-              + Tạo thanh toán
-            </button>
           </div>
         </div>
 
@@ -184,62 +164,6 @@ export default function PaymentsPage() {
           <div className='mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-600'>
             {screenError || getApiErrorMessage(error, 'Tải danh sách thanh toán thất bại')}
           </div>
-        )}
-        {isCreateOpen && (
-          <form
-            className='mb-6 grid grid-cols-1 gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:grid-cols-6'
-            onSubmit={(e) => {
-              e.preventDefault()
-              setScreenError(null)
-              const fd = new FormData(e.currentTarget)
-              const paymentDateRaw = fd.get('paymentDate') as string | null
-              createMutation.mutate({
-                invoiceId: Number(fd.get('invoiceId')),
-                amount: Number(fd.get('amount')),
-                paymentMethod: fd.get('paymentMethod') || 'CASH',
-                paymentGateway: fd.get('paymentMethod') === 'BANK_TRANSFER' ? 'MB_VIETQR' : 'OFFLINE',
-                status: fd.get('status') || 'PENDING',
-                paymentDate: paymentDateRaw && paymentDateRaw.trim() !== '' ? paymentDateRaw : undefined
-              })
-              e.currentTarget.reset()
-              setIsCreateOpen(false)
-            }}
-          >
-            <input
-              name='invoiceId'
-              required
-              inputMode='numeric'
-              placeholder='ID hóa đơn *'
-              className='rounded-lg border border-gray-200 px-4 py-2.5'
-            />
-            <input name='amount' required inputMode='decimal' placeholder='Số tiền (VND) *' className='rounded-lg border border-gray-200 px-4 py-2.5' />
-            <input name='paymentDate' type='date' title='Ngày thanh toán (tuỳ chọn)' className='rounded-lg border border-gray-200 px-4 py-2.5' />
-            <select
-              name='paymentMethod'
-              className='rounded-lg border border-gray-200 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-            >
-              <option value='CASH'>{paymentMethodVi.CASH}</option>
-              <option value='BANK_TRANSFER'>{paymentMethodVi.BANK_TRANSFER}</option>
-            </select>
-            <select
-              name='status'
-              className='rounded-lg border border-gray-200 px-4 py-2.5 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-            >
-              <option value='PENDING'>{paymentStatusVi.PENDING}</option>
-              <option value='SUCCESS'>{paymentStatusVi.SUCCESS}</option>
-              <option value='FAILED'>{paymentStatusVi.FAILED}</option>
-            </select>
-            <button className='rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white transition hover:bg-blue-700'>
-              {createMutation.isPending ? 'Đang lưu...' : 'Tạo thanh toán'}
-            </button>
-            <button
-              type='button'
-              className='rounded-lg bg-slate-100 px-4 py-2.5 font-semibold text-slate-700 transition hover:bg-slate-200 md:col-span-2'
-              onClick={() => setIsCreateOpen(false)}
-            >
-              Hủy
-            </button>
-          </form>
         )}
         <div className='mb-6 grid grid-cols-1 gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:grid-cols-4'>
           <select

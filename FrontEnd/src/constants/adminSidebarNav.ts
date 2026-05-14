@@ -112,13 +112,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     group: 'utility'
   },
   {
-    label: 'Quản lý chỉ số',
-    description: 'Meter readings',
-    to: '/admin/meter-readings',
-    icon: 'insights',
-    group: 'utility'
-  },
-  {
     label: 'Quản lý giá tiện ích',
     description: 'Bảng giá tiện ích',
     to: '/admin/utility-pricing',

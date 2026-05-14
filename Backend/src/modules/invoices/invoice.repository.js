@@ -186,10 +186,27 @@ const withTransaction = async (fn) => {
   }
 };
 
-const getAllInvoices = async ({ page = 0, size = 10 } = {}) => {
-  const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM invoices`);
+const getAllInvoices = async ({ page = 0, size = 10, apartmentId, billingMonth, billingYear } = {}) => {
+  const conditions = [];
+  const values = [];
+  let index = 1;
+  if (apartmentId != null) {
+    conditions.push(`apartment_id = $${index++}`);
+    values.push(apartmentId);
+  }
+  if (billingMonth != null && billingYear != null) {
+    conditions.push(`billing_month = $${index++}`);
+    values.push(billingMonth);
+    conditions.push(`billing_year = $${index++}`);
+    values.push(billingYear);
+  }
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM invoices ${whereClause}`, values);
   const offset = page * size;
-  const result = await pool.query(`SELECT * FROM invoices ORDER BY id DESC LIMIT $1 OFFSET $2`, [size, offset]);
+  const result = await pool.query(
+    `SELECT * FROM invoices ${whereClause} ORDER BY id DESC LIMIT $${index++} OFFSET $${index++}`,
+    [...values, size, offset]
+  );
   return { rows: result.rows, total: countResult.rows[0]?.total || 0 };
 };
 
@@ -284,6 +301,24 @@ const restoreInvoice = async (id) => {
   return result.rows[0];
 };
 
+/** Hóa đơn kỳ này còn chỉnh sửa được (PENDING/OVERDUE). */
+const getEditableInvoiceForApartmentPeriod = async (apartmentId, billingMonth, billingYear, client = pool) => {
+  const result = await client.query(
+    `
+      SELECT id, status
+      FROM invoices
+      WHERE apartment_id = $1
+        AND billing_month = $2
+        AND billing_year = $3
+        AND status IN ('PENDING', 'OVERDUE')
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [apartmentId, billingMonth, billingYear]
+  );
+  return result.rows[0];
+};
+
 module.exports = {
   createInvoice,
   getApartmentById,
@@ -305,4 +340,5 @@ module.exports = {
   updateInvoice,
   deleteInvoice,
   restoreInvoice,
+  getEditableInvoiceForApartmentPeriod,
 };

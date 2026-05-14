@@ -55,5 +55,8 @@ export const meterReadingsApi = {
   },
   restore(id: string) {
     return http.patch(`${URL}/${id}/restore`)
+  },
+  suggestPrevious(params: { meterId: number; readingDate: string }) {
+    return http.get<SuccessResponseApi<{ previousReading: number | null }>>(`${URL}/suggest-previous`, { params })
   }
 }

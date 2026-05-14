@@ -66,10 +66,6 @@ import ContractDetail from './pages/Contracts/ContractDetail'
 import UtilityMetersPage from './pages/utility/UtilityMetersPage'
 import MeterReadingsPage from './pages/utility/MeterReadingsPage'
 import UtilityPricingPage from './pages/utility/UtilityPricingPage'
-import UserUtilityMetersPage from './pages/utility/UserUtilityMetersPage'
-import UserUtilityMeterDetailPage from './pages/utility/UserUtilityMeterDetailPage'
-import UserMeterReadingsPage from './pages/utility/UserMeterReadingsPage'
-import UserMeterReadingDetailPage from './pages/utility/UserMeterReadingDetailPage'
 import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
 import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManager'
 import StatisticsReportPage from './pages/statistics/StatisticsReportPage'
@@ -641,51 +637,6 @@ export default function useRouteElements() {
         }
       ]
     },
-    {
-      path: '/my-utility-meters',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityMetersPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityMeterDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-    {
-      path: '/my-meter-readings',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserMeterReadingsPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserMeterReadingDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-
     // ADMIN + QUẢN LÝ: tòa nhà, billing, đồng hồ / chỉ số / giá
     {
       path: '/admin/buildings',

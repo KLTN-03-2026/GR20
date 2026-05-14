@@ -29,6 +29,7 @@ type PayRow = {
   invoiceId?: number
   amount?: number
   status?: string
+  responseCode?: string | null
   invoiceCode?: string | null
   apartmentId?: number | null
   billingMonth?: number | null
@@ -46,7 +47,6 @@ export default function UserPaymentDetailPage() {
   const userId = String((user as any)?.id || (user as any)?._id || '')
 
   const bankTransferAwaitingWebhookRef = useRef(false)
-  const cashConfirmSuccessRef = useRef(false)
   const didRedirectToSuccessRef = useRef(false)
 
   const [payError, setPayError] = useState<string | null>(null)
@@ -58,9 +58,10 @@ export default function UserPaymentDetailPage() {
     enabled: Boolean(userId && id),
     refetchInterval: (q) => {
       const r = q.state.data?.data?.data as PayRow | undefined
-      if (!bankTransferAwaitingWebhookRef.current) return false
       if (!r || String(r.status).toUpperCase() !== 'PENDING') return false
-      return 4000
+      if (String(r.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH') return 4000
+      if (bankTransferAwaitingWebhookRef.current && selectedMethod === 'BANK_TRANSFER') return 4000
+      return false
     },
     refetchOnWindowFocus: true
   })
@@ -110,7 +111,6 @@ export default function UserPaymentDetailPage() {
 
   useEffect(() => {
     bankTransferAwaitingWebhookRef.current = false
-    cashConfirmSuccessRef.current = false
     didRedirectToSuccessRef.current = false
   }, [id])
 
@@ -127,14 +127,14 @@ export default function UserPaymentDetailPage() {
     if (!id || !userId || !row) return
     if (String(row.status).toUpperCase() !== 'SUCCESS') return
     if (didRedirectToSuccessRef.current) return
-    if (!bankTransferAwaitingWebhookRef.current && !cashConfirmSuccessRef.current) return
+    if (!showCheckout) return
     didRedirectToSuccessRef.current = true
     toast.success('Thanh toán thành công')
     void queryClient.invalidateQueries({ queryKey: ['user-payments'] })
     void queryClient.invalidateQueries({ queryKey: ['user-invoices'] })
     void queryClient.invalidateQueries({ queryKey: ['user-payment-detail', userId, id] })
     navigate(`/payments/${id}/success`, { replace: true })
-  }, [row, row?.status, id, userId, navigate, queryClient])
+  }, [row, row?.status, id, userId, navigate, queryClient, showCheckout])
 
   useEffect(() => {
     if (selectedMethod === 'BANK_TRANSFER') setPayError(null)
@@ -148,22 +148,15 @@ export default function UserPaymentDetailPage() {
 
   const payMutation = useMutation({
     mutationFn: async () => {
-      if (!row?.invoiceId) return
-      const latestPaymentRes = await paymentsApi.getByInvoiceId(String(row.invoiceId))
-      const paymentId = latestPaymentRes.data.data.id
-      await paymentsApi.update(paymentId, {
-        paymentMethod: 'CASH',
-        paymentGateway: 'OFFLINE',
-        status: 'SUCCESS',
-        paymentDate: new Date().toISOString()
-      })
+      if (!id || !userId) return
+      await paymentsApi.submitCashDeclaration(userId, String(id))
     },
     onSuccess: () => {
-      cashConfirmSuccessRef.current = true
       queryClient.invalidateQueries({ queryKey: ['user-invoices'] })
       queryClient.invalidateQueries({ queryKey: ['user-payments'] })
       queryClient.invalidateQueries({ queryKey: ['user-payment-detail', userId, id] })
       setPayError(null)
+      toast.info('Đã gửi thông tin nộp tiền mặt. Ban quản lý sẽ xác nhận khi nhận đủ tiền.')
     },
     onError: (err: unknown) => {
       logPaymentConsoleError('confirm-cash', err)
@@ -309,19 +302,31 @@ export default function UserPaymentDetailPage() {
           {selectedMethod === 'CASH' && (
             <>
               <p className='mb-4 text-sm text-slate-600'>
-                Xác nhận bạn đã nộp tiền mặt đúng hạn tại Ban quản lý. Hệ thống sẽ cập nhật trạng thái và hóa đơn liên quan.
+                Báo Ban quản lý là bạn đã nộp tiền mặt đúng hạn. Trạng thái <strong>thành công</strong> chỉ được cập nhật sau
+                khi BQL xác nhận trên hệ thống.
               </p>
+              {String(row?.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH' && (
+                <p className='mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900'>
+                  Đã ghi nhận yêu cầu của bạn. Vui lòng chờ Ban quản lý xác nhận.
+                </p>
+              )}
               {payError && <div className='mb-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700'>{payError}</div>}
               <button
                 type='button'
                 className='rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50'
-                disabled={payMutation.isPending}
+                disabled={
+                  payMutation.isPending || String(row?.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH'
+                }
                 onClick={() => {
                   setPayError(null)
                   payMutation.mutate()
                 }}
               >
-                {payMutation.isPending ? 'Đang xử lý…' : 'Xác nhận đã thanh toán tiền mặt'}
+                {String(row?.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH'
+                  ? 'Đã gửi — chờ BQL xác nhận'
+                  : payMutation.isPending
+                    ? 'Đang xử lý…'
+                    : 'Báo đã nộp tiền mặt tại BQL'}
               </button>
             </>
           )}
@@ -419,8 +424,8 @@ export default function UserPaymentDetailPage() {
               <span className='text-[10px] font-bold uppercase tracking-widest text-blue-100'>Homelink AI Insight</span>
             </div>
             <p className='text-sm text-white/90'>
-              Tiền mặt: sau khi xác nhận, chuyển sang trang hoàn tất. Chuyển khoản: hệ thống tự làm mới trạng thái khi nhận được
-              tiền (webhook ngân hàng).
+              Tiền mặt: BQL xác nhận trên hệ thống thì trạng thái thành công; trang tự làm mới khi đang mở bước thanh toán. Chuyển
+              khoản: tự làm mới khi có xác nhận từ ngân hàng (webhook).
             </p>
           </div>
         </div>

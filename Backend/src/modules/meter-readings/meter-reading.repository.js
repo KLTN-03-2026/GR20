@@ -268,12 +268,31 @@ const restoreMeterReading = async (id) => {
   return result.rows[0];
 };
 
+/** Chỉ số mới của tháng hiện tại: chỉ số cũ = chỉ số mới (current) của lần ghi gần nhất trước đầu tháng `readingDate`. */
+const getSuggestedPreviousReading = async (meterId, readingDate) => {
+  const r = await pool.query(
+    `
+      SELECT current_reading
+      FROM meter_readings
+      WHERE meter_id = $1
+        AND deleted_at IS NULL
+        AND reading_date < date_trunc('month', $2::date)
+      ORDER BY reading_date DESC, id DESC
+      LIMIT 1
+    `,
+    [meterId, readingDate]
+  );
+  if (!r.rows[0]) return null;
+  return Number(r.rows[0].current_reading);
+};
+
 module.exports = {
   createMeterReading,
   getAllMeterReadings,
   getMeterReadingById,
   getMeterReadingsByUserId,
   getMeterReadingsByUserAndMeterId,
+  getSuggestedPreviousReading,
   updateMeterReading,
   deleteMeterReading,
   restoreMeterReading,

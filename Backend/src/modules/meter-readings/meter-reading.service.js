@@ -2,12 +2,14 @@ const { AppError } = require("../../common/app-error");
 const ERROR_CODES = require("./meter-reading-errors");
 const mapper = require("./meter-reading.mapper");
 const repo = require("./meter-reading.repository");
+const invoiceService = require("../invoices/invoice.service");
 const {
   parsePathId,
   parseCreateMeterReading,
   parseUpdateMeterReading,
   parseMeterReadingListQuery,
   parseMeterReadingUserQuery,
+  parseSuggestPreviousQuery,
 } = require("./meter-reading.request");
 
 const withConsumption = (payload) => ({
@@ -20,6 +22,11 @@ const createMeterReading = async (body) => {
   if (parsed.consumption < 0)
     throw new AppError(400, "currentReading must be greater than or equal to previousReading", undefined, ERROR_CODES.METER_READING_BELOW_PREVIOUS);
   const result = await repo.createMeterReading(mapper.toEntity(parsed));
+  try {
+    await invoiceService.syncInvoiceAfterMeterReadingCreated(parsed.meterId, parsed.readingDate);
+  } catch (err) {
+    console.error("[meter-reading] invoice sync after create", { err: err?.message });
+  }
   return { id: result.id };
 };
 
@@ -93,6 +100,12 @@ const updateMeterReading = async (id, body) => {
 
   const row = await repo.updateMeterReading(parsedId, mapper.toEntity(patch));
   if (!row) throw new AppError(404, "Meter reading not found", undefined, ERROR_CODES.METER_READING_NOT_FOUND);
+  try {
+    const rd = row.reading_date != null ? String(row.reading_date).slice(0, 10) : String(current.reading_date).slice(0, 10);
+    await invoiceService.syncInvoiceAfterMeterReadingCreated(row.meter_id ?? current.meter_id, rd);
+  } catch (err) {
+    console.error("[meter-reading] invoice sync after update", { err: err?.message });
+  }
   return mapper.toResponse(row);
 };
 
@@ -114,12 +127,19 @@ const restoreMeterReading = async (id) => {
   return { id: row.id };
 };
 
+const getSuggestedPreviousReading = async (query) => {
+  const { meterId, readingDate } = parseSuggestPreviousQuery(query);
+  const v = await repo.getSuggestedPreviousReading(meterId, readingDate);
+  return { previousReading: v };
+};
+
 module.exports = {
   createMeterReading,
   getAllMeterReadings,
   getMeterReadingById,
   getMeterReadingsByUserId,
   getMeterReadingsByUserAndMeterId,
+  getSuggestedPreviousReading,
   updateMeterReading,
   deleteMeterReading,
   restoreMeterReading,

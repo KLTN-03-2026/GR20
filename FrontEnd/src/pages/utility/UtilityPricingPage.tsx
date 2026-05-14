@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { utilityPricingApi } from 'src/apis/utility_api/utility-pricing.api'
+import { formatDateViVN } from 'src/utils/date-vi'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
 import {
   ROW_ACTION_CANCEL,
@@ -19,6 +20,8 @@ const getApiErrorMessage = (err: any, fallbackMessage: string) => {
   const translatedMessages: Array<[string, string]> = [
     ['Validation failed', 'Dữ liệu không hợp lệ'],
     ['Unknown field in request body', 'Có trường không hợp lệ trong dữ liệu gửi lên'],
+    ['UTILITY_PRICING_RESTORE_BLOCKED_ACTIVE_EXISTS', 'Vẫn còn bản giá đang hoạt động cho loại này — hãy vô hiệu hóa bản đó trước khi khôi phục bản cũ.'],
+    ['Vui lòng xóa bản giá đang hoạt động (ACTIVE) cho loại này trước', 'Vẫn còn bản giá đang hoạt động cho loại này — hãy vô hiệu hóa bản đó trước khi khôi phục bản cũ.'],
     ['At least one field is required for update', 'Cần ít nhất 1 trường để cập nhật'],
     ['meterType cannot be changed. Create a new pricing for that meterType instead.', 'Không thể đổi loại công tơ. Vui lòng tạo bản giá mới cho loại đó.'],
     ['Utility pricing not found', 'Không tìm thấy cấu hình giá tiện ích'],
@@ -262,7 +265,7 @@ export default function UtilityPricingPage() {
                         className='rounded border px-2 py-1'
                       />
                     ) : (
-                      item.effectiveFrom
+                      formatDateViVN(item.effectiveFrom)
                     )}
                   </td>
                   <td className='px-4 py-3'>

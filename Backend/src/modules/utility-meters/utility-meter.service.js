@@ -113,15 +113,32 @@ const deleteUtilityMeter = async (id) => {
 };
 
 const restoreUtilityMeter = async (id) => {
-  const row = await repo.restoreUtilityMeter(parsePathId(id));
-  if (!row)
+  const pid = parsePathId(id);
+  const row = await repo.getUtilityMeterByIdAnyStatus(pid);
+  if (!row || String(row.status) !== "INACTIVE") {
     throw new AppError(
       404,
       "Utility meter not found or not inactive",
       undefined,
       ERROR_CODES.UTILITY_METER_NOT_INACTIVE_FOR_RESTORE
     );
-  return { id: row.id };
+  }
+  const n = await repo.countActiveMetersByApartmentAndType({
+    apartmentId: row.apartment_id,
+    meterType: row.meter_type,
+    excludeMeterId: pid,
+  });
+  if (n > 0) {
+    throw new AppError(
+      409,
+      "Căn hộ đã có đồng hồ điện/nước loại này đang hoạt động. Không thể khôi phục bản ghi này.",
+      { apartmentId: row.apartment_id, meterType: row.meter_type },
+      ERROR_CODES.UTILITY_METER_RESTORE_DUPLICATE_ACTIVE
+    );
+  }
+  const restored = await repo.restoreUtilityMeter(pid);
+  if (!restored) throw new AppError(404, "Utility meter not found or not inactive", undefined, ERROR_CODES.UTILITY_METER_NOT_INACTIVE_FOR_RESTORE);
+  return { id: restored.id };
 };
 
 module.exports = {

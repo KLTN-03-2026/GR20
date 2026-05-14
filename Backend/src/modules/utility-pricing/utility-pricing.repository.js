@@ -84,13 +84,17 @@ const deleteUtilityPricing = async (id) => {
 };
 
 const restoreUtilityPricing = async (id) => {
-  const rowResult = await pool.query(`SELECT id, meter_type FROM utility_pricing WHERE id = $1`, [id]);
-  const target = rowResult.rows[0];
-  if (!target) return null;
-
-  await pool.query(`UPDATE utility_pricing SET is_active = false WHERE meter_type = $1 AND is_active = true`, [target.meter_type]);
   const result = await pool.query(`UPDATE utility_pricing SET is_active = true WHERE id = $1 RETURNING id`, [id]);
   return result.rows[0];
+};
+
+/** Có bản giá ACTIVE khác id (cùng meter_type) — chặn khôi phục cho đến khi xóa bản đang hoạt động. */
+const hasOtherActivePricingForMeterType = async (meterType, excludeId) => {
+  const r = await pool.query(
+    `SELECT id FROM utility_pricing WHERE meter_type = $1 AND is_active = true AND id <> $2 LIMIT 1`,
+    [meterType, excludeId]
+  );
+  return Boolean(r.rows[0]);
 };
 
 module.exports = {
@@ -103,4 +107,5 @@ module.exports = {
   updateUtilityPricing,
   deleteUtilityPricing,
   restoreUtilityPricing,
+  hasOtherActivePricingForMeterType,
 };

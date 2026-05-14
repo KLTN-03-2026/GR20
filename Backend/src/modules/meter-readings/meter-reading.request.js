@@ -62,4 +62,17 @@ const parseMeterReadingUserQuery = (query) =>
     )
     .parse(query || {});
 
-module.exports = { parsePathId, parseCreateMeterReading, parseUpdateMeterReading, parseMeterReadingListQuery, parseMeterReadingUserQuery };
+const suggestPreviousQuerySchema = z.object({
+  meterId: z.coerce.number().int().positive(),
+  readingDate: z.string().date(),
+});
+const parseSuggestPreviousQuery = (query) => suggestPreviousQuerySchema.parse(query || {});
+
+module.exports = {
+  parsePathId,
+  parseCreateMeterReading,
+  parseUpdateMeterReading,
+  parseMeterReadingListQuery,
+  parseMeterReadingUserQuery,
+  parseSuggestPreviousQuery,
+};

@@ -69,11 +69,6 @@ const menuGroups: MenuGroup[] = [
         icon: 'speed'
       },
       {
-        path: '/admin/meter-readings',
-        label: 'Quản lý chỉ số',
-        icon: 'insights'
-      },
-      {
         path: '/admin/utility-pricing',
         label: 'Quản lý giá tiện ích',
         icon: 'sell'
@@ -109,11 +104,6 @@ const menuGroups: MenuGroup[] = [
         path: '/owner/management/contracts',
         label: 'Quản lý hợp đồng',
         icon: 'description'
-      },
-      {
-        path: '/admin/meter-readings',
-        label: 'Quản lí Chỉ Số',
-        icon: 'electric_meter'
       },
       {
         path: '/admin/utility-pricing',

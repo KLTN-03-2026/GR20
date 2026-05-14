@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import { paymentsApi } from 'src/apis/billing_api/payments.api'
 import {
@@ -29,6 +29,20 @@ function formatDateVi(value: unknown): string {
 export default function PaymentDetailAdminPage() {
   const { id } = useParams<{ id: string }>()
   const paymentId = id ?? ''
+  const queryClient = useQueryClient()
+
+  const confirmCashMutation = useMutation({
+    mutationFn: () =>
+      paymentsApi.update(paymentId, {
+        status: 'SUCCESS',
+        responseCode: '00',
+        paymentDate: new Date().toISOString()
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['payment-detail-admin', paymentId] })
+      void queryClient.invalidateQueries({ queryKey: ['payments'] })
+    }
+  })
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['payment-detail-admin', paymentId],
@@ -73,7 +87,8 @@ export default function PaymentDetailAdminPage() {
           {isLoading && <p className='text-slate-600'>Đang tải…</p>}
           {isError && <p className='text-red-600'>Không tải được chi tiết thanh toán.</p>}
           {!isLoading && !isError && detail && (
-            <dl className='grid grid-cols-1 gap-5 text-sm sm:grid-cols-2'>
+            <>
+              <dl className='grid grid-cols-1 gap-5 text-sm sm:grid-cols-2'>
               <div>
                 <dt className='text-xs font-semibold uppercase tracking-wide text-slate-500'>Mã thanh toán</dt>
                 <dd className='mt-1 font-mono text-slate-900'>{displayText(detail.id)}</dd>
@@ -113,6 +128,10 @@ export default function PaymentDetailAdminPage() {
                 <dd className='mt-1 text-lg font-bold tabular-nums text-slate-900'>
                   {Number.isFinite(amountNum) ? formatVnd(amountNum) : displayText(detail.amount)}
                 </dd>
+              </div>
+              <div>
+                <dt className='text-xs font-semibold uppercase tracking-wide text-slate-500'>Mã phản hồi / ghi chú cổng</dt>
+                <dd className='mt-1 text-slate-900'>{displayText(detail.responseCode)}</dd>
               </div>
               <div>
                 <dt className='text-xs font-semibold uppercase tracking-wide text-slate-500'>Phương thức</dt>
@@ -155,6 +174,32 @@ export default function PaymentDetailAdminPage() {
                 <dd className='mt-1 text-slate-900'>{detail.deletedAt ? 'Có' : 'Không'}</dd>
               </div>
             </dl>
+            {String(detail.status) === 'PENDING' && String(detail.paymentMethod || '').toUpperCase() === 'CASH' && (
+                <div className='mt-6 border-t border-slate-100 pt-6'>
+                  <p className='mb-3 text-sm text-slate-600'>
+                    {String(detail.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH'
+                      ? 'Cư dân đã báo nộp tiền mặt. Xác nhận khi đã thu đủ tiền tại BQL.'
+                      : 'Xác nhận thu tiền mặt tại BQL (nếu cư dân chưa báo qua app, vẫn có thể xác nhận trực tiếp).'}
+                  </p>
+                  <button
+                    type='button'
+                    disabled={confirmCashMutation.isPending}
+                    onClick={() => {
+                      if (!window.confirm('Xác nhận đã thu tiền mặt và ghi nhận thanh toán thành công?')) return
+                      confirmCashMutation.mutate()
+                    }}
+                    className='rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50'
+                  >
+                    {confirmCashMutation.isPending ? 'Đang lưu…' : 'Xác nhận đã thu tiền mặt'}
+                  </button>
+                  {confirmCashMutation.isError && (
+                    <p className='mt-2 text-sm text-red-600'>
+                      {(confirmCashMutation.error as any)?.response?.data?.message || 'Không cập nhật được.'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
           )}
           {!isLoading && !isError && !detail && <p className='text-slate-600'>Không có dữ liệu.</p>}
         </div>

@@ -48,7 +48,9 @@ export default function UserInvoicesPage() {
       <div className='mb-8'>
         <h1 className='mb-2 text-3xl font-extrabold text-slate-900'>Hóa đơn của tôi</h1>
         <div className='h-1.5 w-20 rounded-full bg-gradient-to-r from-blue-500 to-blue-700' />
-        <p className='mt-2 text-sm text-slate-500'>Chọn một hóa đơn để xem đầy đủ dòng tiền và bảng giá tham khảo.</p>
+        <p className='mt-2 text-sm text-slate-500'>
+          Chọn một hóa đơn để xem đầy đủ dòng tiền, bảng giá tham khảo và chỉ số công tơ kỳ đó.
+        </p>
       </div>
 
       {isError && (

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { apartmentsApi } from 'src/apis/apartment_api/apartments.api'
 import { UserApi } from 'src/apis/User/user.api'
 import { utilityMetersApi } from 'src/apis/utility_api/utility-meters.api'
+import { formatDateViVN } from 'src/utils/date-vi'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
 import {
   ROW_ACTION_DELETE,
@@ -305,7 +306,7 @@ export default function UtilityMetersPage() {
                 <td className='px-4 py-3'>{item.meterCode}</td>
                 <td className='px-4 py-3'>{item.meterType}</td>
                 <td className='px-4 py-3'>{item.apartmentId}</td>
-                <td className='px-4 py-3'>{item.installedDate || 'Chưa có'}</td>
+                <td className='px-4 py-3'>{item.installedDate ? formatDateViVN(item.installedDate) : 'Chưa có'}</td>
                 <td className='px-4 py-3'>{item.status}</td>
                 <td className='px-4 py-3 text-right'>
                   <div className='flex flex-wrap justify-end gap-2'>

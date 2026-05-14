@@ -75,6 +75,15 @@ const getUtilityMeterById = async (id) => {
   return result.rows[0];
 };
 
+/** Bất kỳ trạng thái (dùng khi khôi phục). */
+const getUtilityMeterByIdAnyStatus = async (id) => {
+  const result = await pool.query(
+    `SELECT id, apartment_id, meter_type, status FROM utility_meters WHERE id = $1`,
+    [id]
+  );
+  return result.rows[0];
+};
+
 const getUtilityMetersByUserId = async ({ userId, page = 0, size = 10, meterType, status } = {}) => {
   const conditions = [
     `rp.user_id = $1`,
@@ -234,6 +243,7 @@ module.exports = {
   countActiveMetersByApartmentAndType,
   getAllUtilityMeters,
   getUtilityMeterById,
+  getUtilityMeterByIdAnyStatus,
   getUtilityMetersByUserId,
   getUtilityMeterByUserAndId,
   updateUtilityMeter,
