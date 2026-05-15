@@ -1,25 +1,40 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { toast } from 'react-toastify'
 import { employeeApi } from '../../apis/employee_api/employee.api'
+import { buildingApi } from '../../apis/employee_api/building.api'
 
+// BẮT LỖI CHUẨN CHỈ Ở ĐÂY
 const schema = yup.object({
   fullName: yup.string().required('Vui lòng nhập họ tên'),
-  email: yup.string().required('Vui lòng nhập email').email('Email không hợp lệ'),
+
+  email: yup
+    .string()
+    .required('Vui lòng nhập email')
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Email không hợp lệ (Ví dụ: ten@gmail.com)'),
+
   roleId: yup.number().required('Vui lòng chọn vai trò'),
-  username: yup
-    .string()
-    .when('$isEdit', (isEdit, schema) =>
-      isEdit[0] ? schema.optional() : schema.required('Vui lòng nhập tên đăng nhập').min(3, 'Ít nhất 3 ký tự')
-    ),
-  password: yup
-    .string()
-    .when('$isEdit', (isEdit, schema) =>
-      isEdit[0] ? schema.optional() : schema.required('Vui lòng nhập mật khẩu').min(6, 'Ít nhất 6 ký tự')
-    )
+
+  buildingIds: yup
+    .array()
+    .of(yup.number())
+    .min(1, 'Vui lòng chọn ít nhất 1 tòa nhà để quản lý')
+    .required('Vui lòng chọn tòa nhà quản lý'),
+
+  username: yup.string().when('$isEdit', {
+    is: true,
+    then: (schema) => schema.notRequired(),
+    otherwise: (schema) => schema.required('Vui lòng nhập tên đăng nhập').min(6, 'Ít nhất 6 ký tự')
+  }),
+
+  password: yup.string().when('$isEdit', {
+    is: true,
+    then: (schema) => schema.notRequired(),
+    otherwise: (schema) => schema.required('Vui lòng nhập mật khẩu').min(6, 'Ít nhất 6 ký tự')
+  })
 })
 
 const ROLE_MAP: Record<number, string> = {
@@ -41,14 +56,26 @@ export default function EmployeeManagement() {
   })
   const [activeFilter, setActiveFilter] = useState('Tất cả')
 
+  // STATE PHÂN TRANG
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
+
   const {
-    data: employees,
-    isLoading,
-    isError
+    data: employeesData,
+    isLoading: isEmployeesLoading,
+    isError: isEmployeesError
   } = useQuery({
     queryKey: ['employees'],
     queryFn: employeeApi.getAll
   })
+
+  const { data: buildingsData } = useQuery({
+    queryKey: ['buildings'],
+    queryFn: buildingApi.getAll
+  })
+
+  const employees = employeesData?.data?.data || employeesData?.data || employeesData
+  const buildingsList = buildingsData?.data?.data || buildingsData?.data || buildingsData
 
   const {
     register,
@@ -60,12 +87,27 @@ export default function EmployeeManagement() {
     context: { isEdit: modalState.mode === 'edit' }
   })
 
-  const openModal = (mode: 'add' | 'edit' | 'view', data: any = null) => {
-    setModalState({ isOpen: true, mode, data })
+  const openModal = async (mode: 'add' | 'edit' | 'view', data: any = null) => {
     if (mode === 'edit' || mode === 'view') {
-      reset({ fullName: data.fullName, email: data.email, roleId: data.roleId })
+      try {
+        const res = await employeeApi.getById(data.id)
+        const details = res?.data?.data || res?.data || res
+
+        const formattedBuildingIds = details.buildingIds?.map((id: any) => String(id)) || []
+
+        reset({
+          fullName: details.fullName,
+          email: details.email,
+          roleId: details.roleId,
+          buildingIds: formattedBuildingIds
+        })
+        setModalState({ isOpen: true, mode, data: details })
+      } catch (error) {
+        toast.error('Không thể lấy dữ liệu chi tiết của nhân viên này!')
+      }
     } else {
-      reset({ fullName: '', email: '', username: '', password: '', roleId: 3 }) // Mặc định là NV Vận hành
+      reset({ fullName: '', email: '', username: '', password: '', roleId: 3, buildingIds: [] })
+      setModalState({ isOpen: true, mode: 'add', data: null })
     }
   }
 
@@ -96,8 +138,9 @@ export default function EmployeeManagement() {
 
   const toggleMutation = useMutation({
     mutationFn: employeeApi.toggleStatus,
-    onSuccess: (data) => {
-      toast.success(data.isActive ? 'Đã mở khóa nhân viên!' : 'Đã khóa nhân viên thành công!')
+    onSuccess: (res: any) => {
+      const data = res?.data?.data || res?.data || res
+      toast.success(data?.isActive ? 'Đã mở khóa nhân viên!' : 'Đã khóa nhân viên thành công!')
       queryClient.invalidateQueries({ queryKey: ['employees'] })
       setConfirmModal({ isOpen: false, employeeId: null, isActive: false })
     },
@@ -105,12 +148,23 @@ export default function EmployeeManagement() {
   })
 
   const onSubmit = (data: any) => {
+    const formattedBuildingIds = data.buildingIds.map(Number)
+
     if (modalState.mode === 'add') {
-      addMutation.mutate({ ...data, roleId: Number(data.roleId) })
+      addMutation.mutate({
+        ...data,
+        roleId: Number(data.roleId),
+        buildingIds: formattedBuildingIds
+      })
     } else if (modalState.mode === 'edit') {
       updateMutation.mutate({
         id: modalState.data?.id,
-        data: { fullName: data.fullName, email: data.email, roleId: Number(data.roleId) }
+        data: {
+          fullName: data.fullName,
+          email: data.email,
+          roleId: Number(data.roleId),
+          buildingIds: formattedBuildingIds
+        }
       })
     }
   }
@@ -123,15 +177,23 @@ export default function EmployeeManagement() {
       : name.substring(0, 2).toUpperCase()
   }
 
-  const filteredEmployees = employees?.filter((emp: any) => {
-    if (activeFilter === 'Tất cả') return true
-    if (activeFilter === 'Bảo vệ') return emp.roleId === 4
-    if (activeFilter === 'Nhân viên vận hành') return emp.roleId === 3
-    return true
-  })
+  // XỬ LÝ LỌC VÀ PHÂN TRANG
+  const filteredEmployees = useMemo(() => {
+    return (
+      employees?.filter((emp: any) => {
+        if (activeFilter === 'Tất cả') return true
+        if (activeFilter === 'Bảo vệ') return emp.roleId === 4
+        if (activeFilter === 'Nhân viên vận hành') return emp.roleId === 3
+        return true
+      }) || []
+    )
+  }, [employees, activeFilter])
 
-  if (isLoading) return <div className='p-8 text-center text-gray-500'>Đang tải dữ liệu...</div>
-  if (isError) return <div className='p-8 text-center text-red-500'>Lỗi kết nối máy chủ!</div>
+  const totalPages = Math.ceil(filteredEmployees.length / pageSize)
+  const paginatedEmployees = filteredEmployees.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  if (isEmployeesLoading) return <div className='p-8 text-center text-gray-500'>Đang tải dữ liệu...</div>
+  if (isEmployeesError) return <div className='p-8 text-center text-red-500'>Lỗi kết nối máy chủ!</div>
 
   return (
     <div className='min-h-screen bg-[#F8F9FA] p-8 font-sans'>
@@ -157,7 +219,10 @@ export default function EmployeeManagement() {
           {['Tất cả', 'Bảo vệ', 'Nhân viên vận hành'].map((filter) => (
             <button
               key={filter}
-              onClick={() => setActiveFilter(filter)}
+              onClick={() => {
+                setActiveFilter(filter)
+                setCurrentPage(1) // Reset về trang 1 khi đổi bộ lọc
+              }}
               className={`px-4 py-2 rounded-full transition ${activeFilter === filter ? 'bg-white shadow-sm text-blue-600 font-bold' : 'hover:bg-gray-200 text-gray-500'}`}
             >
               {filter}
@@ -165,7 +230,7 @@ export default function EmployeeManagement() {
           ))}
         </div>
         <div className='text-sm text-gray-500'>
-          Hiển thị <span className='font-bold text-gray-700'>{filteredEmployees?.length || 0}</span> kết quả
+          Hiển thị <span className='font-bold text-gray-700'>{filteredEmployees.length}</span> kết quả
         </div>
       </div>
 
@@ -181,14 +246,14 @@ export default function EmployeeManagement() {
             </tr>
           </thead>
           <tbody className='text-sm text-gray-700'>
-            {filteredEmployees?.length === 0 ? (
+            {paginatedEmployees.length === 0 ? (
               <tr>
                 <td colSpan={5} className='py-8 text-center text-gray-500'>
                   Chưa có dữ liệu
                 </td>
               </tr>
             ) : (
-              filteredEmployees?.map((emp: any) => (
+              paginatedEmployees.map((emp: any) => (
                 <tr key={emp.id} className='border-b border-gray-50 hover:bg-gray-50/50 transition'>
                   <td className='py-4 px-6 text-gray-400 font-medium'>#{emp.id.toString().padStart(3, '0')}</td>
                   <td className='py-4 px-6 flex items-center gap-3'>
@@ -278,6 +343,39 @@ export default function EmployeeManagement() {
             )}
           </tbody>
         </table>
+
+        {/* NÚT ĐIỀU HƯỚNG PHÂN TRANG */}
+        {totalPages > 1 && (
+          <div className='px-6 py-4 border-t border-gray-100 flex justify-between items-center bg-gray-50/30'>
+            <span className='text-sm text-gray-500'>
+              Trang {currentPage} / {totalPages}
+            </span>
+            <div className='flex gap-2'>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition ${
+                  currentPage === 1
+                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className={`px-4 py-2 text-sm font-medium rounded-lg border transition ${
+                  currentPage === totalPages
+                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {confirmModal.isOpen && (
@@ -321,9 +419,9 @@ export default function EmployeeManagement() {
       )}
 
       {modalState.isOpen && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm'>
-          <div className='bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden'>
-            <div className='px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50'>
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm py-10'>
+          <div className='bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]'>
+            <div className='px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0 rounded-t-2xl'>
               <h2 className='text-xl font-bold text-gray-800'>
                 {modalState.mode === 'add'
                   ? 'Thêm Nhân Viên'
@@ -338,7 +436,10 @@ export default function EmployeeManagement() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className='p-6 space-y-4'>
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className='p-6 space-y-4 overflow-y-auto flex-grow custom-scrollbar'
+            >
               <div>
                 <label className='block text-sm font-bold text-gray-700 mb-1'>Họ và tên</label>
                 <input
@@ -375,6 +476,34 @@ export default function EmployeeManagement() {
                 {errors.roleId && <p className='text-red-500 text-xs mt-1'>{errors.roleId.message}</p>}
               </div>
 
+              <div className='pt-2'>
+                <label className='block text-sm font-bold text-gray-700 mb-2'>
+                  Tòa nhà quản lý <span className='text-red-500'>*</span>
+                </label>
+                <div className='grid grid-cols-2 gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg max-h-40 overflow-y-auto'>
+                  {buildingsList?.map((b: any) => (
+                    <label key={b.id} className='flex items-center gap-2 cursor-pointer'>
+                      <input
+                        type='checkbox'
+                        value={b.id}
+                        disabled={modalState.mode === 'view'}
+                        {...register('buildingIds')}
+                        className='w-4 h-4 text-[#0052CC] rounded border-gray-300 focus:ring-[#0052CC]'
+                      />
+                      <span className='text-sm text-gray-700'>
+                        {b.name} <span className='text-gray-400 font-mono'>(ID: {b.id})</span>
+                      </span>
+                    </label>
+                  ))}
+                  {(!buildingsList || buildingsList.length === 0) && (
+                    <span className='text-sm text-gray-500 italic col-span-2'>
+                      Đang tải hoặc chưa có dữ liệu tòa nhà...
+                    </span>
+                  )}
+                </div>
+                {errors.buildingIds && <p className='text-red-500 text-xs mt-1'>{errors.buildingIds.message}</p>}
+              </div>
+
               {modalState.mode === 'add' && (
                 <div className='grid grid-cols-2 gap-4'>
                   <div>
@@ -404,7 +533,7 @@ export default function EmployeeManagement() {
                   <label className='block text-sm font-bold text-gray-700 mb-1'>Tên đăng nhập</label>
                   <input
                     disabled
-                    value={modalState.data?.username}
+                    value={modalState.data?.username || ''}
                     className='w-full bg-gray-100 text-gray-500 border border-gray-200 rounded-lg px-4 py-2.5'
                   />
                 </div>

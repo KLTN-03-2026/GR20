@@ -5,20 +5,24 @@ const addEmployee = async (data) => {
   try {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(data.password, salt);
+    const { buildingIds, ...userData } = data;
 
     const newEmployeeData = {
-      username: data.username,
+      username: userData.username,
       password: hashedPassword,
-      email: data.email,
-      fullName: data.fullName,
-      roleId: data.roleId,
+      email: userData.email,
+      fullName: userData.fullName,
+      roleId: userData.roleId,
       isActive: true,
     };
 
-    return await employeeRepo.createEmployee(newEmployeeData);
+    return await employeeRepo.createEmployee(newEmployeeData, buildingIds);
   } catch (error) {
-    if (error.code === "23505")
-      throw new Error("Tên đăng nhập hoặc Email đã tồn tại!");
+    const errorCode = error.code || (error.cause && error.cause.code);
+
+    if (errorCode === "23505" || error.message.includes("duplicate key")) {
+      throw new Error("Tên đăng nhập hoặc Email đã tồn tại trong hệ thống!");
+    }
     throw error;
   }
 };
@@ -36,8 +40,13 @@ const getEmployeeById = async (id) => {
 
 const updateEmployee = async (id, updateData) => {
   try {
+    // Kiểm tra xem nhân viên có tồn tại không
     await getEmployeeById(id);
-    return await employeeRepo.updateEmployee(id, updateData);
+
+    // Tách buildingIds ra khỏi dữ liệu User chung
+    const { buildingIds, ...userData } = updateData;
+
+    return await employeeRepo.updateEmployee(id, userData, buildingIds);
   } catch (error) {
     if (error.code === "23505")
       throw new Error("Email này đã được sử dụng bởi người khác!");
