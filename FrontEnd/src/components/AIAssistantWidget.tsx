@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
 
-// Định nghĩa kiểu dữ liệu cho tin nhắn
 interface Message {
   id: string
   text: string
@@ -8,16 +7,40 @@ interface Message {
   timestamp: Date
 }
 
+const STORAGE_KEY = 'homelink_chat_messages'
+
+const WELCOME_MESSAGE: Message = {
+  id: 'welcome-msg',
+  text: 'Xin chào! Mình là trợ lý AI của chung cư. Bạn cần hỗ trợ về vấn đề kỹ thuật, an ninh, hay tiện ích cộng đồng?',
+  sender: 'bot',
+  timestamp: new Date()
+}
+
+// Đọc messages từ localStorage, nếu không có thì trả về tin chào mặc định
+const loadMessages = (): Message[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (!saved) return [WELCOME_MESSAGE]
+    const parsed = JSON.parse(saved)
+    // Khôi phục lại kiểu Date vì JSON không lưu được Date
+    return parsed.map((msg: Message) => ({ ...msg, timestamp: new Date(msg.timestamp) }))
+  } catch {
+    return [WELCOME_MESSAGE]
+  }
+}
+
+// Lưu messages vào localStorage
+const saveMessages = (messages: Message[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+  } catch {
+    // Bỏ qua nếu localStorage đầy
+  }
+}
+
 export default function AIAssistantWidget() {
   const [isOpen, setIsOpen] = useState<boolean>(false)
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome-msg',
-      text: 'Xin chào! Mình là trợ lý AI của chung cư. Bạn cần hỗ trợ về vấn đề kỹ thuật, an ninh, hay tiện ích cộng đồng?',
-      sender: 'bot',
-      timestamp: new Date()
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>(loadMessages)
   const [inputValue, setInputValue] = useState<string>('')
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
@@ -30,6 +53,11 @@ export default function AIAssistantWidget() {
   useEffect(() => {
     scrollToBottom()
   }, [messages, isLoading])
+
+  // Tự động lưu mỗi khi messages thay đổi
+  useEffect(() => {
+    saveMessages(messages)
+  }, [messages])
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return

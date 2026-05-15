@@ -99,4 +99,10 @@ class RAGService:
             )
             return response.text
         except Exception as e:
-            return f"Hệ thống AI đang bận hoặc lỗi: {str(e)}"
+            error_msg = str(e)
+            print(f"❌ Gemini API Error: {error_msg}")
+            
+            if "429" in error_msg or "quota" in error_msg.lower():
+                return "Hệ thống AI đang quá tải, vui lòng thử lại sau ít phút."
+            
+            return f"Hệ thống AI đang bận hoặc lỗi: {error_msg}"

@@ -50,6 +50,7 @@ export default function HeaderMainUser() {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
+    localStorage.removeItem('homelink_chat_messages')
 
     setUser(null)
     navigate('/login', { replace: true })
