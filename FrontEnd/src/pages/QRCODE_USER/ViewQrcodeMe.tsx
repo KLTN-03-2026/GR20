@@ -2,11 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
 import { toast } from 'react-toastify'
 import { useState } from 'react'
+import { ChangePinModal } from '../PinReset/ChangePinModal'
 
 export default function ViewQrcodeMe() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
-  const [historyPage, setHistoryPage] = useState(1)
+  const [historyPage] = useState(1)
   const [historyLimit] = useState(10)
+  const [showChangePinModal, setShowChangePinModal] = useState(false)
 
   // Lấy thông tin QR cá nhân
   const {
@@ -20,7 +22,7 @@ export default function ViewQrcodeMe() {
     retry: 1
   })
 
-  // Lấy lịch sử quét QR cá nhân - CÓ PHÂN TRANG TỪ API
+  // Lấy lịch sử quét QR cá nhân
   const {
     data: historyData,
     isLoading: isHistoryLoading,
@@ -34,14 +36,11 @@ export default function ViewQrcodeMe() {
   const qrInfo = qrData?.data?.data
   const isSuccess = qrData?.data?.code === 'OK'
 
-  // Lấy dữ liệu lịch sử từ API (đã được phân trang)
   const historyList = historyData?.data?.data || []
   const totalElements = historyData?.data?.totalElements || 0
   const totalPages = historyData?.data?.totalPages || 0
-  // const currentPage = historyData?.data?.page || 1
   const recentHistory = historyList.slice(0, 5)
 
-  // Format date function
   const formatDate = (dateString: string) => {
     if (!dateString) return '---'
     const date = new Date(dateString)
@@ -71,13 +70,11 @@ export default function ViewQrcodeMe() {
     return `${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
   }
 
-  // Xử lý tải QR
   const handleDownloadQR = () => {
     if (!qrInfo?.qrImage) {
       toast.error('Không có ảnh QR để tải')
       return
     }
-
     const link = document.createElement('a')
     link.href = qrInfo.qrImage
     link.download = `QR_${qrInfo.qr_code?.slice(-12) || 'personal'}.png`
@@ -87,18 +84,15 @@ export default function ViewQrcodeMe() {
     toast.success('Đã tải mã QR thành công')
   }
 
-  // Xử lý chia sẻ QR
   const handleShareQR = async () => {
     if (!qrInfo?.qrImage) {
       toast.error('Không có ảnh QR để chia sẻ')
       return
     }
-
     try {
       const response = await fetch(qrInfo.qrImage)
       const blob = await response.blob()
       const file = new File([blob], `QR_${qrInfo.qr_code?.slice(-12) || 'personal'}.png`, { type: 'image/png' })
-
       if (navigator.share) {
         await navigator.share({
           title: 'Mã QR Cư dân Homelink',
@@ -114,14 +108,12 @@ export default function ViewQrcodeMe() {
     }
   }
 
-  // Xử lý refresh
   const handleRefresh = () => {
     refetch()
     refetchHistory()
     toast.info('Đang làm mới dữ liệu...')
   }
 
-  // Helper cho badge
   const getResultBadge = (result: string) => {
     if (result === 'SUCCESS') {
       return { text: 'THÀNH CÔNG', bg: 'bg-green-100', textColor: 'text-green-700', dot: 'bg-green-500' }
@@ -269,6 +261,29 @@ export default function ViewQrcodeMe() {
               </div>
             </div>
 
+            {/* Card Đổi mã PIN */}
+            <div className='bg-surface-container-lowest rounded-xl p-5 shadow-sm'>
+              <div className='flex items-center gap-2 mb-4'>
+                <span className='material-symbols-outlined text-primary'>pin</span>
+                <h3 className='font-bold text-on-surface'>Mã PIN bảo mật</h3>
+              </div>
+              <div className='flex justify-between items-center mb-4'>
+                <p className='text-sm text-on-surface-variant'>Trạng thái PIN</p>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold ${qrInfo.qr_code ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+                >
+                  {qrInfo.qr_code ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowChangePinModal(true)}
+                className='w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-semibold transition-colors flex items-center justify-center gap-2'
+              >
+                <span className='material-symbols-outlined text-base'>lock_reset</span>
+                Đổi mã PIN
+              </button>
+            </div>
+
             {/* Lịch sử quét gần đây */}
             <div className='bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden'>
               <div className='px-5 py-3 border-b border-outline-variant/10 flex justify-between items-center'>
@@ -380,7 +395,20 @@ export default function ViewQrcodeMe() {
         </div>
       </div>
 
-      {/* History Modal với phân trang từ API */}
+      {/* Change PIN Modal */}
+      {showChangePinModal && (
+        <ChangePinModal
+          onClose={() => setShowChangePinModal(false)}
+          qrCode={qrInfo.qr_code}
+          qrType='personal'
+          onSuccess={() => {
+            setShowChangePinModal(false)
+            refetch()
+          }}
+        />
+      )}
+
+      {/* History Modal */}
       <HistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
@@ -392,7 +420,7 @@ export default function ViewQrcodeMe() {
   )
 }
 
-// Modal Component với phân trang từ API
+// Modal Component (giữ nguyên code cũ)
 function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDirectionIcon }: any) {
   const [currentPage, setCurrentPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
@@ -401,12 +429,7 @@ function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDire
   const [toDate, setToDate] = useState('')
   const pageSize = 10
 
-  // Gọi API lịch sử với phân trang và filter
-  const {
-    data: historyData,
-    isLoading,
-    refetch
-  } = useQuery({
+  const { data: historyData, isLoading } = useQuery({
     queryKey: ['personal-history-modal', currentPage, resultFilter, fromDate, toDate, searchInput],
     queryFn: () =>
       QRCodeApi.getHistoryMe({
@@ -420,21 +443,10 @@ function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDire
     enabled: isOpen
   })
 
-  const filteredData = (historyData?.data?.data || []).filter((item: any) => {
-    if (resultFilter === 'FAILED') {
-      return ['DENIED', 'PIN_FAILED', 'PENDING_PIN'].includes(item.result)
-    }
-    if (resultFilter === 'SUCCESS') {
-      return item.result === 'SUCCESS'
-    }
-    return true
-  })
-
   const historyList = historyData?.data?.data || []
   const totalElements = historyData?.data?.totalElements || 0
   const totalPages = historyData?.data?.totalPages || 0
 
-  // Reset page khi filter thay đổi
   const handleFilterChange = (setter: any, value: any) => {
     setter(value)
     setCurrentPage(1)
@@ -475,7 +487,6 @@ function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDire
             value={searchInput}
             onChange={(e) => handleFilterChange(setSearchInput, e.target.value)}
           />
-
           <select
             className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={resultFilter}
@@ -487,7 +498,7 @@ function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDire
           >
             <option value=''>Tất cả kết quả</option>
             <option value='SUCCESS'>Thành công</option>
-            <option value='FAILED'>Thất bại </option>
+            <option value='FAILED'>Thất bại</option>
           </select>
           <input
             type='date'
@@ -601,33 +612,6 @@ function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDire
               >
                 Trước
               </button>
-              <div className='flex gap-1'>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum
-                  if (totalPages <= 5) {
-                    pageNum = i + 1
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i
-                  } else {
-                    pageNum = currentPage - 2 + i
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === pageNum
-                          ? 'bg-primary text-white'
-                          : 'border border-outline-variant/30 hover:bg-surface-container'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                })}
-              </div>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}

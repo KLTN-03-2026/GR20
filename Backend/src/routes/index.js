@@ -75,8 +75,10 @@ const contractRoute = require("../modules/contracts/contract.route");
 const amenityRoute = require("../modules/amenities/amenity.route");
 const statisticsRoute = require("../modules/statistics/statistics.route");
 const dashboardProtection = require("../modules/dashboard_Protection/dashboard.routes");
-
+const pinResetRoute = require("../modules/pin_reset/pin-reset.routes");
 router.use("/uploads", express.static("uploads"));
+
+router.use("/pin-reset", pinResetRoute);
 
 router.use("/qr", qrRoute);
 router.use("/dashboard", dashboardProtection);

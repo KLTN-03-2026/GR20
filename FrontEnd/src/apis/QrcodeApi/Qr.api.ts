@@ -165,5 +165,19 @@ export const QRCodeApi = {
     qrType?: string
   }) {
     return http.get<SuccessResponseApi<historyQrcode[]>>('api/qr/guard/history', { params })
+  },
+  // Gửi yêu cầu reset PIN
+  requestPinReset(email: string, qrCode?: string) {
+    return http.post('api/pin-reset/request-reset', { email, qrCode })
+  },
+
+  // Reset PIN với token
+  resetPin(token: string, newPin?: string) {
+    return http.post('api/pin-reset/reset', { token, newPin })
+  },
+
+  // Gửi lại PIN hiện tại (tùy chọn)
+  sendPin(email: string, qrCode?: string) {
+    return http.post('api/pin-reset/send-pin', { email, qrCode })
   }
 }

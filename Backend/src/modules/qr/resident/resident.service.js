@@ -7,6 +7,7 @@ const { pool } = require("../common/base.repository");
 
 // ==================== GUEST QR SERVICES ====================
 
+
 // Lấy danh sách guest QR của cư dân
 const getMyGuestQrs = async (userId, queryParams = {}) => {
   const { page = 1, limit = 10, search = '', status = '' } = queryParams;

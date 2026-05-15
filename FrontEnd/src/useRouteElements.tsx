@@ -72,6 +72,7 @@ import UserUtilityPricingDetailPage from './pages/utility/UserUtilityPricingDeta
 import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
 import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManager'
 import StatisticsReportPage from './pages/statistics/StatisticsReportPage'
+import ResetPinPage from './pages/PinReset/ResetPinPage'
 
 export default function useRouteElements() {
   const { user } = useContext(AppContext)
@@ -841,6 +842,17 @@ export default function useRouteElements() {
         {
           index: true,
           element: renderLayout()
+        }
+      ]
+    },
+
+    {
+      path: '/reset-pin',
+      element: <ProtectedRoute />,
+      children: [
+        {
+          index: true,
+          element: <ResetPinPage />
         }
       ]
     },

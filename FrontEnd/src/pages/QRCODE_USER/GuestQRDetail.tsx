@@ -4,15 +4,17 @@ import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
 import { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { toast } from 'react-toastify'
+import { ChangePinModal } from '../PinReset/ChangePinModal'
 
 export default function GuestQRDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [qrImage, setQrImage] = useState('')
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [showChangePinModal, setShowChangePinModal] = useState(false)
 
   // Query chi tiết QR
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['guest-detail', id],
     queryFn: () => QRCodeApi.getDetailQrList(id!),
     enabled: !!id
@@ -302,6 +304,29 @@ export default function GuestQRDetail() {
                 </div>
               </div>
 
+              {/* Card Đổi mã PIN */}
+              <div className='bg-surface-container-lowest p-6 rounded-[1.5rem] shadow-sm'>
+                <div className='flex items-center space-x-3 mb-4'>
+                  <span className='material-symbols-outlined text-primary text-2xl'>pin</span>
+                  <h3 className='text-lg font-bold text-on-surface tracking-tight'>Mã PIN bảo mật</h3>
+                </div>
+                <div className='flex justify-between items-center mb-4'>
+                  <p className='text-sm text-on-surface-variant'>Trạng thái PIN</p>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${guestQR.qr_code ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+                  >
+                    {guestQR.qr_code ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowChangePinModal(true)}
+                  className='w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-semibold transition-colors flex items-center justify-center gap-2'
+                >
+                  <span className='material-symbols-outlined text-base'>lock_reset</span>
+                  Đổi mã PIN
+                </button>
+              </div>
+
               {/* Scan History Section - Recent 10 */}
               <div className='bg-surface-container-lowest rounded-[1.5rem] shadow-sm overflow-hidden'>
                 <div className='px-8 py-6 border-b border-outline-variant/10 flex justify-between items-center'>
@@ -374,10 +399,22 @@ export default function GuestQRDetail() {
         </div>
       </main>
 
-      {/* History Modal với phân trang */}
+      {/* Change PIN Modal */}
+      {showChangePinModal && (
+        <ChangePinModal
+          onClose={() => setShowChangePinModal(false)}
+          qrCode={guestQR.qr_code}
+          qrType='guest'
+          onSuccess={() => {
+            setShowChangePinModal(false)
+            refetch()
+          }}
+        />
+      )}
+
+      {/* History Modal */}
       {isHistoryModalOpen && (
         <HistoryModal
-          // isOpen={isHistoryModalOpen}
           onClose={() => setIsHistoryModalOpen(false)}
           guestQR={guestQR}
           formatDateTime={formatDateTime}
