@@ -33,7 +33,7 @@ const login = async (reqBody) => {
     throw new AppError(401, "Invalid username or password");
   }
   if (userRow.is_active === false) {
-    throw new AppError(403, "Account is inactive");
+    throw new AppError(403, "Tài khoản đã bị khóa");
   }
 
   // const ok = await bcrypt.compare(password, userRow.password);

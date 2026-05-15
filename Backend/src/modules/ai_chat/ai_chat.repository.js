@@ -1,13 +1,17 @@
 const { db } = require("../../configs/database.config");
 const schema = require("../../db/schema");
-const { eq, and } = require("drizzle-orm");
+const { eq, and, inArray, desc, or } = require("drizzle-orm");
 
 const getUserContextData = async (userId) => {
-  // 1. Lấy thông tin căn hộ user đang ở
+  const numericUserId = Number(userId);
+
+  // Bước 1: Bắt buộc lấy thông tin căn hộ trước vì các bước sau cần apartmentId / buildingId
   const residentInfo = await db
     .select({
       apartmentCode: schema.apartments.apartmentCode,
       apartmentId: schema.apartments.id,
+      buildingId: schema.apartments.buildingId,
+      relationship: schema.residentProfiles.relationship,
     })
     .from(schema.residentProfiles)
     .innerJoin(
@@ -16,35 +20,137 @@ const getUserContextData = async (userId) => {
     )
     .where(
       and(
-        eq(schema.residentProfiles.userId, BigInt(userId)),
+        eq(schema.residentProfiles.userId, numericUserId),
         eq(schema.residentProfiles.status, "ACTIVE"),
       ),
     );
 
-  if (!residentInfo.length) return null;
-  const currentApartment = residentInfo[0];
+  const currentApartment = residentInfo.length > 0 ? residentInfo[0] : null;
 
-  // 2. Lấy danh sách hóa đơn chưa thanh toán của căn hộ
-  const pendingInvoices = await db
+  // Bước 2: CHẠY SONG SONG TẤT CẢ CÁC TRUY VẤN CÒN LẠI
+  // Khai báo sẵn các Promise thay vì await từng cái
+  const pendingInvoicesPromise = currentApartment
+    ? db
+        .select({
+          invoiceCode: schema.invoices.invoiceCode,
+          totalAmount: schema.invoices.totalAmount,
+          dueDate: schema.invoices.dueDate,
+        })
+        .from(schema.invoices)
+        .where(
+          and(
+            eq(schema.invoices.apartmentId, currentApartment.apartmentId),
+            eq(schema.invoices.status, "PENDING"),
+          ),
+        )
+    : Promise.resolve([]);
+
+  const vehiclesPromise = db
     .select({
-      invoiceCode: schema.invoices.invoiceCode,
-      totalAmount: schema.invoices.totalAmount,
-      dueDate: schema.invoices.dueDate,
+      plateNumber: schema.vehicles.plateNumber,
+      vehicleType: schema.vehicles.vehicleType,
+      color: schema.vehicles.color,
     })
-    .from(schema.invoices)
+    .from(schema.vehicles)
     .where(
       and(
-        eq(schema.invoices.apartmentId, currentApartment.apartmentId),
-        eq(schema.invoices.status, "PENDING"),
+        eq(schema.vehicles.ownerId, numericUserId),
+        eq(schema.vehicles.status, "ACTIVE"),
       ),
     );
 
+  const maintenancePromise = db
+    .select({
+      title: schema.maintenanceRequests.title,
+      status: schema.maintenanceRequests.status,
+      priority: schema.maintenanceRequests.priority,
+    })
+    .from(schema.maintenanceRequests)
+    .where(
+      and(
+        eq(schema.maintenanceRequests.userId, numericUserId),
+        inArray(schema.maintenanceRequests.status, ["OPEN", "IN_PROGRESS"]),
+      ),
+    );
+
+  const qrCodePromise = db
+    .select({
+      qrCode: schema.qrCodes.qrCode,
+      expiresAt: schema.qrCodes.expiresAt,
+      status: schema.qrCodes.status,
+    })
+    .from(schema.qrCodes)
+    .where(
+      and(
+        eq(schema.qrCodes.userId, numericUserId),
+        eq(schema.qrCodes.status, "ACTIVE"),
+      ),
+    )
+    .limit(1);
+
+  const notificationsPromise = currentApartment
+    ? db
+        .select({
+          title: schema.notifications.title,
+          createdAt: schema.notifications.createdAt,
+        })
+        .from(schema.notifications)
+        .leftJoin(
+          schema.notificationReceivers,
+          eq(
+            schema.notifications.id,
+            schema.notificationReceivers.notificationId,
+          ),
+        )
+        .where(
+          or(
+            eq(schema.notifications.buildingId, currentApartment.buildingId),
+            eq(schema.notificationReceivers.userId, numericUserId),
+          ),
+        )
+        .orderBy(desc(schema.notifications.createdAt))
+        .limit(5)
+    : db
+        .select({
+          title: schema.notifications.title,
+          createdAt: schema.notifications.createdAt,
+        })
+        .from(schema.notifications)
+        .innerJoin(
+          schema.notificationReceivers,
+          eq(
+            schema.notifications.id,
+            schema.notificationReceivers.notificationId,
+          ),
+        )
+        .where(eq(schema.notificationReceivers.userId, numericUserId))
+        .orderBy(desc(schema.notifications.createdAt))
+        .limit(5);
+
+  // Gom tất cả chạy cùng lúc
+  const [
+    pendingInvoices,
+    vehicles,
+    maintenanceRequests,
+    myQrCode,
+    notifications,
+  ] = await Promise.all([
+    pendingInvoicesPromise,
+    vehiclesPromise,
+    maintenancePromise,
+    qrCodePromise,
+    notificationsPromise,
+  ]);
+
   return {
-    apartmentCode: currentApartment.apartmentCode,
-    pendingInvoices: pendingInvoices,
+    apartmentCode: currentApartment?.apartmentCode || null,
+    relationship: currentApartment?.relationship || null,
+    pendingInvoices,
+    vehicles,
+    maintenanceRequests,
+    qrCode: myQrCode.length > 0 ? myQrCode[0] : null,
+    notifications,
   };
 };
 
-module.exports = {
-  getUserContextData,
-};
+module.exports = { getUserContextData };

@@ -74,6 +74,7 @@ const visitorRoute = require("../modules/visitors/visitor.route");
 const contractRoute = require("../modules/contracts/contract.route");
 const amenityRoute = require("../modules/amenities/amenity.route");
 const aichatRoute = require("../modules/ai_chat/ai_chat.route");
+const dashboardstaff = require("../modules/dashboard/dashboard.route");
 
 router.use("/uploads", express.static("uploads"));
 
@@ -110,7 +111,7 @@ router.use("/vehicles", vehicleRoute);
 router.use("/visitors", visitorRoute);
 router.use("/contracts", contractRoute);
 router.use("/aichat", aichatRoute);
-
+router.use("/dashboardstaff", dashboardstaff);
 router.use("/amenities", amenityRoute);
 router.use("/buildings/:buildingId/amenities", amenityRoute);
 
