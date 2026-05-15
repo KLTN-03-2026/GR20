@@ -137,6 +137,40 @@ const updateInvoiceTotalAmount = async (invoiceId, totalAmount, client = pool) =
   await client.query(`UPDATE invoices SET total_amount = $1 WHERE id = $2`, [totalAmount, invoiceId]);
 };
 
+/** Hóa đơn tự động (có kỳ) chưa thanh toán có dòng tiền gắn meter_id — cần tính lại khi xóa đồng hồ. */
+const getUnpaidAutomatedInvoiceIdsByMeterId = async (meterId, client = pool) => {
+  const result = await client.query(
+    `
+      SELECT DISTINCT i.id
+      FROM invoices i
+      JOIN invoice_items ii ON ii.invoice_id = i.id
+      WHERE ii.meter_id = $1
+        AND i.status IN ('PENDING', 'OVERDUE')
+        AND i.billing_month IS NOT NULL
+        AND i.billing_year IS NOT NULL
+    `,
+    [meterId]
+  );
+  return result.rows.map((r) => r.id);
+};
+
+const deleteInvoiceItemsByInvoiceId = async (invoiceId, client = pool) => {
+  await client.query(`DELETE FROM invoice_items WHERE invoice_id = $1`, [invoiceId]);
+};
+
+const updatePendingPaymentsAmountForInvoice = async (invoiceId, amount, client = pool) => {
+  await client.query(
+    `
+      UPDATE payments
+      SET amount = $1
+      WHERE invoice_id = $2
+        AND status = 'PENDING'
+        AND deleted_at IS NULL
+    `,
+    [amount, invoiceId]
+  );
+};
+
 const withTransaction = async (fn) => {
   const client = await pool.connect();
   try {
@@ -152,10 +186,27 @@ const withTransaction = async (fn) => {
   }
 };
 
-const getAllInvoices = async ({ page = 0, size = 10 } = {}) => {
-  const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM invoices`);
+const getAllInvoices = async ({ page = 0, size = 10, apartmentId, billingMonth, billingYear } = {}) => {
+  const conditions = [];
+  const values = [];
+  let index = 1;
+  if (apartmentId != null) {
+    conditions.push(`apartment_id = $${index++}`);
+    values.push(apartmentId);
+  }
+  if (billingMonth != null && billingYear != null) {
+    conditions.push(`billing_month = $${index++}`);
+    values.push(billingMonth);
+    conditions.push(`billing_year = $${index++}`);
+    values.push(billingYear);
+  }
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM invoices ${whereClause}`, values);
   const offset = page * size;
-  const result = await pool.query(`SELECT * FROM invoices ORDER BY id DESC LIMIT $1 OFFSET $2`, [size, offset]);
+  const result = await pool.query(
+    `SELECT * FROM invoices ${whereClause} ORDER BY id DESC LIMIT $${index++} OFFSET $${index++}`,
+    [...values, size, offset]
+  );
   return { rows: result.rows, total: countResult.rows[0]?.total || 0 };
 };
 
@@ -250,6 +301,24 @@ const restoreInvoice = async (id) => {
   return result.rows[0];
 };
 
+/** Hóa đơn kỳ này còn chỉnh sửa được (PENDING/OVERDUE). */
+const getEditableInvoiceForApartmentPeriod = async (apartmentId, billingMonth, billingYear, client = pool) => {
+  const result = await client.query(
+    `
+      SELECT id, status
+      FROM invoices
+      WHERE apartment_id = $1
+        AND billing_month = $2
+        AND billing_year = $3
+        AND status IN ('PENDING', 'OVERDUE')
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [apartmentId, billingMonth, billingYear]
+  );
+  return result.rows[0];
+};
+
 module.exports = {
   createInvoice,
   getApartmentById,
@@ -260,6 +329,9 @@ module.exports = {
   createInvoiceItem,
   createPendingPaymentForInvoice,
   updateInvoiceTotalAmount,
+  getUnpaidAutomatedInvoiceIdsByMeterId,
+  deleteInvoiceItemsByInvoiceId,
+  updatePendingPaymentsAmountForInvoice,
   withTransaction,
   getAllInvoices,
   getInvoiceById,
@@ -268,4 +340,5 @@ module.exports = {
   updateInvoice,
   deleteInvoice,
   restoreInvoice,
+  getEditableInvoiceForApartmentPeriod,
 };

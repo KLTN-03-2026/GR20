@@ -87,10 +87,80 @@ export function parseStatisticsDashboardHttpResponse(
   return parseStatisticsDashboardEnvelope(res.data)
 }
 
+export interface SystemOverview {
+  year: number
+  buildingNamesSummary: string
+  kpis: {
+    buildingCount: number
+    apartmentCount: number
+    residentCount: number
+    occupancyPercent: number
+    revenueThisMonthVnd: number
+    revenueGrowthPercent: number | null
+  }
+  revenueByMonth: { month: string; amountVnd: number }[]
+  revenueStructure: { name: string; percent: number }[]
+  revenueStructureTotalVnd: number
+  debtByBuilding: {
+    buildingId: string
+    buildingName: string
+    debtVnd: number
+    barPercent: number
+  }[]
+  alerts: { type: 'error' | 'warning'; title: string; subtitle: string }[]
+  aiInsights: string[]
+  quickStats: {
+    topRevenueBuilding: string
+    activeQrCount: number
+    activeStaffCount: number
+    systemStatus: 'stable' | 'attention'
+  }
+  recentActivities: {
+    category: string
+    categoryIcon: string
+    categoryTone: string
+    detail: string
+    value: number | null
+    valueFormatted: string | null
+    status: string
+    statusTone: 'success' | 'warning' | 'error' | 'info'
+  }[]
+  featuredBuilding: {
+    buildingId: string
+    buildingName: string
+    occupancyPercent: number
+    revenueVnd: number
+  } | null
+}
+
+export type SystemOverviewEnvelope = {
+  operationType?: string
+  message?: string
+  code?: string
+  data?: SystemOverview
+  timestamp?: string
+}
+
+export function parseSystemOverviewEnvelope(payload: unknown):
+  | { ok: true; data: SystemOverview }
+  | { ok: false; reason: string } {
+  if (payload == null || typeof payload !== 'object') {
+    return { ok: false, reason: 'Phản hồi không hợp lệ' }
+  }
+  const e = payload as SystemOverviewEnvelope
+  if (e.code === 'OK' && e.data) return { ok: true, data: e.data }
+  return { ok: false, reason: e.message || 'Không tải được tổng quan' }
+}
+
 export const statisticsApi = {
   getDashboard(year: number) {
     return http.get<StatisticsDashboardEnvelope>(`${URL}/dashboard`, {
       params: { year },
+    })
+  },
+  getSystemOverview(year?: number) {
+    return http.get<SystemOverviewEnvelope>(`${URL}/system-overview`, {
+      params: year != null ? { year } : undefined,
     })
   },
 }

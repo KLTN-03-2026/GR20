@@ -1,26 +1,120 @@
 const repo = require("./resident.repository");
 const mapper = require("./resident.mapper");
+const apartmentRepo = require("../apartments/apartment.repository");
+const userService = require("../profile/user.service");
+const { AppError } = require("../../common/app-error");
 const {
   getScopedBuildingIdsForList,
 } = require("../../utils/access/scoped-building-access");
 
+/**
+ * Thêm cư dân:
+ * - Có fullName + phone + apartmentId → cùng luồng với POST /api/apartments/:id/residents (tạo/khớp user, OWNER, cập nhật căn hộ).
+ * - Chỉ có userId + apartmentId → gán user có sẵn vào căn, vẫn áp dụng quy tắc OWNER.
+ */
 const createResident = async (reqBody) => {
-  // Check if resident already exists for this user and apartment
-  const existing = await repo.getResidentByUserAndApartment(
-    reqBody.userId,
-    reqBody.apartmentId
-  );
-  
-  if (existing) {
-    throw new Error("User is already a resident of this apartment");
+  const apartmentId = Number(reqBody.apartmentId);
+  if (!Number.isFinite(apartmentId)) {
+    throw new AppError(400, "apartmentId không hợp lệ");
   }
 
-  const entity = mapper.toEntity(reqBody);
+  const fullName = reqBody.fullName != null ? String(reqBody.fullName).trim() : "";
+  const phone = reqBody.phone != null ? String(reqBody.phone).trim() : "";
+  const useRichPayload = fullName.length > 0 && phone.length > 0;
+
+  if (useRichPayload) {
+    const created = await apartmentRepo.addResident(apartmentId, {
+      fullName,
+      phone,
+      email: reqBody.email != null ? String(reqBody.email).trim() || null : null,
+      relationship: reqBody.relationship || "FAMILY",
+      moveInDate: reqBody.moveInDate,
+    });
+    const profile = await repo.getResidentByUserAndApartment(
+      created.id,
+      apartmentId,
+    );
+    if (!profile) {
+      throw new AppError(500, "Không tìm thấy hồ sơ cư dân sau khi tạo");
+    }
+    return { id: profile.id };
+  }
+
+  const userId = Number(reqBody.userId);
+  if (!Number.isFinite(userId)) {
+    throw new AppError(
+      400,
+      "Cần userId (user đã tồn tại) hoặc fullName + phone để tạo cư dân mới",
+    );
+  }
+
+  const existing = await repo.getResidentByUserAndApartment(userId, apartmentId);
+  if (existing) {
+    throw new AppError(409, "Người dùng đã là cư dân của căn hộ này");
+  }
+
+  const relationship = reqBody.relationship || "FAMILY";
+
+  if (relationship === "OWNER") {
+    const currentOwner = await repo.getActiveOwnerForApartment(apartmentId);
+    if (currentOwner) {
+      throw new AppError(
+        400,
+        `Căn hộ này đã có chủ hộ là ${currentOwner.full_name}. Không thể thêm OWNER.`,
+      );
+    }
+  } else {
+    const currentOwner = await repo.getActiveOwnerForApartment(apartmentId);
+    if (!currentOwner) {
+      throw new AppError(
+        400,
+        "Căn hộ chưa có chủ hộ. Vui lòng thêm chủ hộ (OWNER) trước.",
+      );
+    }
+  }
+
+  const entity = mapper.toEntity({ ...reqBody, userId, apartmentId, relationship });
   const result = await repo.createResident(entity);
 
-  return {
-    id: result.id,
-  };
+  if (relationship === "OWNER") {
+    await repo.setApartmentOwnerAndOccupied(apartmentId, userId);
+  }
+
+  return { id: result.id };
+};
+
+/**
+ * Tạo user (tài khoản đăng nhập) cho cư dân, chưa gắn căn hộ.
+ * Role luôn là người dùng mặc định (Người Dùng / user — theo resolveRoleId trong user.service).
+ */
+const createResidentAccount = async (reqBody) => {
+  const fullName =
+    reqBody.fullName != null ? String(reqBody.fullName).trim() : "";
+  const phone = reqBody.phone != null ? String(reqBody.phone).trim() : "";
+  const password =
+    reqBody.password != null ? String(reqBody.password) : "";
+
+  if (!fullName) {
+    throw new AppError(400, "Vui lòng nhập họ tên");
+  }
+  if (!phone) {
+    throw new AppError(400, "Vui lòng nhập số điện thoại");
+  }
+  if (!password) {
+    throw new AppError(400, "Vui lòng nhập mật khẩu");
+  }
+
+  const emailRaw =
+    reqBody.email != null ? String(reqBody.email).trim() : "";
+  const email = emailRaw.length > 0 ? emailRaw : undefined;
+
+  return userService.createUser({
+    username: phone,
+    fullName,
+    phone,
+    email,
+    password,
+  });
 };
 
 const getAllResidents = async (query, currentUser) => {
@@ -118,6 +212,7 @@ const deleteResident = async (id) => {
 
 module.exports = {
   createResident,
+  createResidentAccount,
   getAllResidents,
   getResidentById,
   getResidentsByApartmentId,

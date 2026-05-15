@@ -7,6 +7,12 @@ const createMeterReading = async (req, res) => {
     res.status(201).json({ operationType: "Success", message: "Create meter reading successfully", code: "CREATED", data, size: 1, timestamp: new Date() });
   } catch (err) { sendControllerError(res, err); }
 };
+const getSuggestedPreviousReading = async (req, res) => {
+  try {
+    const data = await service.getSuggestedPreviousReading(req.query);
+    res.json({ operationType: "Success", message: "success", code: "OK", data, size: 1, timestamp: new Date() });
+  } catch (err) { sendControllerError(res, err); }
+};
 const getAllMeterReadings = async (req, res) => {
   try {
     const result = await service.getAllMeterReadings(req.query);
@@ -40,7 +46,7 @@ const updateMeterReading = async (req, res) => {
 const deleteMeterReading = async (req, res) => {
   try {
     const data = await service.deleteMeterReading(req.params.id);
-    res.json({ operationType: "Success", message: "Delete meter reading successfully", code: "OK", data, timestamp: new Date() });
+    res.json({ operationType: "Success", message: "Đã xóa chỉ số công tơ", code: "OK", data, timestamp: new Date() });
   } catch (err) { sendControllerError(res, err); }
 };
 const restoreMeterReading = async (req, res) => {
@@ -52,6 +58,7 @@ const restoreMeterReading = async (req, res) => {
 
 module.exports = {
   createMeterReading,
+  getSuggestedPreviousReading,
   getAllMeterReadings,
   getMeterReadingById,
   getMeterReadingsByUserId,

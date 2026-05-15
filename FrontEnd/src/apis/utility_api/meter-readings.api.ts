@@ -5,7 +5,13 @@ import http from 'src/utils/http'
 const URL = '/api/meter-readings'
 
 export const meterReadingsApi = {
-  getAll(params?: { page?: number; size?: number }) {
+  getAll(params?: {
+    page?: number
+    size?: number
+    apartmentId?: number
+    billingMonth?: number
+    billingYear?: number
+  }) {
     return http.get<SuccessResponseApi<MeterReading[]>>(URL, { params })
   },
   getById(id: string) {
@@ -17,6 +23,9 @@ export const meterReadingsApi = {
       page?: number
       size?: number
       meterType?: 'ELECTRIC' | 'WATER' | 'GAS'
+      apartmentId?: number
+      billingMonth?: number
+      billingYear?: number
     }
   ) {
     return http.get<SuccessResponseApi<MeterReading[]>>(`${URL}/user/${userId}`, { params })
@@ -46,5 +55,8 @@ export const meterReadingsApi = {
   },
   restore(id: string) {
     return http.patch(`${URL}/${id}/restore`)
+  },
+  suggestPrevious(params: { meterId: number; readingDate: string }) {
+    return http.get<SuccessResponseApi<{ previousReading: number | null }>>(`${URL}/suggest-previous`, { params })
   }
 }

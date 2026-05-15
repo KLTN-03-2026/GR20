@@ -219,6 +219,32 @@ const getResidentByUserAndApartment = async (userId, apartmentId) => {
   return result.rows[0];
 };
 
+/** Chủ hộ đang ACTIVE (đồng bộ logic với apartment.repository addResident) */
+const getActiveOwnerForApartment = async (apartmentId) => {
+  const query = `
+    SELECT rp.id, u.full_name
+    FROM resident_profiles rp
+    JOIN users u ON rp.user_id = u.id
+    WHERE rp.apartment_id = $1
+      AND rp.relationship = 'OWNER'
+      AND rp.status = 'ACTIVE'
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [apartmentId]);
+  return result.rows[0] || null;
+};
+
+const setApartmentOwnerAndOccupied = async (apartmentId, userId) => {
+  const query = `
+    UPDATE apartments
+    SET owner_user_id = $1, status = 'OCCUPIED', updated_at = NOW()
+    WHERE id = $2
+    RETURNING id
+  `;
+  const result = await pool.query(query, [userId, apartmentId]);
+  return result.rows[0] || null;
+};
+
 module.exports = {
   createResident,
   getAllResidents,
@@ -228,4 +254,6 @@ module.exports = {
   updateResident,
   deleteResident,
   getResidentByUserAndApartment,
+  getActiveOwnerForApartment,
+  setApartmentOwnerAndOccupied,
 };

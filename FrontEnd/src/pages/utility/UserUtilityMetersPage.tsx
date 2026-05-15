@@ -103,7 +103,7 @@ export default function UserUtilityMetersPage() {
               list.map((item) => (
                   <Link
                     key={String(item.id)}
-                    to={`/my-utility-meters/${String(item.id)}`}
+                    to={`/invoices/${String(item.id)}`}
                     className='grid grid-cols-12 items-center gap-3 px-6 py-4 transition-colors hover:bg-slate-50'
                   >
                     <div className='col-span-4 flex min-w-0 items-center gap-3'>
@@ -148,7 +148,7 @@ export default function UserUtilityMetersPage() {
           list.map((item) => (
               <Link
                 key={String(item.id)}
-                to={`/my-utility-meters/${String(item.id)}`}
+                to={`/invoices/${String(item.id)}`}
                 className='block rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-colors active:bg-slate-50'
               >
                 <div className='flex gap-4'>

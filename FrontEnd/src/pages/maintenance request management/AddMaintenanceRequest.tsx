@@ -96,9 +96,9 @@ export default function AddMaintenanceRequest() {
         case 'MEDIUM':
           return `${baseClass} bg-yellow-100 text-yellow-800 border-yellow-400 shadow-md`;
         case 'HIGH':
-          return `${baseClass} bg-orange-100 text-orange-800 border-orange-400 shadow-md`;
+          return `${baseClass} bg-amber-200 text-amber-800 border-amber-400 shadow-md`;
         case 'URGENT':
-          return `${baseClass} bg-red-100 text-red-800 border-red-400 shadow-md`;
+          return `${baseClass} bg-red-200 text-red-800 border-red-400 shadow-md`;
         default:
           return `${baseClass} bg-primary-container text-white shadow-lg shadow-primary-container/20`;
       }

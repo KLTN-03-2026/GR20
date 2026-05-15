@@ -260,3 +260,211 @@ exports.countMaintenanceTotalInYear = async (year, buildingIds) => {
   const r = await pool.query(sql, params);
   return r.rows[0]?.c ?? 0;
 };
+
+const addBuildingFilterOnBuildings = (buildingIds, params) => {
+  if (buildingIds === undefined || buildingIds === null) return "";
+  params.push(buildingIds);
+  return ` AND b.id = ANY($${params.length}::bigint[])`;
+};
+
+exports.countBuildings = async (buildingIds) => {
+  const params = [];
+  let sql = `SELECT COUNT(*)::int AS c FROM buildings b WHERE 1=1`;
+  sql += addBuildingFilterOnBuildings(buildingIds, params);
+  const r = await pool.query(sql, params.length ? params : []);
+  return r.rows[0]?.c ?? 0;
+};
+
+exports.revenueByMonthInYear = async (year, buildingIds) => {
+  const params = [year];
+  let sql = `
+    SELECT
+      EXTRACT(MONTH FROM COALESCE(p.payment_date::timestamptz, p.created_at::timestamptz))::int AS month,
+      COALESCE(SUM(p.amount::numeric), 0)::numeric AS total
+    FROM payments p
+    INNER JOIN invoices i ON i.id = p.invoice_id
+    INNER JOIN apartments apt ON apt.id = i.apartment_id
+    WHERE p.status = 'SUCCESS'
+    AND EXTRACT(YEAR FROM COALESCE(p.payment_date::timestamptz, p.created_at::timestamptz)) = $1`;
+  sql += addBuildingFilter("apt", buildingIds, params);
+  sql += ` GROUP BY 1 ORDER BY 1`;
+  const r = await pool.query(sql, params);
+  return r.rows;
+};
+
+exports.revenueCurrentAndPreviousMonth = async (buildingIds) => {
+  const params = [];
+  let sql = `
+    SELECT
+      COALESCE(SUM(p.amount::numeric) FILTER (
+        WHERE DATE_TRUNC('month', COALESCE(p.payment_date::timestamptz, p.created_at::timestamptz))
+          = DATE_TRUNC('month', CURRENT_DATE)
+      ), 0)::numeric AS current_month,
+      COALESCE(SUM(p.amount::numeric) FILTER (
+        WHERE DATE_TRUNC('month', COALESCE(p.payment_date::timestamptz, p.created_at::timestamptz))
+          = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+      ), 0)::numeric AS prev_month
+    FROM payments p
+    INNER JOIN invoices i ON i.id = p.invoice_id
+    INNER JOIN apartments apt ON apt.id = i.apartment_id
+    WHERE p.status = 'SUCCESS'`;
+  sql += addBuildingFilter("apt", buildingIds, params);
+  const r = await pool.query(sql, params.length ? params : []);
+  return {
+    currentMonth: parseFloat(r.rows[0]?.current_month || 0),
+    prevMonth: parseFloat(r.rows[0]?.prev_month || 0),
+  };
+};
+
+exports.debtByBuilding = async (buildingIds) => {
+  const params = [];
+  let whereExtra = "";
+  if (buildingIds != null) {
+    params.push(buildingIds);
+    whereExtra = ` WHERE b.id = ANY($1::bigint[])`;
+  }
+  const sql = `
+    SELECT
+      b.id::text AS building_id,
+      b.name AS building_name,
+      COALESCE(SUM(i.total_amount::numeric) FILTER (WHERE i.status IN ('PENDING', 'OVERDUE')), 0)::numeric AS debt_vnd
+    FROM buildings b
+    LEFT JOIN apartments apt ON apt.building_id = b.id
+    LEFT JOIN invoices i ON i.apartment_id = apt.id
+    ${whereExtra}
+    GROUP BY b.id, b.name
+    ORDER BY debt_vnd DESC, b.name
+    LIMIT 8
+  `;
+  const r = await pool.query(sql, params.length ? params : []);
+  return r.rows;
+};
+
+exports.countInvoicesByStatus = async (buildingIds) => {
+  const params = [];
+  let sql = `
+    SELECT i.status::text AS status, COUNT(*)::int AS count
+    FROM invoices i
+    INNER JOIN apartments apt ON apt.id = i.apartment_id
+    WHERE 1=1`;
+  sql += addBuildingFilter("apt", buildingIds, params);
+  sql += ` GROUP BY i.status`;
+  const r = await pool.query(sql, params.length ? params : []);
+  const map = {};
+  for (const row of r.rows) map[String(row.status)] = Number(row.count) || 0;
+  return map;
+};
+
+exports.countStaleMaintenance = async (buildingIds, days = 3) => {
+  const params = [days];
+  let sql = `
+    SELECT COUNT(*)::int AS c
+    FROM maintenance_requests mr
+    INNER JOIN apartments a ON a.id = mr.apartment_id
+    WHERE mr.status IN ('OPEN', 'IN_PROGRESS')
+    AND mr.created_at::timestamptz < NOW() - ($1::int * INTERVAL '1 day')`;
+  sql += addBuildingFilter("a", buildingIds, params);
+  const r = await pool.query(sql, params);
+  return r.rows[0]?.c ?? 0;
+};
+
+exports.countContractsExpiringWithinDays = async (buildingIds, days = 30) => {
+  const params = [days];
+  let sql = `
+    SELECT COUNT(*)::int AS c
+    FROM contracts c
+    INNER JOIN apartments apt ON apt.id = c.apartment_id
+    WHERE c.status = 'ACTIVE'
+    AND c.end_date IS NOT NULL
+    AND c.end_date::date >= CURRENT_DATE
+    AND c.end_date::date <= CURRENT_DATE + ($1::int * INTERVAL '1 day')`;
+  sql += addBuildingFilter("apt", buildingIds, params);
+  const r = await pool.query(sql, params);
+  return r.rows[0]?.c ?? 0;
+};
+
+exports.countActiveQrCodes = async (buildingIds) => {
+  const params = [];
+  let sql = `
+    SELECT COUNT(*)::int AS c
+    FROM qr_codes qc
+    LEFT JOIN apartments apt ON apt.id = qc.apartment_id
+    WHERE qc.status = 'ACTIVE'`;
+  if (buildingIds != null) {
+    params.push(buildingIds);
+    sql += ` AND apt.building_id = ANY($${params.length}::bigint[])`;
+  }
+  const r = await pool.query(sql, params.length ? params : []);
+  return r.rows[0]?.c ?? 0;
+};
+
+exports.countActiveStaff = async () => {
+  const r = await pool.query(
+    `SELECT COUNT(*)::int AS c FROM users WHERE is_active = true AND role_id IN (3, 4)`
+  );
+  return r.rows[0]?.c ?? 0;
+};
+
+exports.recentSuccessfulPayments = async (buildingIds, limit = 5) => {
+  const params = [];
+  let sql = `
+    SELECT
+      p.id,
+      p.amount::numeric AS amount,
+      p.status::text AS status,
+      i.invoice_code,
+      apt.apartment_code,
+      b.name AS building_name
+    FROM payments p
+    INNER JOIN invoices i ON i.id = p.invoice_id
+    INNER JOIN apartments apt ON apt.id = i.apartment_id
+    LEFT JOIN buildings b ON b.id = apt.building_id
+    WHERE p.status = 'SUCCESS'`;
+  sql += addBuildingFilter("apt", buildingIds, params);
+  params.push(limit);
+  sql += ` ORDER BY COALESCE(p.payment_date::timestamptz, p.created_at::timestamptz) DESC LIMIT $${params.length}`;
+  const r = await pool.query(sql, params);
+  return r.rows;
+};
+
+exports.topBuildingByPaidRevenueYear = async (year, buildingIds) => {
+  const params = [year];
+  let sql = `
+    SELECT
+      b.id::text AS building_id,
+      b.name AS building_name,
+      COALESCE(SUM(p.amount::numeric), 0)::numeric AS revenue_vnd,
+      COUNT(*) FILTER (WHERE apt.status = 'OCCUPIED')::int AS occupied,
+      COUNT(*) FILTER (WHERE apt.id IS NOT NULL)::int AS total_units
+    FROM buildings b
+    LEFT JOIN apartments apt ON apt.building_id = b.id
+    LEFT JOIN invoices i ON i.apartment_id = apt.id
+    LEFT JOIN payments p ON p.invoice_id = i.id
+      AND p.status = 'SUCCESS'
+      AND EXTRACT(YEAR FROM COALESCE(p.payment_date::timestamptz, p.created_at::timestamptz)) = $1`;
+  if (buildingIds != null) {
+    params.push(buildingIds);
+    sql += ` WHERE b.id = ANY($${params.length}::bigint[])`;
+  }
+  sql += ` GROUP BY b.id, b.name ORDER BY revenue_vnd DESC NULLS LAST LIMIT 1`;
+  const r = await pool.query(sql, params);
+  return r.rows[0] || null;
+};
+
+exports.occupancyByBuilding = async (buildingIds) => {
+  const rows = await exports.apartmentsByBuilding(buildingIds);
+  return (rows || []).map((r) => {
+    const occupied = Number(r.occupied) || 0;
+    const available = Number(r.available) || 0;
+    const maintenance = Number(r.maintenance) || 0;
+    const total = occupied + available + maintenance;
+    const occupancyPercent = total > 0 ? Math.round((1000 * occupied) / total) / 10 : 0;
+    return {
+      buildingId: r.building_id,
+      buildingName: r.building_name || r.building_id,
+      occupied,
+      total,
+      occupancyPercent,
+    };
+  });
+};

@@ -49,26 +49,23 @@ import MaintenanceRequestDetail from './pages/maintenance request management/Mai
 import AddMaintenanceRequest from './pages/maintenance request management/AddMaintenanceRequest'
 import GetResidentRequestList from './pages/resident request management/GetResidentRequestList'
 import GetResidentRequestDetail from './pages/resident request management/GetResidentRequestDetail'
-import ContractList from './pages/Contracts/ContractList'
-import ContractDetail from './pages/Contracts/ContractDetail'
+// import ContractList from './pages/Contracts/ContractList'
+// import ContractDetail from './pages/Contracts/ContractDetail'
 import MyContract from './pages/MyApartment/MyContract'
 import { useContext } from 'react'
 import { AppContext } from './contexts/app.context'
 import UserInvoiceDetailPage from './pages/billing/UserInvoiceDetailPage'
 import UserPaymentDetailPage from './pages/billing/UserPaymentDetailPage'
+import UserPaymentSuccessPage from './pages/billing/UserPaymentSuccessPage'
 import InvoicesPage from './pages/billing/InvoicesPage'
 import InvoiceDetailAdminPage from './pages/billing/InvoiceDetailAdminPage'
 import PaymentsPage from './pages/billing/PaymentsPage'
 import PaymentDetailAdminPage from './pages/billing/PaymentDetailAdminPage'
+import ContractList from './pages/Contracts/ContractList'
+import ContractDetail from './pages/Contracts/ContractDetail'
 import UtilityMetersPage from './pages/utility/UtilityMetersPage'
 import MeterReadingsPage from './pages/utility/MeterReadingsPage'
 import UtilityPricingPage from './pages/utility/UtilityPricingPage'
-import UserUtilityMetersPage from './pages/utility/UserUtilityMetersPage'
-import UserUtilityMeterDetailPage from './pages/utility/UserUtilityMeterDetailPage'
-import UserMeterReadingsPage from './pages/utility/UserMeterReadingsPage'
-import UserMeterReadingDetailPage from './pages/utility/UserMeterReadingDetailPage'
-import UserUtilityPricingPage from './pages/utility/UserUtilityPricingPage'
-import UserUtilityPricingDetailPage from './pages/utility/UserUtilityPricingDetailPage'
 import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
 import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManager'
 import StatisticsReportPage from './pages/statistics/StatisticsReportPage'
@@ -575,6 +572,22 @@ export default function useRouteElements() {
               <UserPaymentsPage />
             </DashboardLayoutUser>
           )
+        },
+        {
+          path: ':id/success',
+          element: (
+            <DashboardLayoutUser>
+              <UserPaymentSuccessPage />
+            </DashboardLayoutUser>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboardLayoutUser>
+              <UserPaymentDetailPage />
+            </DashboardLayoutUser>
+          )
         }
       ]
     },
@@ -622,84 +635,9 @@ export default function useRouteElements() {
               <MaintenanceRequestDetail />
             </DashboardLayoutUser>
           )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserPaymentDetailPage />
-            </DashboardLayoutUser>
-          )
         }
       ]
     },
-    {
-      path: '/utility-pricing',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityPricingPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityPricingDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-    {
-      path: '/my-utility-meters',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityMetersPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityMeterDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-    {
-      path: '/my-meter-readings',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserMeterReadingsPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserMeterReadingDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-
     // ADMIN + QUẢN LÝ: tòa nhà, billing, đồng hồ / chỉ số / giá
     {
       path: '/admin/buildings',
@@ -718,6 +656,28 @@ export default function useRouteElements() {
           element: (
             <DashboaedLayoutAdminOrManager>
               <BuildingDetailManagement />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/contracts',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <ContractList />
+            </DashboaedLayoutAdminOrManager>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <ContractDetail />
             </DashboaedLayoutAdminOrManager>
           )
         }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useContext, useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import { AppContext } from 'src/contexts/app.context'
 import { invoiceItemsApi } from 'src/apis/billing_api/invoice-items.api'
@@ -29,6 +29,7 @@ type PayRow = {
   invoiceId?: number
   amount?: number
   status?: string
+  responseCode?: string | null
   invoiceCode?: string | null
   apartmentId?: number | null
   billingMonth?: number | null
@@ -45,13 +46,24 @@ export default function UserPaymentDetailPage() {
   const { user } = useContext(AppContext)
   const userId = String((user as any)?.id || (user as any)?._id || '')
 
+  const bankTransferAwaitingWebhookRef = useRef(false)
+  const didRedirectToSuccessRef = useRef(false)
+
   const [payError, setPayError] = useState<string | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH')
 
   const paymentQuery = useQuery({
     queryKey: ['user-payment-detail', userId, id],
     queryFn: () => paymentsApi.getByUserIdAndPaymentId(userId, String(id)),
-    enabled: Boolean(userId && id)
+    enabled: Boolean(userId && id),
+    refetchInterval: (q) => {
+      const r = q.state.data?.data?.data as PayRow | undefined
+      if (!r || String(r.status).toUpperCase() !== 'PENDING') return false
+      if (String(r.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH') return 4000
+      if (bankTransferAwaitingWebhookRef.current && selectedMethod === 'BANK_TRANSFER') return 4000
+      return false
+    },
+    refetchOnWindowFocus: true
   })
 
   const row = paymentQuery.data?.data?.data as PayRow | null
@@ -98,6 +110,33 @@ export default function UserPaymentDetailPage() {
   })
 
   useEffect(() => {
+    bankTransferAwaitingWebhookRef.current = false
+    didRedirectToSuccessRef.current = false
+  }, [id])
+
+  useEffect(() => {
+    if (showCheckout && pending && selectedMethod === 'BANK_TRANSFER' && vietQrQuery.isSuccess) {
+      bankTransferAwaitingWebhookRef.current = true
+    }
+    if (selectedMethod === 'CASH' && pending) {
+      bankTransferAwaitingWebhookRef.current = false
+    }
+  }, [showCheckout, pending, selectedMethod, vietQrQuery.isSuccess])
+
+  useEffect(() => {
+    if (!id || !userId || !row) return
+    if (String(row.status).toUpperCase() !== 'SUCCESS') return
+    if (didRedirectToSuccessRef.current) return
+    if (!showCheckout) return
+    didRedirectToSuccessRef.current = true
+    toast.success('Thanh toán thành công')
+    void queryClient.invalidateQueries({ queryKey: ['user-payments'] })
+    void queryClient.invalidateQueries({ queryKey: ['user-invoices'] })
+    void queryClient.invalidateQueries({ queryKey: ['user-payment-detail', userId, id] })
+    navigate(`/payments/${id}/success`, { replace: true })
+  }, [row, row?.status, id, userId, navigate, queryClient, showCheckout])
+
+  useEffect(() => {
     if (selectedMethod === 'BANK_TRANSFER') setPayError(null)
   }, [selectedMethod])
 
@@ -109,23 +148,15 @@ export default function UserPaymentDetailPage() {
 
   const payMutation = useMutation({
     mutationFn: async () => {
-      if (!row?.invoiceId) return
-      const latestPaymentRes = await paymentsApi.getByInvoiceId(String(row.invoiceId))
-      const paymentId = latestPaymentRes.data.data.id
-      await paymentsApi.update(paymentId, {
-        paymentMethod: 'CASH',
-        paymentGateway: 'OFFLINE',
-        status: 'SUCCESS',
-        paymentDate: new Date().toISOString()
-      })
+      if (!id || !userId) return
+      await paymentsApi.submitCashDeclaration(userId, String(id))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-invoices'] })
       queryClient.invalidateQueries({ queryKey: ['user-payments'] })
       queryClient.invalidateQueries({ queryKey: ['user-payment-detail', userId, id] })
       setPayError(null)
-      toast.success('Thanh toán thành công')
-      navigate(`/payments/${id}`, { replace: true })
+      toast.info('Đã gửi thông tin nộp tiền mặt. Ban quản lý sẽ xác nhận khi nhận đủ tiền.')
     },
     onError: (err: unknown) => {
       logPaymentConsoleError('confirm-cash', err)
@@ -271,19 +302,31 @@ export default function UserPaymentDetailPage() {
           {selectedMethod === 'CASH' && (
             <>
               <p className='mb-4 text-sm text-slate-600'>
-                Xác nhận bạn đã nộp tiền mặt đúng hạn tại Ban quản lý. Hệ thống sẽ cập nhật trạng thái và hóa đơn liên quan.
+                Báo Ban quản lý là bạn đã nộp tiền mặt đúng hạn. Trạng thái <strong>thành công</strong> chỉ được cập nhật sau
+                khi BQL xác nhận trên hệ thống.
               </p>
+              {String(row?.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH' && (
+                <p className='mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900'>
+                  Đã ghi nhận yêu cầu của bạn. Vui lòng chờ Ban quản lý xác nhận.
+                </p>
+              )}
               {payError && <div className='mb-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700'>{payError}</div>}
               <button
                 type='button'
                 className='rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50'
-                disabled={payMutation.isPending}
+                disabled={
+                  payMutation.isPending || String(row?.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH'
+                }
                 onClick={() => {
                   setPayError(null)
                   payMutation.mutate()
                 }}
               >
-                {payMutation.isPending ? 'Đang xử lý…' : 'Xác nhận đã thanh toán tiền mặt'}
+                {String(row?.responseCode || '').toUpperCase() === 'WAIT_ADMIN_CASH'
+                  ? 'Đã gửi — chờ BQL xác nhận'
+                  : payMutation.isPending
+                    ? 'Đang xử lý…'
+                    : 'Báo đã nộp tiền mặt tại BQL'}
               </button>
             </>
           )}
@@ -292,8 +335,7 @@ export default function UserPaymentDetailPage() {
             <div className='rounded-xl border border-blue-100 bg-white p-4'>
               <p className='text-sm font-semibold text-slate-800'>Quét mã QR để chuyển khoản</p>
               <p className='mt-1 text-xs text-slate-600'>
-                Mã được tạo sẵn theo khoản phải trả. Sau khi chuyển, ngân hàng xác nhận thì trạng thái sẽ cập nhật — bạn có thể tải
-                lại trang hoặc quay sau vài phút.
+                Mã được tạo sẵn theo khoản phải trả. Sau khi chuyển khoản, hệ thống tự kiểm tra vài giây một lần — khi ngân hàng xác nhận bạn sẽ được chuyển sang trang hoàn tất thanh toán.
               </p>
               {vietQrQuery.isLoading && (
                 <div className='mt-4 flex items-center justify-center gap-2 py-8 text-sm text-slate-500'>
@@ -382,8 +424,8 @@ export default function UserPaymentDetailPage() {
               <span className='text-[10px] font-bold uppercase tracking-widest text-blue-100'>Homelink AI Insight</span>
             </div>
             <p className='text-sm text-white/90'>
-              Tiền mặt: sau khi xác nhận, danh sách cập nhật ngay. Chuyển khoản: đợi ngân hàng đối soát hoặc tải lại trang để kiểm
-              tra trạng thái.
+              Tiền mặt: BQL xác nhận trên hệ thống thì trạng thái thành công; trang tự làm mới khi đang mở bước thanh toán. Chuyển
+              khoản: tự làm mới khi có xác nhận từ ngân hàng (webhook).
             </p>
           </div>
         </div>

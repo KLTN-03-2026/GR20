@@ -1,4 +1,15 @@
 const service = require("./resident.service");
+const { AppError } = require("../../common/app-error");
+
+const sendError = (res, err) => {
+  if (err instanceof AppError) {
+    const body = { message: err.message };
+    if (err.details !== undefined) body.details = err.details;
+    return res.status(err.statusCode).json(body);
+  }
+  const status = err.message && err.message.includes("already") ? 409 : 500;
+  return res.status(status).json({ message: err.message });
+};
 
 const createResident = async (req, res) => {
   try {
@@ -13,10 +24,24 @@ const createResident = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    const status = err.message.includes("already") ? 409 : 500;
-    res.status(status).json({
-      message: err.message,
+    sendError(res, err);
+  }
+};
+
+const createResidentAccount = async (req, res) => {
+  try {
+    const data = await service.createResidentAccount(req.body);
+
+    res.status(201).json({
+      operationType: "Success",
+      message: "Tạo tài khoản cư dân thành công",
+      code: "CREATED",
+      data,
+      size: 1,
+      timestamp: new Date(),
     });
+  } catch (err) {
+    sendError(res, err);
   }
 };
 
@@ -161,6 +186,7 @@ const deleteResident = async (req, res) => {
 
 module.exports = {
   createResident,
+  createResidentAccount,
   getAllResidents,
   getResidentById,
   getResidentsByApartmentId,
