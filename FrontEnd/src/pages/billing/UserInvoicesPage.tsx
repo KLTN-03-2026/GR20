@@ -7,6 +7,7 @@ import { residentsApi } from 'src/apis/resident_api/residents.api'
 import { AppContext } from 'src/contexts/app.context'
 import { formatVnd, invoiceStatusBadgeClass, invoiceStatusVi } from 'src/utils/billing-ui'
 import { formatInvoicePeriodLabel } from 'src/utils/invoice-period-helpers'
+import { getPaymentApiErrorMessage } from 'src/utils/payment-console-log'
 
 const logApiError = (action: string, err: any) => {
   console.error(`[UserInvoices][${action}] error`, {
@@ -30,7 +31,11 @@ export default function UserInvoicesPage() {
     enabled: Boolean(userId)
   })
 
-  const { data: paymentsData } = useQuery({
+  const {
+    data: paymentsData,
+    isError: paymentsLookupError,
+    error: paymentsLookupErr
+  } = useQuery({
     queryKey: ['user-pending-payments-for-invoices', userId],
     queryFn: () => paymentsApi.getByUserId(userId, { page: 0, size: 100, status: 'PENDING' }),
     enabled: Boolean(userId),
@@ -93,6 +98,13 @@ export default function UserInvoicesPage() {
       {isError && (
         <div className='mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700'>
           {(error as any)?.response?.data?.message || 'Tải danh sách thất bại'}
+        </div>
+      )}
+
+      {paymentsLookupError && (
+        <div className='mb-3 rounded-lg border border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-900'>
+          {getPaymentApiErrorMessage(paymentsLookupErr, 'Không tải được danh sách phiếu thanh toán.')}{' '}
+          <span className='font-medium'>Nút Thanh toán vẫn dẫn tới chi tiết hóa đơn nếu chưa có liên kết nhanh.</span>
         </div>
       )}
 

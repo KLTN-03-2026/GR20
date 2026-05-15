@@ -13,6 +13,7 @@ import type { InvoiceItem } from 'src/types/invoice-item.type'
 import type { UtilityMeter } from 'src/types/utility-meter.type'
 import { formatVnd, invoiceStatusBadgeClass, invoiceStatusVi } from 'src/utils/billing-ui'
 import { formatDateViVN } from 'src/utils/date-vi'
+import { getPaymentApiErrorMessage } from 'src/utils/payment-console-log'
 import {
   formatInvoicePeriodLabel,
   meterTypeVi,
@@ -606,6 +607,18 @@ export default function UserInvoiceDetailPage() {
           >
             ← Về danh sách hóa đơn
           </Link>
+          {invPending && paymentByInvoiceQuery.isError && (
+            <div className='flex flex-col gap-2 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800'>
+              <span>{getPaymentApiErrorMessage(paymentByInvoiceQuery.error, 'Không tải được phiếu thanh toán.')}</span>
+              <button
+                type='button'
+                className='self-start text-xs font-bold text-blue-700 underline'
+                onClick={() => paymentByInvoiceQuery.refetch()}
+              >
+                Thử lại
+              </button>
+            </div>
+          )}
           {invPending && pendingPaymentId && (
             <Link
               to={`/payments/${pendingPaymentId}?checkout=1`}
@@ -620,7 +633,7 @@ export default function UserInvoiceDetailPage() {
               Đang tải phiếu thanh toán…
             </span>
           )}
-          {invPending && !pendingPaymentId && !paymentByInvoiceQuery.isFetching && (
+          {invPending && !paymentByInvoiceQuery.isError && !pendingPaymentId && !paymentByInvoiceQuery.isFetching && (
             <span className='text-sm text-amber-800'>
               Chưa có phiếu thanh toán cho hóa đơn này. Vui lòng liên hệ ban quản lý.
             </span>
