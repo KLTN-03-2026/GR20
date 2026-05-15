@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { useContext, useState } from 'react'
+import { useContext, useMemo, useState } from 'react'
 import { invoicesApi } from 'src/apis/billing_api/invoices.api'
+import { paymentsApi } from 'src/apis/billing_api/payments.api'
+import { residentsApi } from 'src/apis/resident_api/residents.api'
 import { AppContext } from 'src/contexts/app.context'
+import { formatVnd, invoiceStatusBadgeClass, invoiceStatusVi } from 'src/utils/billing-ui'
+import { formatInvoicePeriodLabel } from 'src/utils/invoice-period-helpers'
 
 const logApiError = (action: string, err: any) => {
   console.error(`[UserInvoices][${action}] error`, {
@@ -26,14 +30,47 @@ export default function UserInvoicesPage() {
     enabled: Boolean(userId)
   })
 
+  const { data: paymentsData } = useQuery({
+    queryKey: ['user-pending-payments-for-invoices', userId],
+    queryFn: () => paymentsApi.getByUserId(userId, { page: 0, size: 100, status: 'PENDING' }),
+    enabled: Boolean(userId),
+    retry: false
+  })
+
+  const { data: apartmentsData } = useQuery({
+    queryKey: ['user-apartments-for-invoices', userId],
+    queryFn: () => residentsApi.getUserApartments(userId),
+    enabled: Boolean(userId)
+  })
+
   if (isError) logApiError('GetByUserId', error)
 
   const list = data?.data?.data || []
   const totalPages = Number(data?.data?.totalPages || 0)
   const currentPage = Number(data?.data?.page || 0)
 
-  const fmtMoney = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(n) || 0)
+  const pendingPaymentByInvoiceId = useMemo(() => {
+    const m = new Map<number, string>()
+    const payments = paymentsData?.data?.data || []
+    for (const p of payments) {
+      if (String(p.status || '').toUpperCase() !== 'PENDING') continue
+      const invId = Number(p.invoiceId ?? p.invoice_id)
+      if (Number.isFinite(invId) && invId > 0) m.set(invId, String(p.id))
+    }
+    return m
+  }, [paymentsData])
+
+  const apartmentLabelById = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const a of apartmentsData?.data?.data || []) {
+      const id = Number(a.apartmentId)
+      if (!Number.isFinite(id)) continue
+      const num = String(a.apartmentNumber || '').trim()
+      const bld = String(a.buildingName || '').trim()
+      m.set(id, num && bld ? `${num} · ${bld}` : num || bld || `Căn #${id}`)
+    }
+    return m
+  }, [apartmentsData])
 
   return (
     <div className='pb-10'>
@@ -49,7 +86,7 @@ export default function UserInvoicesPage() {
         <h1 className='mb-2 text-3xl font-extrabold text-slate-900'>Hóa đơn của tôi</h1>
         <div className='h-1.5 w-20 rounded-full bg-gradient-to-r from-blue-500 to-blue-700' />
         <p className='mt-2 text-sm text-slate-500'>
-          Chọn một hóa đơn để xem đầy đủ dòng tiền, bảng giá tham khảo và chỉ số công tơ kỳ đó.
+          Xem chi tiết từng kỳ; hóa đơn chưa thanh toán có thể bấm <strong>Thanh toán</strong> ngay tại đây.
         </p>
       </div>
 
@@ -84,28 +121,55 @@ export default function UserInvoicesPage() {
                 </tr>
               )}
               {!isLoading &&
-                list.map((item: any) => (
-                  <tr key={item.id} className='hover:bg-slate-50/50'>
-                    <td className='px-6 py-4 text-sm font-semibold text-slate-900'>{item.invoiceCode || item.id}</td>
-                    <td className='px-6 py-4 text-sm text-slate-700'>Apt {item.apartmentId}</td>
-                    <td className='px-6 py-4 text-sm tabular-nums text-slate-700'>
-                      {item.billingMonth}/{item.billingYear}
-                    </td>
-                    <td className='px-6 py-4 text-sm font-semibold tabular-nums text-slate-800'>
-                      {fmtMoney(Number(item.totalAmount) || 0)}
-                    </td>
-                    <td className='px-6 py-4 text-sm text-slate-700'>{item.status}</td>
-                    <td className='px-6 py-4 text-right'>
-                      <Link
-                        to={`/invoices/${String(item.id)}`}
-                        className='inline-flex items-center gap-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100'
-                      >
-                        Chi tiết
-                        <span className='material-symbols-outlined text-sm'>chevron_right</span>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                list.map((item: any) => {
+                  const invId = Number(item.id)
+                  const st = String(item.status || '').toUpperCase()
+                  const paymentId = pendingPaymentByInvoiceId.get(invId)
+                  const canPay = st === 'PENDING'
+                  return (
+                    <tr key={item.id} className='hover:bg-slate-50/50'>
+                      <td className='px-6 py-4 text-sm font-semibold text-slate-900'>{item.invoiceCode || item.id}</td>
+                      <td className='px-6 py-4 text-sm text-slate-700'>
+                        {apartmentLabelById.get(Number(item.apartmentId)) ?? `Căn #${item.apartmentId}`}
+                      </td>
+                      <td className='px-6 py-4 text-sm tabular-nums text-slate-700'>
+                        {formatInvoicePeriodLabel(item)}
+                      </td>
+                      <td className='px-6 py-4 text-sm font-semibold tabular-nums text-slate-800'>
+                        {formatVnd(item.totalAmount)}
+                      </td>
+                      <td className='px-6 py-4'>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${invoiceStatusBadgeClass(item.status)}`}
+                        >
+                          {invoiceStatusVi[st] || item.status}
+                        </span>
+                      </td>
+                      <td className='px-6 py-4 text-right'>
+                        <div className='flex flex-wrap justify-end gap-2'>
+                          <Link
+                            to={`/invoices/${String(item.id)}`}
+                            className='inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50'
+                          >
+                            Chi tiết
+                          </Link>
+                          {canPay && (
+                            <Link
+                              to={
+                                paymentId
+                                  ? `/payments/${paymentId}?checkout=1`
+                                  : `/invoices/${String(item.id)}?pay=1`
+                              }
+                              className='rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700'
+                            >
+                              Thanh toán
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
             </tbody>
           </table>
         </div>

@@ -1,12 +1,6 @@
 import type { Invoice } from 'src/types/invoice.type'
 
-export function meterTypeVi(t?: string) {
-  const x = String(t || '').toUpperCase()
-  if (x === 'ELECTRIC') return 'Điện'
-  if (x === 'WATER') return 'Nước'
-  if (x === 'GAS') return 'Gas'
-  return t || '—'
-}
+export { meterTypeVi } from 'src/utils/utility-labels'
 
 export function formatInvoicePeriodLabel(inv: Pick<Invoice, 'billingMonth' | 'billingYear'>) {
   const m = Number(inv.billingMonth)

@@ -19,8 +19,17 @@ const withConsumption = (payload) => ({
 
 const createMeterReading = async (body) => {
   const parsed = withConsumption(parseCreateMeterReading(body));
-  if (parsed.consumption < 0)
-    throw new AppError(400, "currentReading must be greater than or equal to previousReading", undefined, ERROR_CODES.METER_READING_BELOW_PREVIOUS);
+  if (parsed.consumption <= 0)
+    throw new AppError(400, "currentReading must be greater than previousReading", undefined, ERROR_CODES.METER_READING_BELOW_PREVIOUS);
+  const duplicate = await repo.hasMeterReadingInBillingMonth(parsed.meterId, parsed.readingDate);
+  if (duplicate) {
+    throw new AppError(
+      400,
+      "Đồng hồ này đã có chỉ số trong tháng kỳ tương ứng. Không thể ghi thêm cho cùng tháng.",
+      undefined,
+      ERROR_CODES.METER_READING_DUPLICATE_PERIOD
+    );
+  }
   const result = await repo.createMeterReading(mapper.toEntity(parsed));
   try {
     await invoiceService.syncInvoiceAfterMeterReadingCreated(parsed.meterId, parsed.readingDate);

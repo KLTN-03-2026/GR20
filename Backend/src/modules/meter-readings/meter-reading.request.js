@@ -7,8 +7,8 @@ const baseSchema = z.object({
   currentReading: z.coerce.number().min(0),
 });
 
-const createSchema = baseSchema.refine((v) => v.currentReading >= v.previousReading, {
-  message: "currentReading must be greater than or equal to previousReading",
+const createSchema = baseSchema.refine((v) => v.currentReading > v.previousReading, {
+  message: "currentReading must be greater than previousReading",
   path: ["currentReading"],
 });
 

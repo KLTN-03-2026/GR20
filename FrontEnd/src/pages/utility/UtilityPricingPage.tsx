@@ -4,6 +4,12 @@ import { utilityPricingApi } from 'src/apis/utility_api/utility-pricing.api'
 import { formatDateViVN } from 'src/utils/date-vi'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
 import {
+  METER_TYPE_OPTIONS,
+  PRICING_UNIT_OPTIONS,
+  meterTypeVi,
+  pricingActiveVi
+} from 'src/utils/utility-labels'
+import {
   ROW_ACTION_CANCEL,
   ROW_ACTION_DELETE,
   ROW_ACTION_EDIT,
@@ -163,19 +169,32 @@ export default function UtilityPricingPage() {
             e.currentTarget.reset()
           }}
         >
-          <select name='meterType' className='rounded border px-2 py-2'>
-            <option value='ELECTRIC'>ELECTRIC</option>
-            <option value='WATER'>WATER</option>
-            <option value='GAS'>GAS</option>
+          <select name='meterType' className='rounded border px-2 py-2' title='Loại công tơ'>
+            {METER_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
-          <input name='pricePerUnit' type='number' placeholder='Price per unit' className='rounded border px-2 py-2' />
-          <select name='unit' className='rounded border px-2 py-2'>
-            <option value='kWh'>kWh</option>
-            <option value='m3'>m3</option>
-            <option value='kg'>kg</option>
+          <input
+            name='pricePerUnit'
+            type='number'
+            min={0}
+            step='any'
+            placeholder='Đơn giá'
+            className='rounded border px-2 py-2'
+          />
+          <select name='unit' className='rounded border px-2 py-2' title='Đơn vị tính'>
+            {PRICING_UNIT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
-          <input name='effectiveFrom' type='date' className='rounded border px-2 py-2' />
-          <button className='rounded bg-blue-600 px-3 py-2 text-white'>{createMutation.isPending ? 'Saving...' : 'Lưu'}</button>
+          <input name='effectiveFrom' type='date' title='Ngày hiệu lực' className='rounded border px-2 py-2' />
+          <button type='submit' className='rounded bg-blue-600 px-3 py-2 text-white'>
+            {createMutation.isPending ? 'Đang lưu…' : 'Thêm giá'}
+          </button>
         </form>
         <div className='mb-4 grid grid-cols-1 gap-2 md:grid-cols-4'>
           <select
@@ -184,19 +203,23 @@ export default function UtilityPricingPage() {
             className='rounded border px-2 py-2'
           >
             <option value='ALL'>Tất cả loại</option>
-            <option value='ELECTRIC'>ELECTRIC</option>
-            <option value='WATER'>WATER</option>
-            <option value='GAS'>GAS</option>
+            {METER_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
           <select
             value={filterUnit}
             onChange={(e) => setFilterUnit(e.target.value as 'ALL' | 'kWh' | 'm3' | 'kg')}
             className='rounded border px-2 py-2'
           >
-            <option value='ALL'>Tất cả unit</option>
-            <option value='kWh'>kWh</option>
-            <option value='m3'>m3</option>
-            <option value='kg'>kg</option>
+            <option value='ALL'>Tất cả đơn vị</option>
+            {PRICING_UNIT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
           <select
             value={filterActive}
@@ -204,8 +227,8 @@ export default function UtilityPricingPage() {
             className='rounded border px-2 py-2'
           >
             <option value='ALL'>Trạng thái: tất cả</option>
-            <option value='ACTIVE'>ACTIVE</option>
-            <option value='INACTIVE'>INACTIVE (dữ liệu cũ)</option>
+            <option value='ACTIVE'>Đang áp dụng</option>
+            <option value='INACTIVE'>Ngừng áp dụng (dữ liệu cũ)</option>
           </select>
           <button
             type='button'
@@ -227,7 +250,7 @@ export default function UtilityPricingPage() {
               <tr className='bg-slate-50'>
                 <th className='px-4 py-3 text-xs font-bold uppercase text-slate-500'>Loại</th>
                 <th className='px-4 py-3 text-xs font-bold uppercase text-slate-500'>Đơn giá</th>
-                <th className='px-4 py-3 text-xs font-bold uppercase text-slate-500'>Unit</th>
+                <th className='px-4 py-3 text-xs font-bold uppercase text-slate-500'>Đơn vị</th>
                 <th className='px-4 py-3 text-xs font-bold uppercase text-slate-500'>Hiệu lực</th>
                 <th className='px-4 py-3 text-xs font-bold uppercase text-slate-500'>Trạng thái</th>
                 <th className='px-4 py-3 text-right text-xs font-bold uppercase text-slate-500'>Hành động</th>
@@ -236,7 +259,7 @@ export default function UtilityPricingPage() {
             <tbody className='divide-y divide-slate-100'>
               {filteredList.map((item) => (
                 <tr key={item.id}>
-                  <td className='px-4 py-3'>{item.meterType}</td>
+                  <td className='px-4 py-3'>{meterTypeVi(item.meterType)}</td>
                   <td className='px-4 py-3'>
                     {editingId === item.id ? (
                       <input
@@ -274,7 +297,7 @@ export default function UtilityPricingPage() {
                         item.isActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'
                       }`}
                     >
-                      {item.isActive ? 'ACTIVE' : 'INACTIVE'}
+                      {pricingActiveVi(item.isActive)}
                     </span>
                   </td>
                   <td className='px-4 py-3 text-right'>

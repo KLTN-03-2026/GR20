@@ -1,22 +1,16 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { apartmentApi } from 'src/apis/apartment_api/apartment_api'
+import type { ApartmentData } from 'src/types/apartment.type'
 import { invoicesApi } from 'src/apis/billing_api/invoices.api'
 import { meterReadingsApi } from 'src/apis/utility_api/meter-readings.api'
 import { utilityMetersApi } from 'src/apis/utility_api/utility-meters.api'
 import { utilityPricingApi } from 'src/apis/utility_api/utility-pricing.api'
 import type { Invoice } from 'src/types/invoice.type'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
-import {
-  formatVnd,
-  invoiceStatusBadgeClass,
-  invoiceStatusVi
-} from 'src/utils/billing-ui'
-import {
-  ROW_ACTION_DELETE,
-  ROW_ACTION_EDIT,
-  ROW_ACTION_RESTORE
-} from 'src/utils/row-action-buttons'
+import { formatVnd, invoiceStatusBadgeClass, invoiceStatusVi } from 'src/utils/billing-ui'
+import { ROW_ACTION_DELETE, ROW_ACTION_EDIT, ROW_ACTION_RESTORE } from 'src/utils/row-action-buttons'
 
 const getApiErrorMessage = (err: any, fallbackMessage: string) => {
   const apiErr = err?.response?.data
@@ -30,7 +24,12 @@ const getApiErrorMessage = (err: any, fallbackMessage: string) => {
     ['Invalid meterId', 'Đồng hồ không hợp lệ'],
     ['Meter reading not found', 'Không tìm thấy bản ghi chỉ số'],
     ['Căn hộ đang có cư dân', 'Căn hộ đang có cư dân, không được xóa chỉ số công tơ.'],
-    ['currentReading must be greater than or equal to previousReading', 'Chỉ số mới phải lớn hơn hoặc bằng chỉ số cũ'],
+    ['currentReading must be greater than previousReading', 'Chỉ số mới phải lớn hơn chỉ số cũ'],
+    ['currentReading must be greater than or equal to previousReading', 'Chỉ số mới phải lớn hơn chỉ số cũ'],
+    [
+      'Đồng hồ này đã có chỉ số trong tháng kỳ tương ứng',
+      'Đồng hồ này đã có chỉ số trong tháng kỳ này — không ghi thêm cho cùng tháng.'
+    ],
     ['Invoice not found or not cancelled', 'Không tìm thấy hóa đơn đã xóa để khôi phục'],
     ['Invoice not found', 'Không tìm thấy hóa đơn']
   ]
@@ -55,6 +54,14 @@ function summarizeReadings(rows: MeterReadingRow[] | undefined) {
   return { count: rows.length, sumTT }
 }
 
+function apartmentDisplayName(a: Pick<ApartmentData, 'id' | 'apartmentCode' | 'buildingName'>) {
+  const code = a.apartmentCode?.trim()
+  const bld = a.buildingName?.trim()
+  if (code && bld) return `${code} · ${bld}`
+  if (code) return code
+  return `Căn #${a.id}`
+}
+
 export default function InvoicesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -63,15 +70,33 @@ export default function InvoicesPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  const [aptForReading, setAptForReading] = useState('')
+  const [selectedAptId, setSelectedAptId] = useState<number | null>(null)
+  const [aptSearchText, setAptSearchText] = useState('')
+  const [aptDropdownOpen, setAptDropdownOpen] = useState(false)
+  const aptSearchRef = useRef<HTMLDivElement>(null)
   const [billMForReading, setBillMForReading] = useState(String(new Date().getMonth() + 1))
   const [billYForReading, setBillYForReading] = useState(String(new Date().getFullYear()))
   const [cMeter, setCMeter] = useState('')
-  const [cDate, setCDate] = useState('')
   const [cPrev, setCPrev] = useState('')
   const [cCurr, setCCurr] = useState('')
 
-  const aptNum = aptForReading.trim() !== '' && !Number.isNaN(Number(aptForReading)) ? Number(aptForReading) : NaN
+  const aptNum = selectedAptId != null && selectedAptId > 0 ? selectedAptId : NaN
+  const billMNum = Number(billMForReading)
+  const billYNum = Number(billYForReading)
+  const hasBillingPeriod =
+    Number.isFinite(billMNum) &&
+    billMNum >= 1 &&
+    billMNum <= 12 &&
+    Number.isFinite(billYNum) &&
+    billYNum >= 2000 &&
+    billYNum <= 2100
+
+  /** Ngày ghi chỉ số — tự gán theo tháng/năm kỳ (ngày 05), không hiển thị trên form. */
+  const readingDateFromPeriod = useMemo(() => {
+    if (!hasBillingPeriod) return ''
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${billYNum}-${pad(billMNum)}-05`
+  }, [hasBillingPeriod, billMNum, billYNum])
 
   const { data, error, isLoading, isError } = useQuery({
     queryKey: ['invoices', page],
@@ -84,6 +109,58 @@ export default function InvoicesPage() {
   const list = (data?.data?.data || []) as Invoice[]
   const totalPages = Number(data?.data?.totalPages || 0)
   const currentPage = Number(data?.data?.page || 0)
+
+  const { data: apartmentsLabelData } = useQuery({
+    queryKey: ['apartments-label-map-invoices'],
+    queryFn: async () => {
+      const r = await apartmentApi.getAllApartment({ page: 0, size: 500 })
+      return (r.data?.data as ApartmentData[] | undefined) ?? []
+    }
+  })
+
+  const apartmentLabelById = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const a of apartmentsLabelData ?? []) {
+      m.set(Number(a.id), apartmentDisplayName(a))
+    }
+    return m
+  }, [apartmentsLabelData])
+
+  const aptSearchDebounced = aptSearchText.trim()
+  const { data: aptSearchResults = [], isFetching: aptSearchFetching } = useQuery({
+    queryKey: ['apartments-search-invoices', aptSearchDebounced],
+    queryFn: async () => {
+      const params: { page: number; size: number; search?: string } = { page: 0, size: 30 }
+      if (aptSearchDebounced) params.search = aptSearchDebounced
+      const r = await apartmentApi.getAllApartment(params)
+      return (r.data?.data as ApartmentData[] | undefined) ?? []
+    },
+    enabled: aptDropdownOpen
+  })
+
+  const aptDropdownOptions = useMemo(() => {
+    if (aptSearchResults.length > 0) return aptSearchResults
+    const all = apartmentsLabelData ?? []
+    if (!aptSearchDebounced) return all.slice(0, 30)
+    const q = aptSearchDebounced.toLowerCase()
+    return all
+      .filter((a) => {
+        const label = apartmentDisplayName(a).toLowerCase()
+        const code = String(a.apartmentCode || '').toLowerCase()
+        return label.includes(q) || code.includes(q) || String(a.id).includes(q)
+      })
+      .slice(0, 30)
+  }, [aptSearchResults, apartmentsLabelData, aptSearchDebounced])
+
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (aptSearchRef.current && !aptSearchRef.current.contains(e.target as Node)) {
+        setAptDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [])
 
   const readingQueries = useQueries({
     queries: list.map((item) => ({
@@ -132,7 +209,42 @@ export default function InvoicesPage() {
   })
 
   const metersForm = metersFormData?.data?.data || []
-  const pricingForm = (pricingFormData?.data?.data || []) as { meterType?: string; pricePerUnit?: number; unit?: string }[]
+  const pricingForm = (pricingFormData?.data?.data || []) as {
+    meterType?: string
+    pricePerUnit?: number
+    unit?: string
+  }[]
+
+  const { data: periodReadingsForForm = [] } = useQuery({
+    queryKey: ['meter-readings-form-period', aptNum, billMNum, billYNum],
+    queryFn: async () => {
+      const r = await meterReadingsApi.getAll({
+        page: 0,
+        size: 100,
+        apartmentId: aptNum,
+        billingMonth: billMNum,
+        billingYear: billYNum
+      })
+      return (r.data?.data as { meterId?: number }[] | undefined) ?? []
+    },
+    enabled: Number.isFinite(aptNum) && aptNum > 0 && hasBillingPeriod
+  })
+
+  const meterIdsWithReadingInPeriod = useMemo(() => {
+    const s = new Set<number>()
+    for (const row of periodReadingsForForm) {
+      if (row.meterId != null) s.add(Number(row.meterId))
+    }
+    return s
+  }, [periodReadingsForForm])
+
+  const metersAvailableForPeriod = useMemo(
+    () => metersForm.filter((m) => m.id != null && !meterIdsWithReadingInPeriod.has(Number(m.id))),
+    [metersForm, meterIdsWithReadingInPeriod]
+  )
+
+  const allMetersHaveReadingInPeriod =
+    metersForm.length > 0 && metersAvailableForPeriod.length === 0 && hasBillingPeriod && Number.isFinite(aptNum)
 
   const meterLabel = (meterId: string | number) => {
     const m = metersForm.find((x) => String(x.id) === String(meterId))
@@ -140,31 +252,28 @@ export default function InvoicesPage() {
     return `${m.meterCode ?? '—'} · ${m.meterType ?? '—'}`
   }
 
-  useEffect(() => {
-    const m = Number(billMForReading)
-    const y = Number(billYForReading)
-    if (!Number.isFinite(m) || !Number.isFinite(y) || m < 1 || m > 12) return
-    const pad = (n: number) => String(n).padStart(2, '0')
-    setCDate(`${y}-${pad(m)}-05`)
-  }, [billMForReading, billYForReading])
-
   const suggestQuery = useQuery({
-    queryKey: ['meter-suggest-prev-invoices', cMeter, cDate],
+    queryKey: ['meter-suggest-prev-invoices', cMeter, readingDateFromPeriod],
     queryFn: async () => {
       const response = await meterReadingsApi.suggestPrevious({
         meterId: Number(cMeter),
-        readingDate: cDate
+        readingDate: readingDateFromPeriod
       })
       const v = (response.data as { data?: { previousReading?: number | null } })?.data?.previousReading
       return v == null ? null : Number(v)
     },
-    enabled: Boolean(cMeter && cDate && /^\d{4}-\d{2}-\d{2}$/.test(cDate))
+    enabled: Boolean(cMeter && readingDateFromPeriod)
   })
 
   useEffect(() => {
     if (suggestQuery.data == null || Number.isNaN(suggestQuery.data)) return
     setCPrev(String(suggestQuery.data))
   }, [suggestQuery.data])
+
+  useEffect(() => {
+    if (!cMeter) return
+    if (meterIdsWithReadingInPeriod.has(Number(cMeter))) setCMeter('')
+  }, [meterIdsWithReadingInPeriod, cMeter])
 
   const createReadingMutation = useMutation({
     mutationFn: (payload: { meterId: number; readingDate: string; previousReading: number; currentReading: number }) =>
@@ -174,6 +283,7 @@ export default function InvoicesPage() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       queryClient.invalidateQueries({ queryKey: ['invoice-row-readings'] })
       queryClient.invalidateQueries({ queryKey: ['meter-readings'] })
+      queryClient.invalidateQueries({ queryKey: ['meter-readings-form-period'] })
       queryClient.invalidateQueries({ queryKey: ['invoice-items-by-invoice'] })
       setErrorMsg(null)
       setSuccessMsg('Đã lưu chỉ số. Hệ thống đã tạo/cập nhật hóa đơn kỳ tương ứng (theo căn + tháng ghi chỉ số).')
@@ -235,10 +345,10 @@ export default function InvoicesPage() {
               Quản trị
             </span>
             <h1 className='mt-3 text-3xl font-bold tracking-tight text-slate-900'>Hóa đơn & chỉ số</h1>
-            <p className='mt-1 max-w-2xl text-sm text-slate-600'>
+            {/* <p className='mt-1 max-w-2xl text-sm text-slate-600'>
               Nhập chỉ số công tơ theo căn và kỳ — sau khi lưu, hệ thống <strong>tự tạo hoặc cập nhật hóa đơn</strong> kỳ đó
               (giống luồng chỉ số). Danh sách bên dưới gộp thông tin hóa đơn với tóm tắt chỉ số trong kỳ.
-            </p>
+            </p> */}
           </div>
           <div className='flex flex-wrap items-center gap-2'>
             <a
@@ -275,23 +385,29 @@ export default function InvoicesPage() {
         </div>
 
         {errorMsg && <div className='mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600'>{errorMsg}</div>}
-        {successMsg && <div className='mb-3 rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800'>{successMsg}</div>}
+        {successMsg && (
+          <div className='mb-3 rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-800'>{successMsg}</div>
+        )}
 
-        <section id='nhap-chi-so' className='mb-8 scroll-mt-24 rounded-xl border border-blue-100 bg-white p-5 shadow-sm'>
+        <section
+          id='nhap-chi-so'
+          className='mb-8 scroll-mt-24 rounded-xl border border-blue-100 bg-white p-5 shadow-sm'
+        >
           <div className='flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between'>
             <div className='min-w-0 flex-1'>
               <h2 className='text-lg font-extrabold text-slate-900'>Nhập chỉ số</h2>
-              <p className='mt-1 text-sm text-slate-600'>
-                Sau khi lưu, hệ thống <strong>tự tạo hoặc cập nhật hóa đơn</strong> theo căn và kỳ tháng ghi chỉ số. Chọn tháng/năm
-                kỳ, đồng hồ và chỉ số; ngày ghi nên nằm trong tháng kỳ. Chỉ số cũ được gợi ý theo lần ghi trước.
-              </p>
+              {/* <p className='mt-1 text-sm text-slate-600'>
+                Sau khi lưu, hệ thống <strong>tự tạo hoặc cập nhật hóa đơn</strong> theo căn và kỳ tháng ghi chỉ số.
+                Chọn căn, tháng/năm kỳ, đồng hồ và chỉ số — ngày ghi tự đặt theo kỳ. Chỉ số cũ được gợi ý theo lần ghi trước.
+              </p> */}
             </div>
           </div>
           {pricingForm.length > 0 && (
             <ul className='mt-3 flex flex-wrap gap-3 text-xs text-slate-600'>
               {pricingForm.map((p) => (
                 <li key={String(p.meterType)} className='rounded-md bg-slate-50 px-2 py-1 ring-1 ring-slate-100'>
-                  <span className='font-semibold'>{p.meterType}</span>: {formatVnd(Number(p.pricePerUnit) || 0)} / {p.unit || '—'}
+                  <span className='font-semibold'>{p.meterType}</span>: {formatVnd(Number(p.pricePerUnit) || 0)} /{' '}
+                  {p.unit || '—'}
                 </li>
               ))}
             </ul>
@@ -303,66 +419,153 @@ export default function InvoicesPage() {
               setErrorMsg(null)
               setSuccessMsg(null)
               if (!Number.isFinite(aptNum) || aptNum <= 0) {
-                setErrorMsg('Nhập ID căn hộ hợp lệ.')
+                setErrorMsg('Chọn căn hộ từ danh sách gợi ý.')
+                return
+              }
+              if (!hasBillingPeriod) {
+                setErrorMsg('Nhập tháng (1–12) và năm kỳ hợp lệ.')
+                return
+              }
+              const prevN = Number(cPrev)
+              const currN = Number(cCurr)
+              if (!Number.isFinite(prevN) || !Number.isFinite(currN) || currN <= prevN) {
+                setErrorMsg('Chỉ số mới phải lớn hơn chỉ số cũ.')
+                return
+              }
+              if (meterIdsWithReadingInPeriod.has(Number(cMeter))) {
+                setErrorMsg('Đồng hồ này đã có chỉ số trong tháng kỳ này — chọn đồng hồ khác hoặc đổi kỳ.')
+                return
+              }
+              if (allMetersHaveReadingInPeriod) {
+                setErrorMsg('Căn này đã ghi đủ chỉ số điện/nước cho tháng kỳ — không thêm được nữa.')
                 return
               }
               createReadingMutation.mutate({
                 meterId: Number(cMeter),
-                readingDate: cDate,
+                readingDate: readingDateFromPeriod,
                 previousReading: Number(cPrev),
                 currentReading: Number(cCurr)
               })
             }}
           >
-            <input
-              type='number'
-              min={1}
-              placeholder='ID căn hộ *'
-              className='h-10 min-w-[7.5rem] flex-1 rounded-lg border border-slate-200 px-3 text-sm sm:max-w-[10rem]'
-              value={aptForReading}
-              onChange={(e) => {
-                setAptForReading(e.target.value)
-                setCMeter('')
-              }}
-            />
-            <input
-              type='number'
-              min={1}
-              max={12}
-              placeholder='Tháng kỳ *'
-              className='h-10 w-[6.5rem] flex-shrink-0 rounded-lg border border-slate-200 px-3 text-sm'
-              value={billMForReading}
-              onChange={(e) => setBillMForReading(e.target.value)}
-            />
-            <input
-              type='number'
-              min={2000}
-              max={2100}
-              placeholder='Năm kỳ *'
-              className='h-10 w-[6.5rem] flex-shrink-0 rounded-lg border border-slate-200 px-3 text-sm'
-              value={billYForReading}
-              onChange={(e) => setBillYForReading(e.target.value)}
-            />
-            <select
-              className='h-10 min-w-[12rem] flex-[2] rounded-lg border border-slate-200 px-3 text-sm'
-              value={cMeter}
-              onChange={(e) => setCMeter(e.target.value)}
-              required
-            >
-              <option value=''>Chọn đồng hồ (căn đang ACTIVE) *</option>
-              {metersForm.map((meter) => (
-                <option key={String(meter.id)} value={String(meter.id)}>
-                  {meterLabel(meter.id!)}
+            <div ref={aptSearchRef} className='relative min-w-[14rem] flex-1 sm:max-w-[18rem]'>
+              <label className='mb-1 block text-xs font-semibold text-slate-600'>Căn hộ *</label>
+              <div className='relative'>
+                <input
+                  type='text'
+                  autoComplete='off'
+                  placeholder='Chọn hoặc gõ để tìm căn…'
+                  className='h-10 w-full rounded-lg border border-slate-200 py-2 pl-3 pr-9 text-sm'
+                  value={aptSearchText}
+                  onChange={(e) => {
+                    setAptSearchText(e.target.value)
+                    setSelectedAptId(null)
+                    setCMeter('')
+                    setAptDropdownOpen(true)
+                  }}
+                  onFocus={() => setAptDropdownOpen(true)}
+                />
+                <button
+                  type='button'
+                  tabIndex={-1}
+                  aria-label='Mở danh sách căn hộ'
+                  className='absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100'
+                  onClick={() => setAptDropdownOpen((v) => !v)}
+                >
+                  <span className='material-symbols-outlined text-lg'>
+                    {aptDropdownOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+              </div>
+              {aptDropdownOpen && (
+                <ul className='absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg'>
+                  <li className='border-b border-slate-100 px-3 py-1.5 text-xs text-slate-500'>
+                    {aptSearchDebounced
+                      ? `Kết quả lọc${aptSearchFetching ? '…' : ''} — gõ thêm để thu hẹp`
+                      : 'Danh sách căn — gõ chữ để lọc nhanh'}
+                  </li>
+                  {aptSearchFetching && aptDropdownOptions.length === 0 ? (
+                    <li className='px-3 py-2 text-slate-500'>Đang tải…</li>
+                  ) : aptDropdownOptions.length === 0 ? (
+                    <li className='px-3 py-2 text-slate-500'>Không tìm thấy căn phù hợp</li>
+                  ) : (
+                    aptDropdownOptions.map((a) => (
+                      <li key={String(a.id)}>
+                        <button
+                          type='button'
+                          className={`w-full px-3 py-2 text-left hover:bg-blue-50 ${
+                            selectedAptId === Number(a.id) ? 'bg-blue-50 font-semibold text-blue-800' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedAptId(Number(a.id))
+                            setAptSearchText(apartmentDisplayName(a))
+                            setAptDropdownOpen(false)
+                            setCMeter('')
+                          }}
+                        >
+                          {apartmentDisplayName(a)}
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
+            <div className='flex-shrink-0'>
+              <label className='mb-1 block text-xs font-semibold text-slate-600'>Tháng *</label>
+              <input
+                type='number'
+                min={1}
+                max={12}
+                placeholder='VD: 5'
+                aria-label='Tháng kỳ'
+                className='h-10 w-[5.5rem] rounded-lg border border-slate-200 px-3 text-sm'
+                value={billMForReading}
+                onChange={(e) => {
+                  setBillMForReading(e.target.value)
+                  setCMeter('')
+                }}
+              />
+            </div>
+            <div className='flex-shrink-0'>
+              <label className='mb-1 block text-xs font-semibold text-slate-600'>Năm *</label>
+              <input
+                type='number'
+                min={2000}
+                max={2100}
+                placeholder='VD: 2026'
+                aria-label='Năm kỳ'
+                className='h-10 w-[6.5rem] rounded-lg border border-slate-200 px-3 text-sm'
+                value={billYForReading}
+                onChange={(e) => {
+                  setBillYForReading(e.target.value)
+                  setCMeter('')
+                }}
+              />
+            </div>
+            <div className='min-w-[12rem] flex-[2]'>
+              <label className='mb-1 block text-xs font-semibold text-slate-600'>Đồng hồ *</label>
+              <select
+                className='h-10 w-full rounded-lg border border-slate-200 px-3 text-sm disabled:bg-slate-100'
+                value={cMeter}
+                onChange={(e) => setCMeter(e.target.value)}
+                required
+                disabled={allMetersHaveReadingInPeriod || metersAvailableForPeriod.length === 0}
+              >
+                <option value=''>
+                  {allMetersHaveReadingInPeriod
+                    ? 'Đã ghi đủ chỉ số tháng này'
+                    : metersForm.length === 0
+                      ? 'Chọn căn hộ trước'
+                      : 'Chọn đồng hồ chưa ghi kỳ này'}
                 </option>
-              ))}
-            </select>
-            <input
-              type='date'
-              className='h-10 min-w-[10.5rem] flex-shrink-0 rounded-lg border border-slate-200 px-3 text-sm'
-              value={cDate}
-              onChange={(e) => setCDate(e.target.value)}
-              required
-            />
+                {metersAvailableForPeriod.map((meter) => (
+                  <option key={String(meter.id)} value={String(meter.id)}>
+                    {meterLabel(meter.id!)}
+                  </option>
+                ))}
+              </select>
+            </div>
             <input
               type='number'
               step='any'
@@ -375,6 +578,7 @@ export default function InvoicesPage() {
             <input
               type='number'
               step='any'
+              min={cPrev !== '' && !Number.isNaN(Number(cPrev)) ? Number(cPrev) + 0.0001 : undefined}
               placeholder='Chỉ số mới *'
               className='h-10 min-w-[7rem] flex-1 rounded-lg border border-slate-200 px-3 text-sm sm:max-w-[9rem]'
               value={cCurr}
@@ -398,9 +602,13 @@ export default function InvoicesPage() {
             </div>
           </form>
           {!Number.isFinite(aptNum) || aptNum <= 0 ? (
-            <p className='mt-2 text-xs text-slate-500'>Nhập ID căn để tải danh sách đồng hồ đang hoạt động.</p>
+            <p className='mt-2 text-xs text-slate-500'>Gõ và chọn căn hộ từ danh sách gợi ý để tải đồng hồ.</p>
           ) : metersForm.length === 0 ? (
             <p className='mt-2 text-xs text-amber-700'>Căn này không có đồng hồ ACTIVE — kiểm tra Quản lý đồng hồ.</p>
+          ) : allMetersHaveReadingInPeriod ? (
+            <p className='mt-2 text-xs text-amber-800'>
+              Căn này đã ghi đủ chỉ số điện/nước cho kỳ {billMForReading}/{billYForReading} — không thêm được nữa.
+            </p>
           ) : null}
         </section>
 
@@ -450,7 +658,9 @@ export default function InvoicesPage() {
                     return (
                       <tr key={item.id} className='border-b border-slate-50'>
                         <td className='px-4 py-4 font-medium text-slate-800'>{item.invoiceCode || item.id}</td>
-                        <td className='px-4 py-4 text-slate-700'>Apt {item.apartmentId}</td>
+                        <td className='px-4 py-4 text-slate-700'>
+                          {apartmentLabelById.get(Number(item.apartmentId)) ?? `Căn #${item.apartmentId}`}
+                        </td>
                         <td className='px-4 py-4 tabular-nums text-slate-700'>
                           {item.billingMonth != null && item.billingYear != null
                             ? `${item.billingMonth}/${item.billingYear}`
@@ -485,7 +695,11 @@ export default function InvoicesPage() {
                         </td>
                         <td className='px-4 py-4 text-right'>
                           <div className='inline-flex flex-wrap justify-end gap-2'>
-                            <button type='button' className={ROW_ACTION_EDIT} onClick={() => navigate(`/admin/invoices/${item.id}`)}>
+                            <button
+                              type='button'
+                              className={ROW_ACTION_EDIT}
+                              onClick={() => navigate(`/admin/invoices/${item.id}`)}
+                            >
                               Chi tiết
                             </button>
                             {item.status === 'CANCELLED' ? (

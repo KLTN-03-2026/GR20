@@ -268,6 +268,23 @@ const restoreMeterReading = async (id) => {
   return result.rows[0];
 };
 
+/** Đã có bản ghi chỉ số (chưa xóa) cho đồng hồ trong tháng/năm của `readingDate`. */
+const hasMeterReadingInBillingMonth = async (meterId, readingDate) => {
+  const r = await pool.query(
+    `
+      SELECT 1
+      FROM meter_readings
+      WHERE meter_id = $1
+        AND deleted_at IS NULL
+        AND reading_date >= date_trunc('month', $2::date)
+        AND reading_date < (date_trunc('month', $2::date) + INTERVAL '1 month')
+      LIMIT 1
+    `,
+    [meterId, readingDate]
+  );
+  return Boolean(r.rows[0]);
+};
+
 /** Chỉ số mới của tháng hiện tại: chỉ số cũ = chỉ số mới (current) của lần ghi gần nhất trước đầu tháng `readingDate`. */
 const getSuggestedPreviousReading = async (meterId, readingDate) => {
   const r = await pool.query(
@@ -293,6 +310,7 @@ module.exports = {
   getMeterReadingsByUserId,
   getMeterReadingsByUserAndMeterId,
   getSuggestedPreviousReading,
+  hasMeterReadingInBillingMonth,
   updateMeterReading,
   deleteMeterReading,
   restoreMeterReading,

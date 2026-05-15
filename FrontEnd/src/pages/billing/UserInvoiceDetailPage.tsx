@@ -1,20 +1,17 @@
-import { useContext, useMemo } from 'react'
+import { useContext, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AppContext } from 'src/contexts/app.context'
 import { invoiceItemsApi } from 'src/apis/billing_api/invoice-items.api'
 import { invoicesApi } from 'src/apis/billing_api/invoices.api'
+import { paymentsApi } from 'src/apis/billing_api/payments.api'
 import { meterReadingsApi } from 'src/apis/utility_api/meter-readings.api'
 import { utilityMetersApi } from 'src/apis/utility_api/utility-meters.api'
 import { utilityPricingApi } from 'src/apis/utility_api/utility-pricing.api'
 import type { Invoice } from 'src/types/invoice.type'
 import type { InvoiceItem } from 'src/types/invoice-item.type'
 import type { UtilityMeter } from 'src/types/utility-meter.type'
-import {
-  formatVnd,
-  invoiceStatusBadgeClass,
-  invoiceStatusVi
-} from 'src/utils/billing-ui'
+import { formatVnd, invoiceStatusBadgeClass, invoiceStatusVi } from 'src/utils/billing-ui'
 import { formatDateViVN } from 'src/utils/date-vi'
 import {
   formatInvoicePeriodLabel,
@@ -39,6 +36,8 @@ type PricingRow = { id?: string; meterType?: string; unit?: string; pricePerUnit
 export default function UserInvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const wantPay = searchParams.get('pay') === '1'
   const { user } = useContext(AppContext)
   const userId = String((user as any)?.id || (user as any)?._id || '')
   const invoiceId = id ?? ''
@@ -50,6 +49,33 @@ export default function UserInvoiceDetailPage() {
   })
 
   const inv = invoiceQuery.data?.data?.data ?? null
+  const invPending = String(inv?.status || '').toUpperCase() === 'PENDING'
+
+  const paymentByInvoiceQuery = useQuery({
+    queryKey: ['payment-by-invoice', invoiceId],
+    queryFn: async () => {
+      try {
+        const r = await paymentsApi.getByInvoiceId(String(invoiceId))
+        const row = r.data?.data as { id?: string | number; status?: string } | undefined
+        if (row && String(row.status || '').toUpperCase() === 'PENDING') return row
+        return null
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 404) return null
+        throw err
+      }
+    },
+    enabled: Boolean(invoiceId && invPending),
+    retry: false
+  })
+  const pendingPaymentId =
+    paymentByInvoiceQuery.data?.id != null ? String(paymentByInvoiceQuery.data.id) : ''
+
+  useEffect(() => {
+    if (wantPay && pendingPaymentId) {
+      navigate(`/payments/${pendingPaymentId}?checkout=1`, { replace: true })
+    }
+  }, [wantPay, pendingPaymentId, navigate])
 
   const itemsQuery = useQuery({
     queryKey: ['invoice-items', invoiceId],
@@ -162,10 +188,7 @@ export default function UserInvoiceDetailPage() {
     })
   }, [readings, meterTypeById, priceByMeterType])
 
-  const itemsSum = useMemo(
-    () => Number(items.reduce((s, row) => s + Number(row.amount || 0), 0).toFixed(2)),
-    [items]
-  )
+  const itemsSum = useMemo(() => Number(items.reduce((s, row) => s + Number(row.amount || 0), 0).toFixed(2)), [items])
 
   if (!userId) {
     return <div className='px-4 py-8 text-center text-slate-500'>Vui lòng đăng nhập.</div>
@@ -359,41 +382,53 @@ export default function UserInvoiceDetailPage() {
             )}
           </dl>
         </div>
-
         {hasPeriod && (
-          <div className='mt-8 space-y-8'>
-            <section
-              id='muc-1-gia-dien-nuoc'
-              className='scroll-mt-24 overflow-hidden rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/80 to-white shadow-sm'
-            >
-              <div className='border-b border-amber-100 px-6 py-4'>
-                <h2 className='text-lg font-extrabold text-slate-900'>
-                  <span className='mr-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-sm font-black text-white'>
+          <div className='mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm'>
+            {/* HEADER */}
+            <div className='border-b border-slate-200 bg-gradient-to-r from-blue-50 to-emerald-50 px-6 py-5'>
+              <h2 className='text-2xl font-extrabold text-slate-900'>Thông tin điện / nước kỳ này</h2>
+
+              <p className='mt-1 text-sm text-slate-600'>
+                Kỳ{' '}
+                <strong>
+                  {billM}/{billY}
+                </strong>{' '}
+                — căn hộ <strong>#{aptId}</strong>
+              </p>
+            </div>
+
+            <div className='space-y-8 p-6'>
+              {/* ================= GIÁ ================= */}
+              <section>
+                <div className='mb-4 flex items-center gap-3'>
+                  <div className='flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 font-bold text-white'>
                     1
-                  </span>
-                  Giá điện — nước (đơn giá đang áp dụng)
-                </h2>
-                <p className='mt-1 text-sm text-slate-600'>Đơn giá tham khảo khi nhân với tiêu thụ chỉ số (theo loại đồng hồ).</p>
-              </div>
-              <div className='overflow-x-auto px-2 pb-4 pt-2'>
-                {pricingQuery.isLoading ? (
-                  <p className='px-4 py-6 text-sm text-slate-500'>Đang tải bảng giá…</p>
-                ) : pricing.length === 0 ? (
-                  <p className='px-4 py-6 text-sm text-amber-900'>Chưa có bản giá ACTIVE trong hệ thống.</p>
-                ) : (
+                  </div>
+
+                  <div>
+                    <h3 className='text-lg font-bold text-slate-900'>Giá điện — nước</h3>
+
+                    <p className='text-sm text-slate-500'>Đơn giá đang áp dụng theo từng loại đồng hồ.</p>
+                  </div>
+                </div>
+
+                <div className='overflow-x-auto rounded-xl border border-slate-100'>
                   <table className='w-full min-w-[480px] border-collapse text-left text-sm'>
                     <thead>
-                      <tr className='border-b border-slate-100 text-xs font-bold uppercase text-slate-500'>
+                      <tr className='border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase text-slate-500'>
                         <th className='px-4 py-3'>Loại</th>
                         <th className='px-4 py-3'>Đơn vị</th>
                         <th className='px-4 py-3 text-right'>Đơn giá</th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {pricing.map((p) => (
                         <tr key={String(p.id)} className='border-b border-slate-50'>
                           <td className='px-4 py-3 font-medium text-slate-900'>{meterTypeVi(p.meterType)}</td>
+
                           <td className='px-4 py-3 text-slate-700'>{p.unit || '—'}</td>
+
                           <td className='px-4 py-3 text-right font-semibold tabular-nums'>
                             {formatVnd(Number(p.pricePerUnit) || 0)}
                           </td>
@@ -401,26 +436,24 @@ export default function UserInvoiceDetailPage() {
                       ))}
                     </tbody>
                   </table>
-                )}
-              </div>
-            </section>
+                </div>
+              </section>
 
-            <section id='muc-2-chi-so-thang' className='scroll-mt-24 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm'>
-              <div className='border-b border-blue-100 bg-blue-50/50 px-6 py-4'>
-                <h2 className='text-lg font-extrabold text-slate-900'>
-                  <span className='mr-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white'>
+              {/* ================= CHỈ SỐ ================= */}
+              <section>
+                <div className='mb-4 flex items-center gap-3'>
+                  <div className='flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 font-bold text-white'>
                     2
-                  </span>
-                  Chỉ số kỳ hóa đơn ({billM}/{billY}, căn #{aptId})
-                </h2>
-                <p className='mt-1 text-sm text-slate-600'>Bản ghi chỉ số theo căn và kỳ hóa đơn của bạn.</p>
-              </div>
-              <div className='overflow-x-auto'>
-                {readingsQuery.isLoading ? (
-                  <p className='px-6 py-8 text-sm text-slate-500'>Đang tải chỉ số…</p>
-                ) : readings.length === 0 ? (
-                  <p className='px-6 py-8 text-sm text-slate-600'>Chưa có chỉ số cho kỳ này.</p>
-                ) : (
+                  </div>
+
+                  <div>
+                    <h3 className='text-lg font-bold text-slate-900'>Chỉ số kỳ hóa đơn</h3>
+
+                    <p className='text-sm text-slate-500'>Chỉ số tiêu thụ theo từng đồng hồ.</p>
+                  </div>
+                </div>
+
+                <div className='overflow-x-auto rounded-xl border border-slate-100'>
                   <table className='w-full min-w-[640px] border-collapse text-left text-sm'>
                     <thead>
                       <tr className='border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase text-slate-500'>
@@ -432,88 +465,82 @@ export default function UserInvoiceDetailPage() {
                         <th className='px-6 py-3 text-right'>Tiêu thụ</th>
                       </tr>
                     </thead>
+
                     <tbody className='text-slate-800'>
                       {readings.map((r) => {
                         const mid = r.meterId != null ? String(r.meterId) : '—'
+
                         const mt = r.meterId != null ? meterTypeVi(meterTypeById.get(Number(r.meterId))) : '—'
+
                         return (
                           <tr key={String(r.id)} className='border-b border-slate-50'>
                             <td className='px-6 py-3 font-mono text-xs'>#{mid}</td>
+
                             <td className='px-6 py-3'>{mt}</td>
+
                             <td className='px-6 py-3 tabular-nums'>
                               {r.readingDate ? formatDateViVN(r.readingDate) : '—'}
                             </td>
+
                             <td className='px-6 py-3 text-right tabular-nums'>{r.previousReading ?? '—'}</td>
+
                             <td className='px-6 py-3 text-right tabular-nums'>{r.currentReading ?? '—'}</td>
+
                             <td className='px-6 py-3 text-right font-semibold tabular-nums'>{r.consumption ?? '—'}</td>
                           </tr>
                         )
                       })}
                     </tbody>
                   </table>
-                )}
-              </div>
-            </section>
+                </div>
+              </section>
 
-            <section
-              id='muc-3-cach-tinh-tien'
-              className='scroll-mt-24 overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/60 to-white shadow-sm'
-            >
-              <div className='border-b border-emerald-100 px-6 py-4'>
-                <h2 className='text-lg font-extrabold text-slate-900'>
-                  <span className='mr-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-black text-white'>
+              {/* ================= CÁCH TÍNH ================= */}
+              <section>
+                <div className='mb-4 flex items-center gap-3'>
+                  <div className='flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 font-bold text-white'>
                     3
-                  </span>
-                  Cách tính tiền điện / nước (tóm tắt)
-                </h2>
-                <p className='mt-1 text-sm text-slate-600'>
-                  Cùng logic hệ thống dùng cho dòng tiện ích trên hóa đơn (trừ khi Ban quản lý chỉnh tay tổng).
-                </p>
-              </div>
-              <div className='space-y-4 px-6 py-5 text-sm text-slate-800'>
-                <ol className='list-decimal space-y-2 pl-5'>
-                  <li>
-                    <strong>Tiêu thụ</strong> = chỉ số mới − chỉ số cũ (cùng một lần ghi trong kỳ).
-                  </li>
-                  <li>
-                    <strong>Tiền một loại</strong> = tiêu thụ × đơn giá ở mục 1 (đúng loại ELECTRIC / WATER / GAS).
-                  </li>
-                  <li>
-                    <strong>Tổng hóa đơn</strong> = tổng các dòng (tiện ích + tiền thuê tháng nếu có hợp đồng thuê hiệu lực).
-                  </li>
-                </ol>
-                {calcRows.length > 0 && (
-                  <div className='overflow-x-auto rounded-xl border border-slate-100 bg-white'>
-                    <table className='w-full min-w-[520px] border-collapse text-left text-sm'>
-                      <thead>
-                        <tr className='border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase text-slate-500'>
-                          <th className='px-4 py-3'>Loại</th>
-                          <th className='px-4 py-3 text-right'>Tiêu thụ</th>
-                          <th className='px-4 py-3 text-right'>Đơn giá</th>
-                          <th className='px-4 py-3 text-right'>Tiền (= TT × ĐG)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {calcRows.map((row) => (
-                          <tr key={String(row.id)} className='border-b border-slate-50'>
-                            <td className='px-4 py-3'>{meterTypeVi(row.meterType)}</td>
-                            <td className='px-4 py-3 text-right tabular-nums'>{row.consumption ?? '—'}</td>
-                            <td className='px-4 py-3 text-right tabular-nums'>{formatVnd(row.unitPrice)}</td>
-                            <td className='px-4 py-3 text-right font-semibold tabular-nums'>{formatVnd(row.lineTotal)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
                   </div>
-                )}
-                <p className='text-xs text-slate-500'>
-                  Số tiền ước tính chỉ để tham khảo; giá trị chính thức nằm ở bảng dòng mục bên dưới.
-                </p>
-              </div>
-            </section>
+
+                  <div>
+                    <h3 className='text-lg font-bold text-slate-900'>Cách tính tiền</h3>
+
+                    <p className='text-sm text-slate-500'>Công thức tính tiền điện / nước.</p>
+                  </div>
+                </div>
+
+                <div className='overflow-x-auto rounded-xl border border-slate-100'>
+                  <table className='w-full min-w-[520px] border-collapse text-left text-sm'>
+                    <thead>
+                      <tr className='border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase text-slate-500'>
+                        <th className='px-4 py-3'>Loại</th>
+                        <th className='px-4 py-3 text-right'>Tiêu thụ</th>
+                        <th className='px-4 py-3 text-right'>Đơn giá</th>
+                        <th className='px-4 py-3 text-right'>Thành tiền</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {calcRows.map((row) => (
+                        <tr key={String(row.id)} className='border-b border-slate-50'>
+                          <td className='px-4 py-3'>{meterTypeVi(row.meterType)}</td>
+
+                          <td className='px-4 py-3 text-right tabular-nums'>{row.consumption ?? '—'}</td>
+
+                          <td className='px-4 py-3 text-right tabular-nums'>{formatVnd(row.unitPrice)}</td>
+
+                          <td className='px-4 py-3 text-right font-semibold tabular-nums'>
+                            {formatVnd(row.lineTotal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
           </div>
         )}
-
         <div className='mt-6 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm'>
           <div className='border-b border-slate-100 px-6 py-4'>
             <h2 className='text-lg font-bold text-slate-900'>Dòng mục</h2>
@@ -561,7 +588,8 @@ export default function UserInvoiceDetailPage() {
                   {Math.abs(itemsSum - Number(inv.totalAmount || 0)) > 0.01 && (
                     <tr>
                       <td colSpan={2} className='px-6 py-3 text-right text-xs text-amber-700'>
-                        Lưu ý: tổng các mục ({formatVnd(itemsSum)}) khác tổng trên hóa đơn ({formatVnd(inv.totalAmount)}).
+                        Lưu ý: tổng các mục ({formatVnd(itemsSum)}) khác tổng trên hóa đơn ({formatVnd(inv.totalAmount)}
+                        ).
                       </td>
                     </tr>
                   )}
@@ -578,13 +606,33 @@ export default function UserInvoiceDetailPage() {
           >
             ← Về danh sách hóa đơn
           </Link>
-          <Link
-            to='/payments'
-            className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700'
-          >
-            Thanh toán của tôi
-            <span className='material-symbols-outlined text-base'>payments</span>
-          </Link>
+          {invPending && pendingPaymentId && (
+            <Link
+              to={`/payments/${pendingPaymentId}?checkout=1`}
+              className='inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700'
+            >
+              Thanh toán
+              <span className='material-symbols-outlined text-base'>payments</span>
+            </Link>
+          )}
+          {invPending && !pendingPaymentId && paymentByInvoiceQuery.isFetching && (
+            <span className='inline-flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-500'>
+              Đang tải phiếu thanh toán…
+            </span>
+          )}
+          {invPending && !pendingPaymentId && !paymentByInvoiceQuery.isFetching && (
+            <span className='text-sm text-amber-800'>
+              Chưa có phiếu thanh toán cho hóa đơn này. Vui lòng liên hệ ban quản lý.
+            </span>
+          )}
+          {!invPending && (
+            <Link
+              to='/payments'
+              className='inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50'
+            >
+              Lịch sử thanh toán
+            </Link>
+          )}
         </div>
       </div>
     </div>
