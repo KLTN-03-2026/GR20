@@ -1,5 +1,6 @@
 const { pool } = require("../../configs/database.config");
 const { AppError } = require("../../common/app-error");
+const ERROR_CODES = require("./utility-meter-errors");
 
 const isUniqueViolation = (err) => err && err.code === "23505";
 const isForeignKeyViolation = (err) => err && err.code === "23503";
@@ -15,8 +16,10 @@ const createUtilityMeter = async (entity) => {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
-    if (isUniqueViolation(err)) throw new AppError(409, "meterCode already exists");
-    if (isForeignKeyViolation(err)) throw new AppError(400, "Invalid apartmentId");
+    if (isUniqueViolation(err))
+      throw new AppError(409, "meterCode already exists", undefined, ERROR_CODES.METER_CODE_CONFLICT);
+    if (isForeignKeyViolation(err))
+      throw new AppError(400, "Invalid apartmentId", undefined, ERROR_CODES.INVALID_APARTMENT_ID);
     throw err;
   }
 };
@@ -143,8 +146,10 @@ const updateUtilityMeter = async (id, entity) => {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
-    if (isUniqueViolation(err)) throw new AppError(409, "meterCode already exists");
-    if (isForeignKeyViolation(err)) throw new AppError(400, "Invalid apartmentId");
+    if (isUniqueViolation(err))
+      throw new AppError(409, "meterCode already exists", undefined, ERROR_CODES.METER_CODE_CONFLICT);
+    if (isForeignKeyViolation(err))
+      throw new AppError(400, "Invalid apartmentId", undefined, ERROR_CODES.INVALID_APARTMENT_ID);
     throw err;
   }
 };

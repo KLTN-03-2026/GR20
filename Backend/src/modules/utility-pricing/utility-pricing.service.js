@@ -1,4 +1,5 @@
 const { AppError } = require("../../common/app-error");
+const ERROR_CODES = require("./utility-pricing-errors");
 const mapper = require("./utility-pricing.mapper");
 const repo = require("./utility-pricing.repository");
 const {
@@ -38,13 +39,13 @@ const getActiveUtilityPricing = async () => {
 };
 const getActiveUtilityPricingByMeterType = async (meterType) => {
   const row = await repo.getActivePricingByMeterType(parseMeterTypePath(meterType));
-  if (!row) throw new AppError(404, "Utility pricing not found");
+  if (!row) throw new AppError(404, "Utility pricing not found", undefined, ERROR_CODES.UTILITY_PRICING_NOT_FOUND);
   return mapper.toResponse(row);
 };
 
 const getUtilityPricingById = async (id) => {
   const row = await repo.getUtilityPricingById(parsePathId(id));
-  if (!row) throw new AppError(404, "Utility pricing not found");
+  if (!row) throw new AppError(404, "Utility pricing not found", undefined, ERROR_CODES.UTILITY_PRICING_NOT_FOUND);
   return mapper.toResponse(row);
 };
 
@@ -52,11 +53,16 @@ const updateUtilityPricing = async (id, body) => {
   const parsedId = parsePathId(id);
   const patch = parseUpdateUtilityPricing(body);
   const existing = await repo.getUtilityPricingById(parsedId);
-  if (!existing) throw new AppError(404, "Utility pricing not found");
+  if (!existing) throw new AppError(404, "Utility pricing not found", undefined, ERROR_CODES.UTILITY_PRICING_NOT_FOUND);
 
   // Không cho đổi meterType để giữ "giá cố định theo loại" đơn giản.
   if (patch.meterType !== undefined) {
-    throw new AppError(400, "meterType cannot be changed. Create a new pricing for that meterType instead.");
+    throw new AppError(
+      400,
+      "meterType cannot be changed. Create a new pricing for that meterType instead.",
+      undefined,
+      ERROR_CODES.UTILITY_PRICING_METER_TYPE_IMMUTABLE
+    );
   }
 
   if (patch.unit !== undefined) {
@@ -72,13 +78,13 @@ const updateUtilityPricing = async (id, body) => {
 
 const deleteUtilityPricing = async (id) => {
   const row = await repo.deleteUtilityPricing(parsePathId(id));
-  if (!row) throw new AppError(404, "Utility pricing not found");
+  if (!row) throw new AppError(404, "Utility pricing not found", undefined, ERROR_CODES.UTILITY_PRICING_NOT_FOUND);
   return { id: row.id };
 };
 
 const restoreUtilityPricing = async (id) => {
   const row = await repo.restoreUtilityPricing(parsePathId(id));
-  if (!row) throw new AppError(404, "Utility pricing not found");
+  if (!row) throw new AppError(404, "Utility pricing not found", undefined, ERROR_CODES.UTILITY_PRICING_NOT_FOUND);
   return { id: row.id };
 };
 

@@ -13,7 +13,7 @@ const toEntity = (req) => {
 };
 
 const toResponse = (row) => {
-  return {
+  const base = {
     id: row.id,
     name: row.name,
     code: row.code,
@@ -24,6 +24,10 @@ const toResponse = (row) => {
     status: row.status,
     createdAt: row.created_at,
   };
+  if (row.apartments != null) {
+    base.apartments = row.apartments;
+  }
+  return base;
 };
 
 module.exports = { toEntity, toResponse };

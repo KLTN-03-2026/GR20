@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 const residentController = require('./resident.controller');
-const { verifyToken } = require('../../middlewares/auth.middleware');
+const { authenticate } = require('../../middlewares/auth.middleware');
+
+router.use(authenticate);
 
 // GET /api/residents
 router.get('/', residentController.getAllResidents);
@@ -13,8 +15,8 @@ router.get('/apartment/:apartmentId', residentController.getResidentsByApartment
 // GET /api/residents/user/:userId/apartments
 router.get('/user/:userId/apartments', residentController.getUserApartments);
 
-// GET /api/residents/me/apartments (JWT)
-router.get('/me/apartments', verifyToken, residentController.getMyApartments);
+// GET /api/residents/me/apartments
+router.get('/me/apartments', residentController.getMyApartments);
 
 // POST /api/residents
 router.post('/', residentController.createResident);

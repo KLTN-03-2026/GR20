@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { DashboardApi } from 'src/apis/TongQuanProtection/TongQuanProtection.api'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 export default function HomePageSecurity() {
   const [hoveredHour, setHoveredHour] = useState<{ hour: number; count: number; x: number; y: number } | null>(null)
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   const {
     data: dashboardResponse,
@@ -17,42 +20,37 @@ export default function HomePageSecurity() {
   })
 
   const dashboardData = dashboardResponse?.data?.data
-  const totalScansToday = dashboardData?.overview?.totalScansToday || 0
-  const successRate = dashboardData?.overview?.successRate || 0
-  const deniedCount = dashboardData?.overview?.deniedCount || 0
-  const peakHour = dashboardData?.overview?.peakHour || '14:00 - 15:00'
-  const peakHourCount = dashboardData?.overview?.peakHourCount || 56
-  const hourlyStatsRaw = dashboardData?.charts?.hourlyStats || Array(24).fill(0)
-  // Chuyển đổi từ UTC sang giờ Việt Nam (UTC+7)
-  const hourlyStats = [...hourlyStatsRaw.slice(17), ...hourlyStatsRaw.slice(0, 17)]
-  const buildingDistribution = dashboardData?.charts?.buildingDistribution || []
-  const topDeniedQr = dashboardData?.alerts?.topDeniedQr || []
-  const anomalies = dashboardData?.alerts?.anomalies || []
-  const recentLogs = dashboardData?.recentLogs || []
-  const activeResidents = dashboardData?.stats?.activeResidents || 0
-  const personalQrCount = dashboardData?.stats?.personalQrCount || 0
-  const guestQrCount = dashboardData?.stats?.guestQrCount || 0
+  const totalScansToday = dashboardData?.overview?.totalScansToday ?? 0
+  const successRate = dashboardData?.overview?.successRate ?? 0
+  const deniedCount = dashboardData?.overview?.deniedCount ?? 0
+  const peakHour = dashboardData?.overview?.peakHour ?? '14:00 - 15:00'
+  const peakHourCount = dashboardData?.overview?.peakHourCount ?? 56
+  const hourlyStats = dashboardData?.charts?.hourlyStats ?? Array(24).fill(0)
+  const buildingDistribution = dashboardData?.charts?.buildingDistribution ?? []
+  const recentLogs = dashboardData?.recentLogs ?? []
 
   const maxHourlyValue = Math.max(...hourlyStats, 1)
-  const totalScans = totalScansToday || 171
 
-  // Format time
-  const formatTime = (isoString: string) => {
-    const date = new Date(isoString)
-    const vietnamTime = new Date(date.getTime() + 7 * 60 * 60 * 1000)
-    return vietnamTime.toLocaleTimeString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    })
-  }
+  // Debug dữ liệu
+  // useEffect(() => {
+  //   if (dashboardData?.charts?.hourlyStats) {
+  //     console.log('Hourly stats data:', dashboardData.charts.hourlyStats)
+  //     dashboardData.charts.hourlyStats.forEach((count: number, hour: number) => {
+  //       if (count > 0) {
+  //         console.log(`Hour ${hour}:00 -> ${count} scans`)
+  //       }
+  //     })
+  //   }
+  // }, [dashboardData])
 
-  // Tính vị trí điểm trên biểu đồ
-  const getPointPosition = (index: number, count: number) => {
-    const x = (index / 23) * 1000
-    const y = 300 - (count / maxHourlyValue) * 250
-    return { x, y }
+  // Xử lý hover trên các điểm
+  const handlePointHover = (hour: number, count: number, event: React.MouseEvent<SVGCircleElement>) => {
+    if (!svgRef.current) return
+    const svgRect = svgRef.current.getBoundingClientRect()
+    const x = svgRect.left + (hour / 23) * svgRect.width
+    const y = svgRect.top + (svgRect.height - (count / maxHourlyValue) * (svgRect.height - 20))
+
+    setHoveredHour({ hour, count, x, y })
   }
 
   if (isLoading) {
@@ -95,14 +93,6 @@ export default function HomePageSecurity() {
               Báo cáo hoạt động mã QR thời gian thực
             </p>
           </div>
-          {/* <div className='flex gap-3'>
-            <button className='px-5 py-2.5 rounded-xl bg-surface-container-high text-on-surface font-bold text-sm flex items-center gap-2 border border-outline-variant/20 hover:bg-outline-variant/10 transition-colors'>
-              <span className='material-symbols-outlined text-lg'>calendar_today</span> Hôm nay
-            </button>
-            <button className='px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-sm flex items-center gap-2 shadow-lg shadow-primary/20 hover:bg-primary-container transition-all'>
-              <span className='material-symbols-outlined text-lg'>file_download</span> Xuất báo cáo
-            </button>
-          </div> */}
         </div>
 
         {/* Stats Cards */}
@@ -113,7 +103,7 @@ export default function HomePageSecurity() {
                 <p className='text-on-surface-variant text-[11px] font-bold tracking-widest uppercase'>
                   Tổng lượt quét
                 </p>
-                <h4 className='text-3xl font-black text-on-surface'>{totalScans.toLocaleString()}</h4>
+                <h4 className='text-3xl font-black text-on-surface'>{Number(totalScansToday).toLocaleString()}</h4>
               </div>
               <div className='p-2 rounded-lg bg-primary/10 text-primary'>
                 <span className='material-symbols-outlined'>qr_code_2</span>
@@ -127,7 +117,7 @@ export default function HomePageSecurity() {
                 <p className='text-on-surface-variant text-[11px] font-bold tracking-widest uppercase'>
                   Tỉ lệ thành công
                 </p>
-                <h4 className='text-3xl font-black text-on-surface'>{successRate}%</h4>
+                <h4 className='text-3xl font-black text-on-surface'>{Number(successRate).toLocaleString()}%</h4>
               </div>
               <div className='p-2 rounded-lg bg-green-500/10 text-green-600'>
                 <span className='material-symbols-outlined'>check_circle</span>
@@ -141,7 +131,7 @@ export default function HomePageSecurity() {
                 <p className='text-on-surface-variant text-[11px] font-bold tracking-widest uppercase'>
                   Lượt bị từ chối
                 </p>
-                <h4 className='text-3xl font-black text-error'>{deniedCount.toLocaleString()}</h4>
+                <h4 className='text-3xl font-black text-error'>{Number(deniedCount).toLocaleString()}</h4>
               </div>
               <div className='p-2 rounded-lg bg-error/10 text-error'>
                 <span className='material-symbols-outlined'>block</span>
@@ -160,7 +150,9 @@ export default function HomePageSecurity() {
               </div>
             </div>
             <div className='mt-2'>
-              <span className='text-on-surface-variant text-xs'>{peakHourCount.toLocaleString()} lượt ghi nhận</span>
+              <span className='text-on-surface-variant text-xs'>
+                {Number(peakHourCount).toLocaleString()} lượt ghi nhận
+              </span>
             </div>
           </div>
         </div>
@@ -183,14 +175,14 @@ export default function HomePageSecurity() {
             </div>
 
             {/* Line Chart SVG with Tooltip */}
-            <div className='relative h-[320px] w-full'>
-              {/* Tooltip hiển thị gần điểm hover */}
+            <div ref={chartContainerRef} className='relative h-[320px] w-full'>
+              {/* Tooltip */}
               {hoveredHour && (
                 <div
                   className='fixed z-50 bg-gray-800 text-white rounded-lg py-2 px-3 shadow-lg whitespace-nowrap pointer-events-none'
                   style={{
-                    left: hoveredHour.x - 35,
-                    top: hoveredHour.y - 50,
+                    left: hoveredHour.x + 15,
+                    top: hoveredHour.y - 40,
                     transform: 'translate(-50%, -100%)'
                   }}
                 >
@@ -207,7 +199,7 @@ export default function HomePageSecurity() {
                 </div>
               )}
 
-              <svg className='w-full h-full' viewBox='0 0 1000 300' preserveAspectRatio='none'>
+              <svg ref={svgRef} className='w-full h-full' viewBox='0 0 1000 300' preserveAspectRatio='none'>
                 {/* Grid lines */}
                 <line stroke='rgba(0,0,0,0.05)' strokeDasharray='4' strokeWidth='1' x1='0' x2='1000' y1='75' y2='75' />
                 <line
@@ -234,16 +226,16 @@ export default function HomePageSecurity() {
                   0
                 </text>
                 <text x='-10' y='225' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
-                  25
+                  {Math.round(maxHourlyValue * 0.25)}
                 </text>
                 <text x='-10' y='150' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
-                  50
+                  {Math.round(maxHourlyValue * 0.5)}
                 </text>
                 <text x='-10' y='75' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
-                  75
+                  {Math.round(maxHourlyValue * 0.75)}
                 </text>
                 <text x='-10' y='0' fill='#717786' fontSize='10' fontWeight='bold' textAnchor='end'>
-                  100
+                  {maxHourlyValue}
                 </text>
 
                 {/* Area gradient */}
@@ -257,7 +249,7 @@ export default function HomePageSecurity() {
                 {/* Area fill */}
                 <path
                   d={`M0,300 L0,${300 - (hourlyStats[0] / maxHourlyValue) * 250} ${hourlyStats
-                    .map((count, i) => {
+                    .map((count: number, i: number) => {
                       const x = (i / 23) * 1000
                       const y = 300 - (count / maxHourlyValue) * 250
                       return `L${x},${y}`
@@ -269,7 +261,7 @@ export default function HomePageSecurity() {
                 {/* Line */}
                 <path
                   d={`M0,${300 - (hourlyStats[0] / maxHourlyValue) * 250} ${hourlyStats
-                    .map((count, i) => {
+                    .map((count: number, i: number) => {
                       const x = (i / 23) * 1000
                       const y = 300 - (count / maxHourlyValue) * 250
                       return `L${x},${y}`
@@ -282,8 +274,9 @@ export default function HomePageSecurity() {
                 />
 
                 {/* Data points */}
-                {hourlyStats.map((count, i) => {
-                  const { x, y } = getPointPosition(i, count)
+                {hourlyStats.map((count: number, i: number) => {
+                  const x = (i / 23) * 1000
+                  const y = 300 - (count / maxHourlyValue) * 250
                   const isPeak = count === maxHourlyValue && maxHourlyValue > 0
                   const hour = i
 
@@ -295,7 +288,7 @@ export default function HomePageSecurity() {
                         r='12'
                         fill='transparent'
                         className='cursor-pointer'
-                        onMouseEnter={() => setHoveredHour({ hour, count, x: x + 320, y: y + 320 })}
+                        onMouseEnter={(e) => handlePointHover(hour, count, e)}
                         onMouseLeave={() => setHoveredHour(null)}
                       />
                       <circle
@@ -306,7 +299,7 @@ export default function HomePageSecurity() {
                         stroke='#005ab7'
                         strokeWidth={isPeak ? '3' : '2'}
                         className='cursor-pointer transition-all duration-200'
-                        onMouseEnter={() => setHoveredHour({ hour, count, x: x + 320, y: y + 320 })}
+                        onMouseEnter={(e) => handlePointHover(hour, count, e)}
                         onMouseLeave={() => setHoveredHour(null)}
                       />
                       {isPeak && (
@@ -322,11 +315,17 @@ export default function HomePageSecurity() {
               {/* X-Axis Labels */}
               <div className='flex justify-between mt-2 text-[11px] font-bold text-on-surface-variant/60'>
                 <span>00:00</span>
+                <span>02:00</span>
                 <span>04:00</span>
+                <span>06:00</span>
                 <span>08:00</span>
+                <span>10:00</span>
                 <span>12:00</span>
+                <span>14:00</span>
                 <span>16:00</span>
+                <span>18:00</span>
                 <span>20:00</span>
+                <span>22:00</span>
                 <span>23:59</span>
               </div>
             </div>
@@ -343,9 +342,14 @@ export default function HomePageSecurity() {
                   <circle cx='50' cy='50' fill='none' r='44' stroke='#e0e3e5' strokeWidth='8' />
                   {buildingDistribution.map((item: any, idx: number) => {
                     const colors = ['#005ab7', '#476083', '#667781']
-                    const offset = buildingDistribution
-                      .slice(0, idx)
-                      .reduce((sum: number, i: any) => sum + parseFloat(i.percentage), 0)
+                    let cumulativeOffset = 0
+                    for (let i = 0; i < idx; i++) {
+                      // cumulativeOffset += parseFloat(buildingDistribution[i]?.percentage || 0)
+                      const percentageValue = buildingDistribution[i]?.percentage
+                      const parsedPercentage =
+                        typeof percentageValue === 'string' ? parseFloat(percentageValue) : Number(percentageValue) || 0
+                      cumulativeOffset += parsedPercentage
+                    }
                     const circumference = 2 * Math.PI * 44
                     const dashArray = (parseFloat(item.percentage) / 100) * circumference
                     return (
@@ -358,14 +362,16 @@ export default function HomePageSecurity() {
                         stroke={colors[idx % colors.length]}
                         strokeWidth='9'
                         strokeDasharray={`${dashArray} ${circumference}`}
-                        strokeDashoffset={-((offset / 100) * circumference)}
+                        strokeDashoffset={-((cumulativeOffset / 100) * circumference)}
                         strokeLinecap='round'
                       />
                     )
                   })}
                 </svg>
                 <div className='absolute inset-0 flex flex-col items-center justify-center'>
-                  <span className='text-4xl font-black text-on-surface'>{totalScans}</span>
+                  <span className='text-4xl font-black text-on-surface'>
+                    {Number(totalScansToday).toLocaleString()}
+                  </span>
                   <span className='text-[10px] font-black uppercase tracking-wide text-on-surface-variant'>
                     Tổng lượt
                   </span>
@@ -375,7 +381,6 @@ export default function HomePageSecurity() {
               <div className='w-full space-y-4 mt-4'>
                 {buildingDistribution.map((building: any, idx: number) => {
                   const colors = ['#005ab7', '#476083', '#667781']
-                  const values = [96, 42, 33]
                   return (
                     <div key={idx} className='flex justify-between items-center'>
                       <div className='flex items-center gap-3'>
@@ -386,7 +391,9 @@ export default function HomePageSecurity() {
                         <div className='text-sm font-black' style={{ color: colors[idx % colors.length] }}>
                           {building.percentage}%
                         </div>
-                        <div className='text-[10px] text-on-surface-variant'>{values[idx]} lần</div>
+                        <div className='text-[10px] text-on-surface-variant'>
+                          {building.count?.toLocaleString() || (idx === 0 ? '96' : idx === 1 ? '42' : '33')} lần
+                        </div>
                       </div>
                     </div>
                   )
@@ -403,9 +410,12 @@ export default function HomePageSecurity() {
               <h3 className='text-2xl font-black text-on-surface'>Nhật ký Truy cập Gần đây</h3>
               <p className='text-sm text-on-surface-variant mt-1'>Dữ liệu cập nhật 5 giây trước</p>
             </div>
-            <button className='px-6 py-2.5 rounded-xl text-primary font-bold text-sm bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-2'>
+            <Link
+              to={'/history/qrcode'}
+              className='px-6 py-2.5 rounded-xl text-primary font-bold text-sm bg-primary/5 hover:bg-primary/10 transition-colors flex items-center gap-2'
+            >
               Xem tất cả <span className='material-symbols-outlined text-lg'>arrow_forward</span>
-            </button>
+            </Link>
           </div>
           <div className='overflow-x-auto'>
             <table className='w-full text-left'>
@@ -427,9 +437,16 @@ export default function HomePageSecurity() {
                 </tr>
               </thead>
               <tbody>
-                {recentLogs.slice(0, 5).map((log: any) => (
+                {recentLogs.slice(0, 5).map((log) => (
                   <tr key={log.id} className='border-b border-outline-variant/5 hover:bg-primary/5 transition-colors'>
-                    <td className='px-8 py-5 text-sm font-bold'>{formatTime(log.time)}</td>
+                    <td className='px-8 py-5 text-sm font-bold'>
+                      {new Date(log.time).toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                      })}
+                    </td>
                     <td className='px-8 py-5'>
                       <div className='flex items-center gap-3'>
                         <div

@@ -5,7 +5,7 @@ import { buildingApi } from 'src/apis/building_api/buildings.api'
 import { toast } from 'react-toastify'
 import type { Resident12 } from 'src/types/resident.type'
 import { useNavigate } from 'react-router-dom'
-
+import AddResidentToApartmentModal from './AddResidentToApartmentModal'
 
 export default function Getresidentlist() {
   const queryClient = useQueryClient()
@@ -14,6 +14,7 @@ export default function Getresidentlist() {
   const [page, setPage] = useState<number>(0)
   const pageSize = 10
   const [selectedResident, setSelectedResident] = useState<Resident12 | null>(null)
+  const [addToApartmentResident, setAddToApartmentResident] = useState<Resident12 | null>(null)
   const navigate = useNavigate()
 
   // Lấy danh sách tòa nhà để lọc
@@ -34,7 +35,6 @@ export default function Getresidentlist() {
       return residentApi.getAllResidents(params)
     }
   })
-console.log(residentsData)
   const residents = residentsData?.data.data || []
   const totalElements = residentsData?.data.totalElements || 0
   const totalPages = residentsData?.data.totalPages || 0
@@ -114,48 +114,46 @@ console.log(residentsData)
 
   if (isLoading) {
     return (
-      <div className="md:ml-64 pt-24 px-6 pb-12 flex justify-center items-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Đang tải dữ liệu...</p>
+      <div className='md:ml-64 pt-24 px-6 pb-12 flex justify-center items-center h-screen'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto'></div>
+          <p className='mt-4 text-gray-500'>Đang tải dữ liệu...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen">
+    <div className='bg-surface text-on-surface min-h-screen'>
       {/* Main */}
-      <main className="px-6 pb-12">
+      <main className='px-6 pb-12'>
         {/* Header */}
-        <div className="flex justify-between items-center mb-10">
+        <div className='flex justify-between items-center mb-10'>
           <div>
-            <h1 className="text-3xl font-bold">Quản lý Cư dân</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Quản lý thông tin cư dân trong hệ thống
-            </p>
+            <h1 className='text-3xl font-bold'>Quản lý Cư dân</h1>
+            <p className='text-sm text-gray-500 mt-1'>Quản lý thông tin cư dân trong hệ thống</p>
           </div>
 
           <button
-  onClick={() => navigate('/Addresident')}
-  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full flex items-center gap-2 transition-all"
->
-  {/* <span className="material-symbols-outlined text-sm">person_add</span> */}
-  Thêm Cư dân
-</button>
+            onClick={() => navigate('/residents/add')}
+            className='bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full flex items-center gap-2 transition-all'
+          >
+            {/* <span className="material-symbols-outlined text-sm">person_add</span> */}
+            Thêm Cư dân
+          </button>
         </div>
 
         {/* Filter */}
-        <div className="bg-white p-6 rounded-xl mb-6 shadow-sm">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Tòa nhà</label>
-              <select 
+        <div className='bg-white p-6 rounded-xl mb-6 shadow-sm'>
+          <div className='flex flex-wrap gap-4'>
+            <div className='flex-1 min-w-[200px]'>
+              <label className='block text-xs font-medium text-gray-500 mb-1'>Tòa nhà</label>
+              <select
                 value={selectedBuilding}
                 onChange={(e) => setSelectedBuilding(e.target.value)}
-                className="w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className='w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               >
-                <option value="">Tất cả tòa nhà</option>
+                <option value=''>Tất cả tòa nhà</option>
                 {buildings.map((building: any) => (
                   <option key={building.id} value={building.id}>
                     {building.name}
@@ -164,28 +162,28 @@ console.log(residentsData)
               </select>
             </div>
 
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
-              <select 
+            <div className='flex-1 min-w-[200px]'>
+              <label className='block text-xs font-medium text-gray-500 mb-1'>Trạng thái</label>
+              <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className='w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
               >
-                <option value="">Tất cả trạng thái</option>
-                <option value="ACTIVE">Đang cư trú</option>
-                <option value="INACTIVE">Không hoạt động</option>
-                <option value="MOVED_OUT">Đã chuyển đi</option>
+                <option value=''>Tất cả trạng thái</option>
+                <option value='ACTIVE'>Đang cư trú</option>
+                <option value='INACTIVE'>Không hoạt động</option>
+                <option value='MOVED_OUT'>Đã chuyển đi</option>
               </select>
             </div>
 
-            <div className="flex items-end">
+            <div className='flex items-end'>
               <button
                 onClick={() => {
                   setSelectedBuilding('')
                   setSelectedStatus('')
                   setPage(0)
                 }}
-                className="px-4 py-2.5 text-gray-600 hover:text-gray-800 transition-colors"
+                className='px-4 py-2.5 text-gray-600 hover:text-gray-800 transition-colors'
               >
                 Xóa lọc
               </button>
@@ -194,74 +192,81 @@ console.log(residentsData)
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b">
+        <div className='bg-white rounded-xl shadow-sm overflow-hidden'>
+          <div className='overflow-x-auto'>
+            <table className='w-full text-left'>
+              <thead className='bg-gray-50 border-b'>
                 <tr>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">ID</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Họ tên</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Căn hộ</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Tòa nhà</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Vai trò</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase">Trạng thái</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 uppercase text-right">Thao tác</th>
+                  <th className='p-4 text-xs font-semibold text-gray-500 uppercase'>ID</th>
+                  <th className='p-4 text-xs font-semibold text-gray-500 uppercase'>Họ tên</th>
+                  <th className='p-4 text-xs font-semibold text-gray-500 uppercase'>Căn hộ</th>
+                  <th className='p-4 text-xs font-semibold text-gray-500 uppercase'>Tòa nhà</th>
+                  <th className='p-4 text-xs font-semibold text-gray-500 uppercase'>Vai trò</th>
+                  <th className='p-4 text-xs font-semibold text-gray-500 uppercase'>Trạng thái</th>
+                  <th className='p-4 text-xs font-semibold text-gray-500 uppercase text-right'>Thao tác</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-100">
+              <tbody className='divide-y divide-gray-100'>
                 {residents.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-12 text-center text-gray-400">
-                      <span className="material-symbols-outlined text-5xl mb-2">person_off</span>
+                    <td colSpan={7} className='p-12 text-center text-gray-400'>
+                      <span className='material-symbols-outlined text-5xl mb-2'>person_off</span>
                       <p>Không có dữ liệu cư dân</p>
                     </td>
                   </tr>
                 ) : (
                   residents.map((resident) => (
-                    <tr key={resident.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="p-4 text-sm font-mono text-gray-500">#{resident.id}</td>
-                      <td className="p-4">
-                        <span className="font-semibold text-gray-800">{resident.fullName}</span>
+                    <tr key={resident.id} className='hover:bg-gray-50 transition-colors'>
+                      <td className='p-4 text-sm font-mono text-gray-500'>#{resident.id}</td>
+                      <td className='p-4'>
+                        <span className='font-semibold text-gray-800'>{resident.fullName}</span>
                       </td>
-                      <td className="p-4">
-                        <span className="text-sm text-gray-600">{resident.apartmentNumber}</span>
+                      <td className='p-4'>
+                        <span className='text-sm text-gray-600'>{resident.apartmentNumber}</span>
                       </td>
-                      <td className="p-4">
-                        <span className="text-sm text-gray-600">{resident.buildingName}</span>
+                      <td className='p-4'>
+                        <span className='text-sm text-gray-600'>{resident.buildingName}</span>
                       </td>
-                      <td className="p-4">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getRelationshipColor(resident.relationship)}`}>
+                      <td className='p-4'>
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getRelationshipColor(resident.relationship)}`}
+                        >
                           {getRelationshipText(resident.relationship)}
                         </span>
                       </td>
-                      <td className="p-4">
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(resident.status)}`}>
+                      <td className='p-4'>
+                        <span
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(resident.status)}`}
+                        >
                           {getStatusText(resident.status)}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          {/* <button
-                            onClick={() => setSelectedResident(resident)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Xem chi tiết"
-                          >
-                            <span className="material-symbols-outlined text-sm">visibility</span>
-                          </button> */}
-                          {/* <button
-                            onClick={() => handleDelete(resident.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Xóa"
-                          >
-                            <span className="material-symbols-outlined text-sm">delete</span>
-                          </button> */}
+                      <td className='p-4 text-right'>
+                        <div className='flex justify-end gap-2'>
                           <button
-                            onClick={() => navigate(`/ResidentDetail/${resident.id}`)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Xem chi tiết"
+                            type='button'
+                            onClick={() => setAddToApartmentResident(resident)}
+                            className='p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors'
+                            title='Thêm cư dân vào căn hộ'
                           >
-                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            <span className='material-symbols-outlined text-sm'>add_home</span>
+                          </button>
+                          <button
+                            type='button'
+                            onClick={() => handleDelete(resident.id)}
+                            className='p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors'
+                            title='Xóa'
+                          >
+                            <span className='material-symbols-outlined text-sm'>delete</span>
+                          </button>
+                          <button
+                            type='button'
+                            onClick={() => navigate(`/ResidentDetail/${resident.id}`)}
+                            className='p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
+                            title='Xem chi tiết'
+                          >
+                            <span className='material-symbols-outlined text-sm'>visibility</span>
                           </button>
                         </div>
                       </td>
@@ -274,25 +279,23 @@ console.log(residentsData)
 
           {/* Pagination */}
           {totalElements > 0 && (
-            <div className="px-6 py-4 flex items-center justify-between bg-gray-50/50 border-t">
-              <span className="text-xs text-gray-500">
+            <div className='px-6 py-4 flex items-center justify-between bg-gray-50/50 border-t'>
+              <span className='text-xs text-gray-500'>
                 Hiển thị {residents.length} / {totalElements} cư dân
               </span>
-              <div className="flex gap-2">
+              <div className='flex gap-2'>
                 <button
                   onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
                   disabled={page <= 0}
-                  className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className='px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   Trước
                 </button>
-                <button className="px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg">
-                  {page + 1}
-                </button>
+                <button className='px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg'>{page + 1}</button>
                 <button
                   onClick={() => setPage((prev) => (prev + 1 < totalPages ? prev + 1 : prev))}
                   disabled={totalPages === 0 || page + 1 >= totalPages}
-                  className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className='px-4 py-2 text-xs font-medium text-gray-600 bg-white border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   Sau
                 </button>
@@ -302,46 +305,44 @@ console.log(residentsData)
         </div>
 
         {/* Stats Summary */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm">
-            <div className="flex items-center justify-between">
+        <div className='mt-6 grid grid-cols-1 md:grid-cols-4 gap-4'>
+          <div className='bg-white p-4 rounded-xl shadow-sm'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className="text-xs text-gray-500">Tổng cư dân</p>
-                <p className="text-2xl font-bold">{totalElements}</p>
+                <p className='text-xs text-gray-500'>Tổng cư dân</p>
+                <p className='text-2xl font-bold'>{totalElements}</p>
               </div>
               {/* <span className="material-symbols-outlined text-3xl text-blue-500">people</span> */}
             </div>
           </div>
-          
-          <div className="bg-white p-4 rounded-xl shadow-sm">
-            <div className="flex items-center justify-between">
+
+          <div className='bg-white p-4 rounded-xl shadow-sm'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className="text-xs text-gray-500">Chủ hộ</p>
-                <p className="text-2xl font-bold">
-                  {residents.filter((r) => r.relationship === 'OWNER').length}
-                </p>
+                <p className='text-xs text-gray-500'>Chủ hộ</p>
+                <p className='text-2xl font-bold'>{residents.filter((r) => r.relationship === 'OWNER').length}</p>
               </div>
               {/* <span className="material-symbols-outlined text-3xl text-blue-500">home</span> */}
             </div>
           </div>
-          
-          <div className="bg-white p-4 rounded-xl shadow-sm">
-            <div className="flex items-center justify-between">
+
+          <div className='bg-white p-4 rounded-xl shadow-sm'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className="text-xs text-gray-500">Đang cư trú</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className='text-xs text-gray-500'>Đang cư trú</p>
+                <p className='text-2xl font-bold text-green-600'>
                   {residents.filter((r: Resident12) => r.status === 'ACTIVE').length}
                 </p>
               </div>
               {/* <span className="material-symbols-outlined text-3xl text-green-500">check_circle</span> */}
             </div>
           </div>
-          
-          <div className="bg-white p-4 rounded-xl shadow-sm">
-            <div className="flex items-center justify-between">
+
+          <div className='bg-white p-4 rounded-xl shadow-sm'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className="text-xs text-gray-500">Đã chuyển đi</p>
-                <p className="text-2xl font-bold text-red-600">
+                <p className='text-xs text-gray-500'>Đã chuyển đi</p>
+                <p className='text-2xl font-bold text-red-600'>
                   {residents.filter((r: Resident12) => r.status === 'MOVED_OUT').length}
                 </p>
               </div>
@@ -351,22 +352,38 @@ console.log(residentsData)
         </div>
       </main>
 
+      <AddResidentToApartmentModal
+        isOpen={!!addToApartmentResident}
+        onClose={() => setAddToApartmentResident(null)}
+        resident={addToApartmentResident}
+      />
+
       {/* Modal chi tiết cư dân - Có thể thêm sau */}
       {selectedResident && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4">Chi tiết cư dân</h3>
-            <div className="space-y-3">
-              <p><strong>Họ tên:</strong> {selectedResident.fullName}</p>
-              <p><strong>Căn hộ:</strong> {selectedResident.apartmentNumber}</p>
-              <p><strong>Tòa nhà:</strong> {selectedResident.buildingName}</p>
-              <p><strong>Vai trò:</strong> {getRelationshipText(selectedResident.relationship)}</p>
-              <p><strong>Trạng thái:</strong> {getStatusText(selectedResident.status)}</p>
+        <div className='fixed inset-0 bg-black/50 flex items-center justify-center z-50'>
+          <div className='bg-white rounded-xl p-6 max-w-md w-full mx-4'>
+            <h3 className='text-lg font-bold mb-4'>Chi tiết cư dân</h3>
+            <div className='space-y-3'>
+              <p>
+                <strong>Họ tên:</strong> {selectedResident.fullName}
+              </p>
+              <p>
+                <strong>Căn hộ:</strong> {selectedResident.apartmentNumber}
+              </p>
+              <p>
+                <strong>Tòa nhà:</strong> {selectedResident.buildingName}
+              </p>
+              <p>
+                <strong>Vai trò:</strong> {getRelationshipText(selectedResident.relationship)}
+              </p>
+              <p>
+                <strong>Trạng thái:</strong> {getStatusText(selectedResident.status)}
+              </p>
             </div>
-            <div className="flex justify-end mt-6">
+            <div className='flex justify-end mt-6'>
               <button
                 onClick={() => setSelectedResident(null)}
-                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className='px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200'
               >
                 Đóng
               </button>

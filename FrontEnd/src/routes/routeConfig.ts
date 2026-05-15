@@ -17,6 +17,14 @@ export const ROLE_ROUTE_MAP: Record<string, string[]> = {
     '/residents/*',
     '/admin/notifications',
     '/admin/viewDetailResident/*',
+    '/admin/buildings',
+    '/admin/invoices',
+    '/admin/invoices/*',
+    '/admin/payments',
+    '/admin/payments/*',
+    '/admin/utility-meters',
+    '/admin/meter-readings',
+    '/admin/utility-pricing',
     'qrcodeAdmin',
     'historyQrcodeAdmin',
     '/notifications',
@@ -27,7 +35,8 @@ export const ROLE_ROUTE_MAP: Record<string, string[]> = {
     '/homepageprotect',
     '/history/qrcode',
     '/security/residents',
-    '/security/residents/*'
+    '/security/residents/*',
+    '/statistics'
   ],
 
   [ROLES.MANAGER]: [
@@ -38,6 +47,14 @@ export const ROLE_ROUTE_MAP: Record<string, string[]> = {
     '/residents/*',
     '/admin/notifications',
     '/admin/viewDetailResident/*',
+    '/admin/buildings',
+    '/admin/invoices',
+    '/admin/invoices/*',
+    '/admin/payments',
+    '/admin/payments/*',
+    '/admin/utility-meters',
+    '/admin/meter-readings',
+    '/admin/utility-pricing',
     'qrcodeAdmin',
     'historyQrcodeAdmin',
     '/notifications',
@@ -48,7 +65,8 @@ export const ROLE_ROUTE_MAP: Record<string, string[]> = {
     '/homepageprotect',
     '/history/qrcode',
     '/security/residents',
-    '/security/residents/*'
+    '/security/residents/*',
+    '/statistics'
   ],
 
   [ROLES.STAFF]: [
@@ -76,6 +94,18 @@ export const ROLE_ROUTE_MAP: Record<string, string[]> = {
     '/',
     '/profile',
     '/notifications',
+    '/UserInvoicesPage',
+    '/UserPaymentsPage',
+    '/invoices',
+    '/invoices/*',
+    '/payments',
+    '/payments/*',
+    '/utility-pricing',
+    '/utility-pricing/*',
+    '/my-utility-meters',
+    '/my-utility-meters/*',
+    '/my-meter-readings',
+    '/my-meter-readings/*',
     '/qrcode',
     '/viewQrcodeMe',
     '/qrcodeDetail/*',

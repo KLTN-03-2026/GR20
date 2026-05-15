@@ -41,10 +41,11 @@ const createApartment = async (req, res) => {
   }
 };
 
-// GET ALL
+// GET ALL — req.user do authenticate middleware (SecurityContext tương đương)
 const getAllApartments = async (req, res) => {
   try {
-    const result = await service.getAllApartments(req.query);
+    const currentUser = req.user;
+    const result = await service.getAllApartments(req.query, currentUser);
 
     res.json({
       operationType: "Success",
@@ -281,7 +282,7 @@ const updateResident = async (req, res) => {
 // GET MY APARTMENT - Cư dân xem căn hộ cá nhân
 const getMyApartment = async (req, res) => {
   try {
-    const userId = req.user?.id || 1; // Tạm dùng user 1, sau lấy từ JWT
+    const userId = req.user.sub || req.user.id;
     
     const result = await pool.query(`
       SELECT a.*, b.name as building_name, f.floor_number,

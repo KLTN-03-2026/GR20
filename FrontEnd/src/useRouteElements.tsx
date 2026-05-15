@@ -1,6 +1,7 @@
 import { Navigate, useRoutes } from 'react-router-dom'
 import { ROLES } from 'src/constants/roles'
 import Buildings from './pages/building management/Buildings'
+import BuildingDetailManagement from './pages/building management/BuildingDetailManagement'
 import Profile from './pages/profile_Management/Profile'
 import ScanQr from './pages/QRCODE_USER/Scanqr'
 import Login from './pages/Login'
@@ -53,31 +54,49 @@ import ContractDetail from './pages/Contracts/ContractDetail'
 import MyContract from './pages/MyApartment/MyContract'
 import { useContext } from 'react'
 import { AppContext } from './contexts/app.context'
+import UserInvoiceDetailPage from './pages/billing/UserInvoiceDetailPage'
+import UserPaymentDetailPage from './pages/billing/UserPaymentDetailPage'
+import InvoicesPage from './pages/billing/InvoicesPage'
+import InvoiceDetailAdminPage from './pages/billing/InvoiceDetailAdminPage'
+import PaymentsPage from './pages/billing/PaymentsPage'
+import PaymentDetailAdminPage from './pages/billing/PaymentDetailAdminPage'
+import UtilityMetersPage from './pages/utility/UtilityMetersPage'
+import MeterReadingsPage from './pages/utility/MeterReadingsPage'
+import UtilityPricingPage from './pages/utility/UtilityPricingPage'
+import UserUtilityMetersPage from './pages/utility/UserUtilityMetersPage'
+import UserUtilityMeterDetailPage from './pages/utility/UserUtilityMeterDetailPage'
+import UserMeterReadingsPage from './pages/utility/UserMeterReadingsPage'
+import UserMeterReadingDetailPage from './pages/utility/UserMeterReadingDetailPage'
+import UserUtilityPricingPage from './pages/utility/UserUtilityPricingPage'
+import UserUtilityPricingDetailPage from './pages/utility/UserUtilityPricingDetailPage'
+import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
+import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManager'
+import StatisticsReportPage from './pages/statistics/StatisticsReportPage'
 
 export default function useRouteElements() {
   const { user } = useContext(AppContext)
   const renderLayout = () => {
-  switch (user?.roles?.[0]) {
-    case ROLES.ADMIN:
-      return (
-        <DashboaedLayoutAdmin>
-          <GetResidentRequestList />
-        </DashboaedLayoutAdmin>
-      )
-    case ROLES.MANAGER:
-      return (
-        <DashboaedLayoutManager>
-          <GetResidentRequestList />
-        </DashboaedLayoutManager>
-      )
-    default:
-      return (
-        <DashboaedLayoutStaff>
-          <GetResidentRequestList />
-        </DashboaedLayoutStaff>
-      )
+    switch (user?.roles?.[0]) {
+      case ROLES.ADMIN:
+        return (
+          <DashboaedLayoutAdmin>
+            <GetResidentRequestList />
+          </DashboaedLayoutAdmin>
+        )
+      case ROLES.MANAGER:
+        return (
+          <DashboaedLayoutManager>
+            <GetResidentRequestList />
+          </DashboaedLayoutManager>
+        )
+      default:
+        return (
+          <DashboaedLayoutStaff>
+            <GetResidentRequestList />
+          </DashboaedLayoutStaff>
+        )
+    }
   }
-}
   const routeElements = useRoutes([
     // PUBLIC
     { path: '/login', element: <Login /> },
@@ -164,7 +183,7 @@ export default function useRouteElements() {
       ]
     },
 
-    // BUILDINGS
+    // BUILDINGS (staff + admin/manager có thể vào list theo layout bảo vệ)
     {
       path: '/buildings',
       element: <ProtectedRoute allowedRoles={[ROLES.STAFF, ROLES.MANAGER, ROLES.ADMIN]} />,
@@ -176,6 +195,26 @@ export default function useRouteElements() {
               <Buildings />
             </DashboardLayoutProtect>
           )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboardLayoutProtect>
+              <BuildingDetailManagement />
+            </DashboardLayoutProtect>
+          )
+        }
+      ]
+    },
+
+    // BÁO CÁO THỐNG KÊ (/api/statistics/dashboard)
+    {
+      path: '/statistics',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: <StatisticsReportShell />
         }
       ]
     },
@@ -444,9 +483,30 @@ export default function useRouteElements() {
       path: '/residents',
       element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
       children: [
-        { index: true, element: <Getresidentlist /> },
-        { path: 'add', element: <Addresident /> },
-        { path: ':id', element: <ResidentDetail /> }
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdmin>
+              <Getresidentlist />
+            </DashboaedLayoutAdmin>
+          )
+        },
+        {
+          path: 'add',
+          element: (
+            <DashboaedLayoutAdmin>
+              <Addresident />
+            </DashboaedLayoutAdmin>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdmin>
+              <ResidentDetail />
+            </DashboaedLayoutAdmin>
+          )
+        }
       ]
     },
 
@@ -467,6 +527,22 @@ export default function useRouteElements() {
     },
     {
       path: '/UserInvoicesPage',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <Navigate to='/invoices' replace />
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/UserPaymentsPage',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <Navigate to='/payments' replace />
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/invoices',
       element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
       children: [
         {
@@ -476,53 +552,46 @@ export default function useRouteElements() {
               <UserInvoicesPage />
             </DashboardLayoutUser>
           )
-        }
-      ]
-    },
-    {
-      path: '/UserPaymentsPage',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
+        },
         {
-          index: true,
+          path: ':id',
           element: (
-            <DashboaedLayoutAdmin>
-              <UserPaymentsPage />
-            </DashboaedLayoutAdmin>
+            <DashboardLayoutUser>
+              <UserInvoiceDetailPage />
+            </DashboardLayoutUser>
           )
         }
       ]
     },
     {
-      path: '/Addresident',
-      element: (
-        
-          <DashboardLayoutProtect>
-            <Addresident />
-          </DashboardLayoutProtect>
-        
-      )
+      path: '/payments',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <UserPaymentsPage />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
     },
-
     {
       path: '/Getresidentlist',
       element: (
-        
-          <DashboaedLayoutAdmin>
-            <Getresidentlist />
-          </DashboaedLayoutAdmin>
-        
+        <DashboaedLayoutAdmin>
+          <Getresidentlist />
+        </DashboaedLayoutAdmin>
       )
     },
 
     {
       path: '/ResidentDetail/:id',
       element: (
-        
-          <DashboaedLayoutAdmin>
-            <ResidentDetail />
-          </DashboaedLayoutAdmin>
-        
+        <DashboaedLayoutAdmin>
+          <ResidentDetail />
+        </DashboaedLayoutAdmin>
       )
     },
 
@@ -540,7 +609,7 @@ export default function useRouteElements() {
         }
       ]
     },
-    
+
     {
       path: '/resident/MaintenanceRequestDetail/:id',
       element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
@@ -552,8 +621,202 @@ export default function useRouteElements() {
               <MaintenanceRequestDetail />
             </DashboardLayoutUser>
           )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboardLayoutUser>
+              <UserPaymentDetailPage />
+            </DashboardLayoutUser>
+          )
         }
       ]
+    },
+    {
+      path: '/utility-pricing',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <UserUtilityPricingPage />
+            </DashboardLayoutUser>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboardLayoutUser>
+              <UserUtilityPricingDetailPage />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
+    },
+    {
+      path: '/my-utility-meters',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <UserUtilityMetersPage />
+            </DashboardLayoutUser>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboardLayoutUser>
+              <UserUtilityMeterDetailPage />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
+    },
+    {
+      path: '/my-meter-readings',
+      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboardLayoutUser>
+              <UserMeterReadingsPage />
+            </DashboardLayoutUser>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboardLayoutUser>
+              <UserMeterReadingDetailPage />
+            </DashboardLayoutUser>
+          )
+        }
+      ]
+    },
+
+    // ADMIN + QUẢN LÝ: tòa nhà, billing, đồng hồ / chỉ số / giá
+    {
+      path: '/admin/buildings',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <Buildings />
+            </DashboaedLayoutAdminOrManager>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <BuildingDetailManagement />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/invoices',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <InvoicesPage />
+            </DashboaedLayoutAdminOrManager>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <InvoiceDetailAdminPage />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/payments',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <PaymentsPage />
+            </DashboaedLayoutAdminOrManager>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <PaymentDetailAdminPage />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/utility-meters',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <UtilityMetersPage />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/meter-readings',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <MeterReadingsPage />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/utility-pricing',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <UtilityPricingPage />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/StatisticsReportPage',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <StatisticsReportPage />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
     },
 
     {
