@@ -249,13 +249,13 @@ console.log(residentsData)
                           >
                             <span className="material-symbols-outlined text-sm">visibility</span>
                           </button> */}
-                          <button
+                          {/* <button
                             onClick={() => handleDelete(resident.id)}
                             className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Xóa"
                           >
                             <span className="material-symbols-outlined text-sm">delete</span>
-                          </button>
+                          </button> */}
                           <button
                             onClick={() => navigate(`/ResidentDetail/${resident.id}`)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
