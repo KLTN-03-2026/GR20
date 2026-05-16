@@ -3,22 +3,53 @@ const mapper = require("./user.mapper");
 const bcrypt = require('bcrypt');
 const { AppError } = require("../../common/app-error");
 const roleRepo = require("../roles/role.repository");
+const rolesService = require("../roles/roles.service");
 
 const SALT_ROUNDS = 10;
 const DEFAULT_ROLE_NAME = "Người Dùng";
-const DEFAULT_ROLE_CANDIDATES = ["Người Dùng", "user", "nguoi dung"];
+const DEFAULT_ROLE_CANDIDATES = [
+  "Người Dùng",
+  "Người dùng",
+  "user",
+  "USER",
+  "resident",
+  "nguoi dung",
+];
 
 const resolveRoleId = async (roleName) => {
-  const targetRoleNames = roleName ? [roleName] : DEFAULT_ROLE_CANDIDATES;
+  const seen = new Set();
+  const targetRoleNames = [];
+  const add = (name) => {
+    const key = String(name).trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    targetRoleNames.push(String(name).trim());
+  };
 
-  for (const candidate of targetRoleNames) {
-    const found = await roleRepo.findRoleByName(candidate);
-    if (found) {
-      return found.id;
+  if (roleName) add(roleName);
+  DEFAULT_ROLE_CANDIDATES.forEach(add);
+
+  const findRole = async () => {
+    for (const candidate of targetRoleNames) {
+      const found = await roleRepo.findRoleByName(candidate);
+      if (found) return found.id;
     }
-  }
+    return null;
+  };
 
-  throw new AppError(400, roleName ? `Role '${roleName}' not found` : `Default role '${DEFAULT_ROLE_NAME}' not found`);
+  let roleId = await findRole();
+  if (roleId) return roleId;
+
+  await rolesService.seedDefaultRoles();
+  roleId = await findRole();
+  if (roleId) return roleId;
+
+  throw new AppError(
+    400,
+    roleName
+      ? `Không tìm thấy vai trò "${roleName}"`
+      : `Không tìm thấy vai trò mặc định (${DEFAULT_ROLE_NAME}). Vui lòng liên hệ quản trị viên.`,
+  );
 };
 
 const getUserById = async (id) => {

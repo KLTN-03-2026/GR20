@@ -30,14 +30,18 @@ const toResponse = (row) => {
 };
 
 const toListResponse = (row) => {
+  const isUnassigned = row.is_unassigned === true;
   return {
-    id: row.id,
-    userId: row.user_id,
+    id: isUnassigned ? String(row.user_id) : String(row.profile_id ?? row.id),
+    userId: String(row.user_id),
     fullName: row.full_name,
-    apartmentNumber: row.apartment_number,
-    buildingName: row.building_name,
+    phone: row.phone,
+    email: row.email,
+    apartmentNumber: row.apartment_number || null,
+    buildingName: row.building_name || null,
     relationship: row.relationship,
     status: row.status,
+    isUnassigned,
   };
 };
 

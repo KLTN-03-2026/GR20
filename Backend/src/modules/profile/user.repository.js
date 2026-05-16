@@ -2,6 +2,7 @@ const { pool } = require("../../configs/database.config");
 const { AppError } = require("../../common/app-error");
 
 const isUniqueViolation = (err) => err && err.code === "23505";
+const isNotNullViolation = (err) => err && err.code === "23502";
 const parseBool = (value) => {
   if (value === undefined || value === null || value === "") return undefined;
   if (value === true || value === "true" || value === "1") return true;
@@ -35,9 +36,12 @@ const createUser = async (user) => {
     return result.rows[0];
   } catch (err) {
     if (isUniqueViolation(err)) {
-      throw new AppError(409, "Username or email already exists", {
+      throw new AppError(409, "Tên đăng nhập hoặc email đã tồn tại", {
         constraint: err.constraint,
       });
+    }
+    if (isNotNullViolation(err)) {
+      throw new AppError(400, "Thiếu thông tin bắt buộc khi tạo tài khoản");
     }
     throw err;
   }

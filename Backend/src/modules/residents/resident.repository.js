@@ -20,67 +20,114 @@ const createResident = async (resident) => {
   return result.rows[0];
 };
 
-const getAllResidents = async ({ page = 0, size = 10, buildingIds, status }) => {
+const RESIDENT_ROLE_NAMES = ["người dùng", "user", "resident"];
+
+const getAllResidents = async ({
+  page = 0,
+  size = 10,
+  buildingIds,
+  status,
+  filterByBuilding = false,
+}) => {
   const offset = page * size;
-  let dataQuery = `
-    SELECT 
-      rp.id,
+  const queryParams = [];
+  let paramIndex = 1;
+
+  const assignedWhere = ["rp.move_out_date IS NULL"];
+  if (buildingIds && buildingIds.length > 0) {
+    assignedWhere.push(`b.id = ANY($${paramIndex}::bigint[])`);
+    queryParams.push(buildingIds);
+    paramIndex++;
+  }
+  if (status && status !== "UNASSIGNED") {
+    assignedWhere.push(`rp.status = $${paramIndex}`);
+    queryParams.push(status);
+    paramIndex++;
+  }
+
+  const onlyUnassigned = status === "UNASSIGNED";
+  const includeUnassigned =
+    !filterByBuilding && (!status || status === "UNASSIGNED");
+
+  const assignedSelect = `
+    SELECT
+      rp.id AS profile_id,
       rp.user_id,
       rp.apartment_id,
-      rp.relationship,
+      rp.relationship::text AS relationship,
       rp.move_in_date,
       rp.move_out_date,
-      rp.status,
+      rp.status::text AS status,
       rp.created_at,
       u.full_name,
       u.email,
       u.phone,
       u.avatar_url,
-      a.apartment_code as apartment_number,
-      b.name as building_name
+      a.apartment_code AS apartment_number,
+      b.name AS building_name,
+      false AS is_unassigned
     FROM resident_profiles rp
     JOIN users u ON rp.user_id = u.id
     JOIN apartments a ON rp.apartment_id = a.id
     JOIN buildings b ON a.building_id = b.id
-    WHERE rp.move_out_date IS NULL
+    WHERE ${assignedWhere.join(" AND ")}
   `;
 
-  let countQuery = `
-    SELECT COUNT(*) 
-    FROM resident_profiles rp
-    WHERE rp.move_out_date IS NULL
+  const unassignedSelect = `
+    SELECT
+      NULL::bigint AS profile_id,
+      u.id AS user_id,
+      NULL::bigint AS apartment_id,
+      NULL::text AS relationship,
+      NULL::date AS move_in_date,
+      NULL::date AS move_out_date,
+      'UNASSIGNED'::text AS status,
+      u.created_at,
+      u.full_name,
+      u.email,
+      u.phone,
+      u.avatar_url,
+      NULL::varchar AS apartment_number,
+      NULL::varchar AS building_name,
+      true AS is_unassigned
+    FROM users u
+    INNER JOIN roles r ON r.id = u.role_id AND r.deleted_at IS NULL
+    WHERE u.is_active = true
+      AND LOWER(TRIM(r.name)) = ANY(ARRAY[${RESIDENT_ROLE_NAMES.map((n) => `'${n}'`).join(", ")}])
+      AND NOT EXISTS (
+        SELECT 1 FROM resident_profiles rp2
+        WHERE rp2.user_id = u.id AND rp2.move_out_date IS NULL
+      )
   `;
 
-  const queryParams = [];
-  let paramIndex = 1;
-
-  if (buildingIds && buildingIds.length > 0) {
-    dataQuery += ` AND b.id = ANY($${paramIndex}::bigint[])`;
-    countQuery += ` AND EXISTS (SELECT 1 FROM apartments a WHERE a.id = rp.apartment_id AND a.building_id = ANY($${paramIndex}::bigint[]))`;
-    queryParams.push(buildingIds);
-    paramIndex++;
+  const parts = [];
+  if (!onlyUnassigned) {
+    parts.push(assignedSelect);
+  }
+  if (includeUnassigned) {
+    parts.push(unassignedSelect);
   }
 
-  if (status) {
-    dataQuery += ` AND rp.status = $${paramIndex}`;
-    countQuery += ` AND rp.status = $${paramIndex}`;
-    queryParams.push(status);
-    paramIndex++;
+  if (parts.length === 0) {
+    return { rows: [], total: 0 };
   }
 
-  dataQuery += ` ORDER BY rp.id ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  const combinedSql = parts.join(" UNION ALL ");
+  const countQuery = `WITH combined AS (${combinedSql}) SELECT COUNT(*)::int AS count FROM combined`;
+  const dataQuery = `
+    WITH combined AS (${combinedSql})
+    SELECT * FROM combined
+    ORDER BY is_unassigned DESC, full_name ASC NULLS LAST, profile_id ASC NULLS LAST
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
+
+  const countResult = await pool.query(countQuery, queryParams);
   queryParams.push(size, offset);
-
   const data = await pool.query(dataQuery, queryParams);
-  
-  const countResult = await pool.query(
-    countQuery,
-    queryParams.slice(0, queryParams.length - 2)
-  );
 
   return {
     rows: data.rows,
-    total: parseInt(countResult.rows[0].count),
+    total: countResult.rows[0].count,
   };
 };
 
