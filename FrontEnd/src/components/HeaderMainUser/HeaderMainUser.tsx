@@ -23,9 +23,6 @@ export default function HeaderMainUser() {
 
     return 'Người Dùng'
   }
-  const goNotification = () => {
-    navigate('/notifications')
-  }
 
   const goSettings = () => {
     navigate('/settings')
@@ -50,6 +47,7 @@ export default function HeaderMainUser() {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user')
+    localStorage.removeItem('homelink_chat_messages')
 
     setUser(null)
     navigate('/login', { replace: true })
@@ -125,17 +123,6 @@ export default function HeaderMainUser() {
           <SearchBar userRole={getUserRole()} placeholder='Tìm kiếm trang, chức năng...' />
 
           {/* Notification */}
-          <button
-            onClick={goNotification}
-            className='w-10 h-10 flex items-center justify-center rounded-full 
-              hover:bg-blue-50 hover:scale-110 active:scale-95
-              transition-all duration-200 relative group'
-          >
-            <span className='material-symbols-outlined text-slate-600 group-hover:text-blue-600 transition-colors'>
-              notifications
-            </span>
-            <span className='absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white'></span>
-          </button>
 
           {/* Settings */}
           <button

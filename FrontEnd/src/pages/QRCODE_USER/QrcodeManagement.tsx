@@ -822,9 +822,6 @@ export default function QrcodeManagement() {
             <div className='bg-surface-container-lowest rounded-2xl p-12 text-center border-2 border-dashed border-outline-variant/20'>
               <span className='material-symbols-outlined text-6xl text-on-surface-variant/40 mb-3'>qr_code</span>
               <p className='text-on-surface-variant'>Bạn chưa có mã QR khách nào</p>
-              <button className='mt-4 px-6 py-2 bg-primary text-white rounded-xl text-sm font-bold'>
-                Tạo mã QR mới
-              </button>
             </div>
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'>

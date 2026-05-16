@@ -21,47 +21,60 @@ const createBuilding = async (reqBody) => {
 
 const { buildingIdsFromUser } = require("../../common/building-scope");
 
-const getAllBuildings = async (query, user) => {
-  const parsed = parseBuildingPagination(query);
-  const {
-    page,
-    size,
-    search,
-    status,
-    includeApartments: includeApartmentsParam,
-  } = parsed;
+// const getAllBuildings = async (query, user) => {
+//   const parsed = parseBuildingPagination(query);
+//   const {
+//     page,
+//     size,
+//     search,
+//     status,
+//     includeApartments: includeApartmentsParam,
+//   } = parsed;
 
-  const buildingIds = buildingIdsFromUser(user);
+//   const buildingIds = buildingIdsFromUser(user);
 
-  let includeApartments = includeApartmentsParam;
-  if (includeApartments === undefined) {
-    includeApartments = Boolean(
-      user &&
-        user.role !== "ADMIN" &&
-        buildingIds !== null &&
-        buildingIds.length > 0,
-    );
-  }
+//   let includeApartments = includeApartmentsParam;
+//   if (includeApartments === undefined) {
+//     includeApartments = Boolean(
+//       user &&
+//         user.role !== "ADMIN" &&
+//         buildingIds !== null &&
+//         buildingIds.length > 0,
+//     );
+//   }
 
-  const result = await repo.getAllBuildings({
-    page,
-    size,
-    search,
-    status,
-    buildingIds,
-    includeApartments,
-  });
+//   const result = await repo.getAllBuildings({
+//     page,
+//     size,
+//     search,
+//     status,
+//     buildingIds,
+//     includeApartments,
+//   });
+
+//   return {
+//     data: result.rows.map(mapper.toResponse),
+//     size: result.rows.length,
+//     totalElements: result.total,
+//     totalPages: Math.ceil(result.total / size) || 0,
+//     page: Number(page),
+//     pageSize: Number(size),
+//   };
+// };
+const getAllBuildings = async (query) => {
+  const { page, size, search, status } = parseBuildingPagination(query);
+
+  const result = await repo.getAllBuildings({ page, size, search, status });
 
   return {
     data: result.rows.map(mapper.toResponse),
     size: result.rows.length,
     totalElements: result.total,
-    totalPages: Math.ceil(result.total / size) || 0,
+    totalPages: Math.ceil(result.total / size),
     page: Number(page),
     pageSize: Number(size),
   };
 };
-
 const getBuildingById = async (id) => {
   const parsedId = parsePathId(id);
   const data = await repo.getBuildingById(parsedId);

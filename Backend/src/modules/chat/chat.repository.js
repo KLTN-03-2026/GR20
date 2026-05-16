@@ -1,6 +1,7 @@
 const { eq, and, ilike, asc, inArray, desc, sql } = require("drizzle-orm");
 const { db } = require("../../configs/database.config");
 const schema = require("../../db/schema");
+
 // 1. Lấy Role của User
 const getUserRole = async (userId) => {
   const result = await db
@@ -54,12 +55,22 @@ const getBuildingChatRoom = async (buildingId) => {
   return result.length > 0 ? result[0] : null;
 };
 
-// 5. Tạo phòng chat Tòa nhà mới
+// 5. Tạo phòng chat Tòa nhà mới (ĐÃ SỬA: Lấy tên tòa nhà động)
 const createBuildingRoom = async (buildingId, createdByUserId) => {
+  // Lấy tên tòa nhà từ DB
+  const buildingData = await db
+    .select({ name: schema.buildings.name })
+    .from(schema.buildings)
+    .where(eq(schema.buildings.id, buildingId))
+    .limit(1);
+
+  const buildingName =
+    buildingData.length > 0 ? buildingData[0].name : "Không xác định";
+
   const newRoom = await db
     .insert(schema.chatRooms)
     .values({
-      name: `Nhóm cư dân Tòa nhà`,
+      name: `Nhóm cư dân tòa nhà ${buildingName}`, // Tên động theo Tòa nhà
       type: "building",
       buildingId: buildingId,
       createdBy: createdByUserId,
@@ -101,8 +112,16 @@ const updateMemberNickname = async (memberId, nickname) => {
     .set({ nickname: nickname })
     .where(eq(schema.chatRoomMembers.id, memberId));
 };
-// 9. Tìm ID phòng chat tòa nhà mà user đang tham gia
-const getUserBuildingRoom = async (userId) => {
+
+// ================= CÁC HÀM DANH BẠ VÀ ADMIN =================
+
+// Lấy danh sách ID của TẤT CẢ tòa nhà trong hệ thống (Dành cho Admin/Quản lý)
+const getAllBuildings = async () => {
+  return await db.select({ id: schema.buildings.id }).from(schema.buildings);
+};
+
+// Tìm TẤT CẢ các ID phòng chat tòa nhà mà user đang tham gia
+const getUserAllBuildingRooms = async (userId) => {
   const result = await db
     .select({ roomId: schema.chatRooms.id })
     .from(schema.chatRooms)
@@ -115,14 +134,15 @@ const getUserBuildingRoom = async (userId) => {
         eq(schema.chatRoomMembers.userId, userId),
         eq(schema.chatRooms.type, "building"),
       ),
-    )
-    .limit(1);
-  return result.length > 0 ? result[0].roomId : null;
+    );
+  return result.map((r) => r.roomId);
 };
 
-// 10. Lấy danh bạ thành viên trong phòng, có search và sắp xếp theo Role
-const getBuildingMembers = async (roomId, searchKeyword) => {
-  let query = db
+// Lấy danh bạ thành viên từ NHIỀU phòng chat
+const getMembersFromMultipleRooms = async (roomIds, searchKeyword) => {
+  if (!roomIds || roomIds.length === 0) return [];
+
+  const query = db
     .select({
       userId: schema.users.id,
       nickname: schema.chatRoomMembers.nickname,
@@ -135,22 +155,28 @@ const getBuildingMembers = async (roomId, searchKeyword) => {
     .leftJoin(schema.roles, eq(schema.users.roleId, schema.roles.id))
     .where(
       and(
-        eq(schema.chatRoomMembers.roomId, roomId),
-        // Nếu có truyền searchKeyword thì tìm kiếm (ilike không phân biệt hoa thường)
+        inArray(schema.chatRoomMembers.roomId, roomIds),
         searchKeyword
           ? ilike(schema.chatRoomMembers.nickname, `%${searchKeyword}%`)
           : undefined,
       ),
     )
-    .orderBy(
-      // Sắp xếp ưu tiên theo ID của role: Admin(1) -> Quản lý(2) -> Nhân viên(3) -> Bảo vệ(4) -> Cư dân(5)
-      asc(schema.users.roleId),
-      // Nếu cùng Role thì sắp xếp theo tên chữ cái
-      asc(schema.chatRoomMembers.nickname),
-    );
+    .orderBy(asc(schema.users.roleId), asc(schema.chatRoomMembers.nickname));
 
-  return await query;
+  const results = await query;
+
+  // Loại bỏ trùng lặp
+  const uniqueMembers = [];
+  const map = new Map();
+  for (const item of results) {
+    if (!map.has(item.userId)) {
+      map.set(item.userId, true);
+      uniqueMembers.push(item);
+    }
+  }
+  return uniqueMembers;
 };
+
 // 11. Lưu tin nhắn vào Database
 const saveMessage = async (roomId, senderId, content, messageType = "text") => {
   const newMessage = await db
@@ -163,20 +189,19 @@ const saveMessage = async (roomId, senderId, content, messageType = "text") => {
     })
     .returning();
 
-  // Cập nhật tin nhắn cuối cùng cho phòng chat
   await db
     .update(schema.chatRooms)
     .set({
       lastMessage: messageType === "text" ? content : "[Tệp đính kèm]",
-      lastMessageAt: sql`now()`, // Cập nhật thời gian
+      lastMessageAt: sql`now()`,
     })
     .where(eq(schema.chatRooms.id, roomId));
 
   return newMessage[0];
 };
+
 // 12. Tìm xem 2 user đã có phòng chat PRIVATE chung nào chưa
 const findPrivateRoom = async (user1Id, user2Id) => {
-  // Lấy tất cả ID phòng private của User 1
   const user1PrivateRooms = db
     .select({ roomId: schema.chatRoomMembers.roomId })
     .from(schema.chatRoomMembers)
@@ -191,7 +216,6 @@ const findPrivateRoom = async (user1Id, user2Id) => {
       ),
     );
 
-  // Tìm xem User 2 có nằm trong danh sách phòng private của User 1 không
   const commonRoom = await db
     .select()
     .from(schema.chatRoomMembers)
@@ -208,7 +232,6 @@ const findPrivateRoom = async (user1Id, user2Id) => {
 
 // 13. Tạo phòng chat riêng 1-1
 const createPrivateRoom = async (user1Id, user2Id) => {
-  // B1: Tạo phòng type = 'private'
   const newRoom = await db
     .insert(schema.chatRooms)
     .values({
@@ -220,7 +243,6 @@ const createPrivateRoom = async (user1Id, user2Id) => {
 
   const roomId = newRoom[0].id;
 
-  // B2: Nhét cả 2 user vào phòng này
   await db.insert(schema.chatRoomMembers).values([
     { roomId: roomId, userId: user1Id, role: "member" },
     { roomId: roomId, userId: user2Id, role: "member" },
@@ -228,6 +250,7 @@ const createPrivateRoom = async (user1Id, user2Id) => {
 
   return roomId;
 };
+
 // 14. Lưu file đính kèm vào Database
 const saveAttachment = async (messageId, fileData) => {
   const newAttachment = await db
@@ -243,9 +266,9 @@ const saveAttachment = async (messageId, fileData) => {
 
   return newAttachment[0];
 };
-// 15. Lấy danh sách các phòng chat (Inbox) mà User đang tham gia
+
+// 15. Lấy danh sách các phòng chat (Inbox)
 const getInboxRooms = async (userId) => {
-  // Lấy các ID phòng mà user có mặt
   const myRooms = await db
     .select({ roomId: schema.chatRoomMembers.roomId })
     .from(schema.chatRoomMembers)
@@ -254,7 +277,6 @@ const getInboxRooms = async (userId) => {
   const roomIds = myRooms.map((r) => r.roomId);
   if (roomIds.length === 0) return [];
 
-  // Lấy chi tiết các phòng đó, sắp xếp phòng có tin nhắn mới nhất lên đầu
   return await db
     .select()
     .from(schema.chatRooms)
@@ -262,8 +284,7 @@ const getInboxRooms = async (userId) => {
     .orderBy(desc(schema.chatRooms.lastMessageAt));
 };
 
-// 16. Tìm thông tin của người chat cùng trong phòng 1-1 (Private)
-// Thay thế hàm 16 bằng đoạn này:
+// 16. Tìm thông tin của người chat cùng trong phòng 1-1
 const getOtherMemberInPrivateRoom = async (roomId, currentUserId) => {
   const result = await db
     .select({
@@ -288,9 +309,10 @@ const getOtherMemberInPrivateRoom = async (roomId, currentUserId) => {
 
   return result.length > 0 ? result[0] : null;
 };
-// 17. Lấy lịch sử tin nhắn (Nâng cấp để lấy kèm thông tin ảnh/file)
+
+// 17. Lấy lịch sử tin nhắn (ĐÃ SỬA: Lấy nickname trong danh bạ thay vì tên thật)
 const getMessageHistory = async (roomId) => {
-  return await db
+  const messages = await db
     .select({
       id: schema.chatMessages.id,
       roomId: schema.chatMessages.roomId,
@@ -298,26 +320,52 @@ const getMessageHistory = async (roomId) => {
       messageType: schema.chatMessages.messageType,
       content: schema.chatMessages.content,
       createdAt: schema.chatMessages.createdAt,
-      senderName: schema.users.fullName,
+
+      // Lấy 2 thông tin: nickname (tên đã đổi) và fullName (tên thật gốc)
+      senderNickname: schema.chatRoomMembers.nickname,
+      senderFullName: schema.users.fullName,
       senderUsername: schema.users.username,
       senderAvatar: schema.users.avatarUrl,
-      // Lấy thêm URL ảnh từ bảng đính kèm
+
       attachmentUrl: schema.chatMessageAttachments.url,
       isDeleted: schema.chatMessages.isDeleted,
       updatedAt: schema.chatMessages.updatedAt,
     })
     .from(schema.chatMessages)
     .innerJoin(schema.users, eq(schema.chatMessages.senderId, schema.users.id))
-    // LEFT JOIN để tin nhắn văn bản (không có ảnh) vẫn hiện ra bình thường
+    // JOIN thêm bảng chatRoomMembers để móc ra đúng Nickname ở phòng này
+    .leftJoin(
+      schema.chatRoomMembers,
+      and(
+        eq(schema.chatRoomMembers.roomId, schema.chatMessages.roomId),
+        eq(schema.chatRoomMembers.userId, schema.chatMessages.senderId),
+      ),
+    )
     .leftJoin(
       schema.chatMessageAttachments,
       eq(schema.chatMessages.id, schema.chatMessageAttachments.messageId),
     )
     .where(eq(schema.chatMessages.roomId, roomId))
     .orderBy(asc(schema.chatMessages.createdAt));
+
+  // Map lại kết quả, ưu tiên Nickname (Tên giống danh bạ)
+  return messages.map((msg) => ({
+    id: msg.id,
+    roomId: msg.roomId,
+    senderId: msg.senderId,
+    messageType: msg.messageType,
+    content: msg.content,
+    createdAt: msg.createdAt,
+    senderName: msg.senderNickname || msg.senderFullName || msg.senderUsername,
+    senderUsername: msg.senderUsername,
+    senderAvatar: msg.senderAvatar,
+    attachmentUrl: msg.attachmentUrl,
+    isDeleted: msg.isDeleted,
+    updatedAt: msg.updatedAt,
+  }));
 };
+
 // 18. Sửa tin nhắn
-// Chỉ cho phép sửa nếu đúng senderId (chủ nhân tin nhắn)
 const editMessage = async (messageId, senderId, newContent) => {
   const updatedMessage = await db
     .update(schema.chatMessages)
@@ -337,7 +385,6 @@ const editMessage = async (messageId, senderId, newContent) => {
 };
 
 // 19. Xóa tin nhắn (Thu hồi)
-// Thu hồi dạng Soft Delete (ẩn đi chứ không xóa mất khỏi DB)
 const deleteMessage = async (messageId, senderId) => {
   const deletedMessage = await db
     .update(schema.chatMessages)
@@ -355,7 +402,8 @@ const deleteMessage = async (messageId, senderId) => {
 
   return deletedMessage[0];
 };
-// 20. Đánh dấu đã xem toàn bộ tin nhắn trong phòng
+
+// 20. Đánh dấu đã xem
 const markRoomAsRead = async (roomId, userId) => {
   await db
     .update(schema.chatRoomMembers)
@@ -369,6 +417,7 @@ const markRoomAsRead = async (roomId, userId) => {
       ),
     );
 };
+
 module.exports = {
   getUserRole,
   getResidentInfo,
@@ -378,8 +427,9 @@ module.exports = {
   getRoomMember,
   addMemberToRoom,
   updateMemberNickname,
-  getUserBuildingRoom,
-  getBuildingMembers,
+  getAllBuildings,
+  getUserAllBuildingRooms,
+  getMembersFromMultipleRooms,
   saveMessage,
   findPrivateRoom,
   createPrivateRoom,

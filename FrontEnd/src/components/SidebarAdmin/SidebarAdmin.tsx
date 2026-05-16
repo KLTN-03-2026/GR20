@@ -138,7 +138,7 @@ const menuGroups: MenuGroup[] = [
         icon: 'analytics'
       },
       {
-        path: '/owner/management/notifications',
+        path: '/admin/notifications',
         label: 'Quản lý thông báo',
         icon: 'campaign'
       }
@@ -308,7 +308,7 @@ transition-all duration-300 border
       {/* Bottom menu */}
       <div className='border-t border-secondary-container/20 pt-3 pb-4 px-3 space-y-1'>
         <NavLink
-          to='/owner/community-chat'
+          to='/chat'
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 relative group ${
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''

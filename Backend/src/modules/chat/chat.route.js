@@ -8,7 +8,7 @@ const {
   createPrivateChatSchema,
 } = require("./chat.request");
 
-// Import đúng tên middleware từ file của bạn
+// Import mdw
 const { verifyToken } = require("../../middlewares/auth.middleware");
 const { validate } = require("../../utils/validator"); // Đường dẫn tới file validator chung
 

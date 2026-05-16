@@ -227,14 +227,14 @@ export default function HomePage() {
       {/* </main> */}
 
       {/* Floating AI Assistant */}
-      <button className='fixed bottom-6 right-6 lg:bottom-10 lg:right-10 w-16 h-16 bg-gradient-to-tr from-primary to-secondary text-white rounded-full shadow-2xl flex items-center justify-center ai-glow hover:scale-110 active:scale-95 transition-all z-50 group'>
+      {/* <button className='fixed bottom-6 right-6 lg:bottom-10 lg:right-10 w-16 h-16 bg-gradient-to-tr from-primary to-secondary text-white rounded-full shadow-2xl flex items-center justify-center ai-glow hover:scale-110 active:scale-95 transition-all z-50 group'>
         <span className='material-symbols-outlined text-3xl' style={{ fontVariationSettings: "'FILL' 1" }}>
           smart_toy
         </span>
         <div className='absolute -top-12 right-0 bg-white text-primary text-xs font-bold px-4 py-2 rounded-xl shadow-xl border border-secondary-container opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap'>
           Hỏi trợ lý AI Homelink
         </div>
-      </button>
+      </button> */}
 
       {/* Bottom Navigation Bar (Mobile) */}
       <nav className='lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-4 bg-white/60 backdrop-blur-xl shadow-[0_-12px_40px_0_rgba(7,30,39,0.06)] rounded-t-3xl'>

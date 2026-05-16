@@ -1,16 +1,17 @@
-import axios from 'axios'
+import http from 'src/utils/http'
 
-const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+const apiClient = http
 
 export const employeeApi = {
-  getAll: async () => (await apiClient.get('/employees')).data.data,
-  add: async (data: any) => (await apiClient.post('/employees', data)).data.data,
+  getAll: async () => (await apiClient.get('api/employees')).data.data,
+
+  //Lấy chi tiết 1 nhân viên (kèm danh sách buildingIds)
+  getById: async (id: string | number) => (await apiClient.get(`api/employees/${id}`)).data.data,
+
+  add: async (data: any) => (await apiClient.post('api/employees', data)).data.data,
+
   update: async ({ id, data }: { id: string | number; data: any }) =>
-    (await apiClient.put(`/employees/${id}`, data)).data.data,
-  toggleStatus: async (id: string | number) => (await apiClient.patch(`/employees/${id}/status`)).data.data
+    (await apiClient.put(`api/employees/${id}`, data)).data.data,
+
+  toggleStatus: async (id: string | number) => (await apiClient.patch(`api/employees/${id}/status`)).data.data
 }

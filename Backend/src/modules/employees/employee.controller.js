@@ -8,20 +8,24 @@ const addEmployee = async (req, res) => {
   try {
     const validatedData = createEmployeeSchema.parse(req.body);
     const newEmployee = await employeeService.addEmployee(validatedData);
-    return res
-      .status(201)
-      .json({
-        status: "success",
-        message: "Thêm nhân viên thành công!",
-        data: newEmployee,
-      });
+    return res.status(201).json({
+      status: "success",
+      message: "Thêm nhân viên thành công!",
+      data: newEmployee,
+    });
   } catch (error) {
-    if (error.name === "ZodError")
+    if (error.name === "ZodError") {
       return res
         .status(400)
         .json({ status: "error", message: error.errors[0].message });
-    if (error.message.includes("đã tồn tại"))
+    }
+
+    // SỬA Ở ĐÂY: Bắt đúng message được ném ra từ Service
+    if (error.message && error.message.includes("đã tồn tại")) {
       return res.status(409).json({ status: "error", message: error.message });
+    }
+
+    console.error("Lỗi Server:", error); // Log ra để xem nếu còn lỗi khác
     return res
       .status(500)
       .json({ status: "error", message: "Lỗi máy chủ nội bộ" });
@@ -31,13 +35,11 @@ const addEmployee = async (req, res) => {
 const getAllEmployees = async (req, res) => {
   try {
     const employees = await employeeService.getAllEmployees();
-    return res
-      .status(200)
-      .json({
-        status: "success",
-        message: "Lấy danh sách thành công",
-        data: employees,
-      });
+    return res.status(200).json({
+      status: "success",
+      message: "Lấy danh sách thành công",
+      data: employees,
+    });
   } catch (error) {
     return res
       .status(500)
@@ -48,13 +50,11 @@ const getAllEmployees = async (req, res) => {
 const getEmployeeById = async (req, res) => {
   try {
     const employee = await employeeService.getEmployeeById(req.params.id);
-    return res
-      .status(200)
-      .json({
-        status: "success",
-        message: "Lấy chi tiết thành công",
-        data: employee,
-      });
+    return res.status(200).json({
+      status: "success",
+      message: "Lấy chi tiết thành công",
+      data: employee,
+    });
   } catch (error) {
     if (
       error instanceof SyntaxError ||
@@ -79,25 +79,21 @@ const updateEmployee = async (req, res) => {
 
     // Nếu người dùng không gửi data gì lên mà vẫn bấm Update
     if (Object.keys(validatedData).length === 0) {
-      return res
-        .status(400)
-        .json({
-          status: "error",
-          message: "Vui lòng cung cấp dữ liệu cần sửa!",
-        });
+      return res.status(400).json({
+        status: "error",
+        message: "Vui lòng cung cấp dữ liệu cần sửa!",
+      });
     }
 
     const updatedEmployee = await employeeService.updateEmployee(
       id,
       validatedData,
     );
-    return res
-      .status(200)
-      .json({
-        status: "success",
-        message: "Cập nhật thông tin thành công!",
-        data: updatedEmployee,
-      });
+    return res.status(200).json({
+      status: "success",
+      message: "Cập nhật thông tin thành công!",
+      data: updatedEmployee,
+    });
   } catch (error) {
     if (error.name === "ZodError")
       return res
@@ -119,13 +115,11 @@ const toggleStatus = async (req, res) => {
     const result = await employeeService.toggleStatus(req.params.id);
     const statusText = result.isActive ? "Mở khóa" : "Khóa";
 
-    return res
-      .status(200)
-      .json({
-        status: "success",
-        message: `${statusText} tài khoản thành công!`,
-        data: result,
-      });
+    return res.status(200).json({
+      status: "success",
+      message: `${statusText} tài khoản thành công!`,
+      data: result,
+    });
   } catch (error) {
     if (
       error instanceof SyntaxError ||

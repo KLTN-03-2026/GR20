@@ -4,20 +4,27 @@ export interface INotificationAdmin {
   id: number
   title: string
   content: string
-  type: 'NORMAL' | 'EMERGENCY' | 'MAINTENANCE' | 'PAYMENT'
-  targetType: 'ALL' | 'BUILDING' | 'FLOOR' | 'INDIVIDUAL'
-  targetId?: number | null
+  buildingId?: number | null
   senderId: number
   isBanner: boolean
   createdAt: string
+  // targetType/targetUserId không lưu trong DB nên chỉ dùng lúc gửi
+}
+
+export interface IResident {
+  userId: number
+  fullName: string
+  phone: string
+  email: string
 }
 
 export interface CreateNotificationBody {
   title: string
   content: string
-  type: string
-  targetType: string
-  targetId?: number
+  targetType: 'ALL' | 'BUILDING' | 'INDIVIDUAL'
+  buildingId?: number
+  targetUserId?: number
+  isBanner?: boolean
 }
 
 interface SuccessResponse<T> {
@@ -27,18 +34,20 @@ interface SuccessResponse<T> {
 }
 
 export const notificationAdminApi = {
-  // Lấy lịch sử thông báo đã gửi
-  getHistory: () => {
-    return http.get<SuccessResponse<INotificationAdmin[]>>('/api/admin/notifications')
-  },
+  getBuildings: (page = 0, size = 10, status = 'ACTIVE') =>
+    http.get<any>('/api/buildings', {
+      params: { page, size, status }
+    }),
+  getHistory: () => http.get<SuccessResponse<INotificationAdmin[]>>('/api/admin/notifications'),
 
-  // BQL gửi thông báo mới
-  sendNotification: (body: CreateNotificationBody) => {
-    return http.post<SuccessResponse<INotificationAdmin>>('/api/admin/notifications', body)
-  },
+  sendNotification: (body: CreateNotificationBody) =>
+    http.post<SuccessResponse<INotificationAdmin>>('/api/admin/notifications', body),
 
-  // Thu hồi thông báo
-  recallNotification: (id: number) => {
-    return http.delete<SuccessResponse<null>>(`/api/admin/notifications/${id}/recall`)
-  }
+  recallNotification: (id: number) => http.delete<SuccessResponse<null>>(`/api/admin/notifications/${id}/recall`),
+
+  // Lấy cư dân theo tòa nhà, có thể kèm search
+  getResidentsByBuilding: (buildingId: number, search = '') =>
+    http.get<SuccessResponse<IResident[]>>(`/api/admin/notifications/buildings/${buildingId}/residents`, {
+      params: { search }
+    })
 }

@@ -67,6 +67,10 @@ export default function SidebarProtect() {
             <span className='material-symbols-outlined'>person_search</span>
             <span className='text-sm font-manrope'>Tra cứu cư dân</span>
           </NavLink>
+          <NavLink to='/chat' className={getNavClass}>
+            <span className='material-symbols-outlined'>Chat</span>
+            <span className='text-sm font-manrope'>Chat cộng đồng</span>
+          </NavLink>
         </nav>
       </div>
 

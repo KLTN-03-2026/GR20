@@ -18,9 +18,24 @@ const createBuilding = async (req, res) => {
   }
 };
 
+// const getAllBuildings = async (req, res) => {
+//   try {
+//     const result = await service.getAllBuildings(req.query, req.user);
+
+//     res.json({
+//       operationType: "Success",
+//       message: "success",
+//       code: "OK",
+//       ...result,
+//       timestamp: new Date(),
+//     });
+//   } catch (err) {
+//     sendControllerError(res, err);
+//   }
+// };
 const getAllBuildings = async (req, res) => {
   try {
-    const result = await service.getAllBuildings(req.query, req.user);
+    const result = await service.getAllBuildings(req.query);
 
     res.json({
       operationType: "Success",
@@ -30,7 +45,7 @@ const getAllBuildings = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    sendControllerError(res, err);
+    sendError(res, err);
   }
 };
 

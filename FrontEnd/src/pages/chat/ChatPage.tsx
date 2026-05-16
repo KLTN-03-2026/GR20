@@ -32,9 +32,9 @@ export default function ChatPage() {
   const [isLastMessageRead, setIsLastMessageRead] = useState(false)
   const [onlineUserIds, setOnlineUserIds] = useState<number[]>([])
 
-  // --- STATE MỚI: QUẢN LÝ POPUP ĐẶT TÊN ---
   const [showInitModal, setShowInitModal] = useState(false)
   const [prefixName, setPrefixName] = useState('')
+  const [hasSubmittedEmpty, setHasSubmittedEmpty] = useState(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -44,7 +44,6 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages, typingUserIds, isLastMessageRead])
 
-  // Lắng nghe Socket
   useEffect(() => {
     if (!socket) return
 
@@ -121,7 +120,6 @@ export default function ChatPage() {
     }
   }, [currentRoomId, socket])
 
-  // API Calls
   const { data: directoryData, isLoading: isLoadingDirectory } = useQuery({
     queryKey: ['chatDirectory', searchQuery],
     queryFn: () => chatApi.getDirectory(searchQuery),
@@ -140,7 +138,6 @@ export default function ChatPage() {
     enabled: !!currentRoomId
   })
 
-  // Bật Modal Đặt Tên nếu chưa có phòng chat nào
   useEffect(() => {
     if (inboxData && inboxData.length === 0 && !isLoadingInbox) {
       setShowInitModal(true)
@@ -203,8 +200,8 @@ export default function ChatPage() {
     if (room.type === 'building' || room.type === 'group') {
       setCurrentChatUser({
         userId: 'group',
-        nickname: room.name,
-        roleName: 'Nhóm cộng đồng',
+        nickname: room.name, // Khúc này nó sẽ ăn tên động "Nhóm cư dân tòa nhà HAGL1"
+        roleName: 'Nhóm cư dân', // <--- SỬA CHỮ "Nhóm cộng đồng" THÀNH CHỮ NÀY
         avatarUrl: room.avatar,
         isGroup: true
       })
@@ -379,6 +376,8 @@ export default function ChatPage() {
                     <div className='flex justify-center py-8'>
                       <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-[#0052CC]'></div>
                     </div>
+                  ) : directoryData?.length === 0 ? (
+                    <div className='text-center text-sm text-gray-500 py-4'>Chưa có thành viên nào trong danh bạ</div>
                   ) : (
                     directoryData?.map((u: any) => (
                       <div
@@ -396,7 +395,7 @@ export default function ChatPage() {
                         </div>
                         <div className='overflow-hidden flex-1'>
                           <h4 className='font-bold text-gray-900 text-sm truncate'>{u.nickname}</h4>
-                          <p className='text-xs text-gray-500 truncate'>{u.roleName}</p>
+                          <p className='text-xs text-gray-500 truncate'>{u.roleName || 'Thành viên'}</p>
                         </div>
                       </div>
                     ))
@@ -417,7 +416,7 @@ export default function ChatPage() {
                 <div>
                   <h3 className='font-bold text-gray-900'>{currentChatUser.nickname || currentChatUser.name}</h3>
                   {currentChatUser.isGroup ? (
-                    <span className='text-[10px] text-[#0052CC] font-bold uppercase'>Nhóm cư dân</span>
+                    <span className='text-[10px] text-[#0052CC] font-bold uppercase'>Nhóm cộng đồng</span>
                   ) : onlineUserIds.includes(Number(currentChatUser.userId)) ? (
                     <div className='flex items-center gap-1.5 mt-0.5'>
                       <span className='w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]'></span>
@@ -699,7 +698,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* --- POPUP ĐẶT TÊN KHỞI TẠO CHAT --- */}
+      {/* --- POPUP ĐẶT TÊN KHỞI TẠO CHAT VỚI VALIDATION --- */}
       {showInitModal && (
         <div className='fixed inset-0 z-[10000] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm'>
           <div className='bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center transform transition-all'>
@@ -721,23 +720,39 @@ export default function ChatPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
+                if (!prefixName.trim()) {
+                  setHasSubmittedEmpty(true)
+                  toast.warning('Bạn chưa nhập tên đệm kìa!')
+                  return
+                }
                 initProfileMutation.mutate(prefixName)
               }}
             >
               <input
                 type='text'
                 value={prefixName}
-                onChange={(e) => setPrefixName(e.target.value)}
+                onChange={(e) => {
+                  setPrefixName(e.target.value)
+                  if (e.target.value.trim()) setHasSubmittedEmpty(false)
+                }}
                 placeholder='VD: Căn hộ 1505, Kỹ thuật viên...'
-                className='w-full border border-gray-300 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-[#0052CC] transition text-sm'
+                className={`w-full border rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 transition text-sm ${
+                  hasSubmittedEmpty || (prefixName.trim() === '' && initProfileMutation.isError)
+                    ? 'border-red-500 focus:ring-red-500 ring-1 ring-red-500'
+                    : 'border-gray-300 focus:ring-[#0052CC]'
+                }`}
                 autoFocus
               />
               <button
                 type='submit'
-                disabled={!prefixName.trim() || initProfileMutation.isPending}
-                className='w-full bg-[#0052CC] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition disabled:bg-gray-300 shadow-md'
+                disabled={initProfileMutation.isPending}
+                className='w-full bg-[#0052CC] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition disabled:bg-gray-300 shadow-md flex justify-center items-center'
               >
-                {initProfileMutation.isPending ? 'Đang khởi tạo...' : 'Bắt đầu trò chuyện'}
+                {initProfileMutation.isPending ? (
+                  <div className='animate-spin rounded-full h-5 w-5 border-b-2 border-white'></div>
+                ) : (
+                  'Bắt đầu trò chuyện'
+                )}
               </button>
             </form>
           </div>

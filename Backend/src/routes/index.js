@@ -76,6 +76,9 @@ const amenityRoute = require("../modules/amenities/amenity.route");
 const statisticsRoute = require("../modules/statistics/statistics.route");
 const dashboardProtection = require("../modules/dashboard_Protection/dashboard.routes");
 const pinResetRoute = require("../modules/pin_reset/pin-reset.routes");
+const aichatRoute = require("../modules/ai_chat/ai_chat.route");
+const dashboardstaff = require("../modules/dashboard/dashboard.route");
+
 router.use("/uploads", express.static("uploads"));
 
 router.use("/pin-reset", pinResetRoute);
@@ -115,6 +118,8 @@ router.use("/visitors", visitorRoute);
 router.use("/contracts", contractRoute);
 router.use("/statistics", statisticsRoute);
 
+router.use("/aichat", aichatRoute);
+router.use("/dashboardstaff", dashboardstaff);
 router.use("/amenities", amenityRoute);
 router.use("/buildings/:buildingId/amenities", amenityRoute);
 
