@@ -20,6 +20,7 @@ export interface Resident1 {
   relationship: string
   status: string
   userId: string
+  isUnassigned?: boolean
 }
 
 export interface ResidentDetail {
@@ -76,10 +77,13 @@ export interface Resident12 {
   id: string
   userId: string
   fullName: string
-  apartmentNumber: string
-  buildingName: string
-  relationship: string
+  phone?: string
+  email?: string
+  apartmentNumber: string | null
+  buildingName: string | null
+  relationship: string | null
   status: string
+  isUnassigned?: boolean
 }
 
 export interface ResidentDetail12 {

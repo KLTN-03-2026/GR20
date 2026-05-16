@@ -6,23 +6,7 @@ import { AppContext } from 'src/contexts/app.context'
 import { invoiceItemsApi } from 'src/apis/billing_api/invoice-items.api'
 import { paymentsApi } from 'src/apis/billing_api/payments.api'
 import { utilityPricingApi } from 'src/apis/utility_api/utility-pricing.api'
-import { logPaymentConsoleError } from 'src/utils/payment-console-log'
-
-const getApiErrorMessage = (err: any, fallbackMessage: string) => {
-  const apiErr = err?.response?.data
-  if (typeof apiErr?.message === 'string' && apiErr.message.trim()) return apiErr.message.trim()
-  const firstFieldError = apiErr?.errors ? Object.values(apiErr.errors).flat()?.[0] : null
-  const rawMessage = firstFieldError || apiErr?.formErrors?.[0] || apiErr?.details || apiErr?.message || fallbackMessage
-  if (typeof rawMessage !== 'string') return fallbackMessage
-  const translated: Array<[string, string]> = [
-    ['Payment not found', 'Không tìm thấy thanh toán'],
-    ['Invoice not found', 'Không tìm thấy hóa đơn'],
-    ['Webhook chưa xác nhận giao dịch.', 'Webhook chưa xác nhận giao dịch. Vui lòng đợi thêm.'],
-    ['Invalid payment amount', 'Số tiền thanh toán không hợp lệ']
-  ]
-  const m = translated.find(([en]) => String(rawMessage).includes(en))
-  return m?.[1] || String(rawMessage)
-}
+import { logPaymentConsoleError, getPaymentApiErrorMessage } from 'src/utils/payment-console-log'
 
 type PayRow = {
   id?: string
@@ -48,9 +32,13 @@ export default function UserPaymentDetailPage() {
 
   const bankTransferAwaitingWebhookRef = useRef(false)
   const didRedirectToSuccessRef = useRef(false)
+  const qrExpireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const QR_DISPLAY_MS = 30_000
 
   const [payError, setPayError] = useState<string | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<'CASH' | 'BANK_TRANSFER'>('CASH')
+  const [qrSessionExpired, setQrSessionExpired] = useState(false)
+  const [qrSecondsLeft, setQrSecondsLeft] = useState<number | null>(null)
 
   const paymentQuery = useQuery({
     queryKey: ['user-payment-detail', userId, id],
@@ -86,6 +74,7 @@ export default function UserPaymentDetailPage() {
 
   const pending = row?.status === 'PENDING'
   const paid = String(row?.status || '').toUpperCase() === 'SUCCESS'
+  const failed = String(row?.status || '').toUpperCase() === 'FAILED'
   const showCheckout = checkout || pending
 
   const vietQrQuery = useQuery({
@@ -115,13 +104,76 @@ export default function UserPaymentDetailPage() {
   }, [id])
 
   useEffect(() => {
-    if (showCheckout && pending && selectedMethod === 'BANK_TRANSFER' && vietQrQuery.isSuccess) {
+    if (showCheckout && pending && selectedMethod === 'BANK_TRANSFER' && vietQrQuery.isSuccess && !qrSessionExpired) {
       bankTransferAwaitingWebhookRef.current = true
     }
     if (selectedMethod === 'CASH' && pending) {
       bankTransferAwaitingWebhookRef.current = false
     }
-  }, [showCheckout, pending, selectedMethod, vietQrQuery.isSuccess])
+    if (qrSessionExpired && selectedMethod === 'BANK_TRANSFER') {
+      bankTransferAwaitingWebhookRef.current = false
+    }
+  }, [showCheckout, pending, selectedMethod, vietQrQuery.isSuccess, qrSessionExpired])
+
+  /** Sau 30 giây hiển thị QR: kết thúc phiên quét, dừng poll trạng thái (có thể tải lại mã). */
+  useEffect(() => {
+    if (qrExpireTimerRef.current) {
+      clearTimeout(qrExpireTimerRef.current)
+      qrExpireTimerRef.current = null
+    }
+
+    if (
+      !showCheckout ||
+      !pending ||
+      selectedMethod !== 'BANK_TRANSFER' ||
+      !vietQrQuery.isSuccess ||
+      !vietQrQuery.data?.qrUrl
+    ) {
+      setQrSessionExpired(false)
+      setQrSecondsLeft(null)
+      return
+    }
+
+    setQrSessionExpired(false)
+    setQrSecondsLeft(Math.ceil(QR_DISPLAY_MS / 1000))
+
+    const tick = window.setInterval(() => {
+      setQrSecondsLeft((s) => {
+        if (s == null || s <= 1) {
+          window.clearInterval(tick)
+          return null
+        }
+        return s - 1
+      })
+    }, 1000)
+
+    qrExpireTimerRef.current = setTimeout(() => {
+      qrExpireTimerRef.current = null
+      window.clearInterval(tick)
+      setQrSecondsLeft(null)
+      setQrSessionExpired(true)
+      bankTransferAwaitingWebhookRef.current = false
+      void queryClient.invalidateQueries({ queryKey: ['user-payment-detail', userId, id] })
+    }, QR_DISPLAY_MS)
+
+    return () => {
+      window.clearInterval(tick)
+      if (qrExpireTimerRef.current) {
+        clearTimeout(qrExpireTimerRef.current)
+        qrExpireTimerRef.current = null
+      }
+    }
+  }, [
+    showCheckout,
+    pending,
+    selectedMethod,
+    vietQrQuery.isSuccess,
+    vietQrQuery.dataUpdatedAt,
+    vietQrQuery.data?.qrUrl,
+    queryClient,
+    userId,
+    id
+  ])
 
   useEffect(() => {
     if (!id || !userId || !row) return
@@ -160,7 +212,7 @@ export default function UserPaymentDetailPage() {
     },
     onError: (err: unknown) => {
       logPaymentConsoleError('confirm-cash', err)
-      const msg = getApiErrorMessage(err, 'Thanh toán thất bại')
+      const msg = getPaymentApiErrorMessage(err, 'Thanh toán thất bại')
       setPayError(msg)
       toast.error(msg)
     }
@@ -185,6 +237,38 @@ export default function UserPaymentDetailPage() {
       <div className='flex min-h-[40vh] items-center justify-center text-slate-400'>
         <span className='material-symbols-outlined animate-spin'>sync</span>
         <span className='ml-2 text-sm'>Đang tải...</span>
+      </div>
+    )
+  }
+
+  if (paymentQuery.isError) {
+    const errMsg = getPaymentApiErrorMessage(paymentQuery.error, 'Không tải được phiếu thanh toán.')
+    return (
+      <div className='pb-10'>
+        <nav className='mb-6 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-400'>
+          <Link to='/' className='hover:text-blue-500'>
+            Trang chủ
+          </Link>
+          <span className='material-symbols-outlined text-xs'>chevron_right</span>
+          <Link to='/payments' className='hover:text-blue-500'>
+            Thanh toán của tôi
+          </Link>
+          <span className='material-symbols-outlined text-xs'>chevron_right</span>
+          <span className='font-semibold text-blue-600'>Chi tiết</span>
+        </nav>
+        <div className='rounded-2xl border border-red-100 bg-red-50 px-6 py-8 text-center'>
+          <p className='text-sm font-semibold text-red-800'>{errMsg}</p>
+          <button
+            type='button'
+            className='mt-4 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700'
+            onClick={() => paymentQuery.refetch()}
+          >
+            Thử lại
+          </button>
+          <Link to='/payments' className='mt-4 block text-sm font-bold text-blue-600 hover:underline'>
+            Về danh sách thanh toán
+          </Link>
+        </div>
       </div>
     )
   }
@@ -230,6 +314,19 @@ export default function UserPaymentDetailPage() {
         <span className='material-symbols-outlined text-xs'>chevron_right</span>
         <span className='font-semibold text-blue-600'>Chi tiết thanh toán</span>
       </nav>
+
+      {failed && (
+        <div className='mb-6 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-900 shadow-sm'>
+          <span className='material-symbols-outlined text-red-600'>error</span>
+          <div>
+            <p className='font-bold'>Thanh toán không thành công</p>
+            <p className='text-sm text-red-800/90'>
+              Giao dịch bị từ chối hoặc lỗi từ cổng thanh toán. Kiểm tra lại số tiền hoặc liên hệ Ban quản lý; bạn có thể mở lại
+              bước thanh toán nếu hóa đơn vẫn còn chờ.
+            </p>
+          </div>
+        </div>
+      )}
 
       {paid && (
         <div className='mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900 shadow-sm'>
@@ -335,8 +432,32 @@ export default function UserPaymentDetailPage() {
             <div className='rounded-xl border border-blue-100 bg-white p-4'>
               <p className='text-sm font-semibold text-slate-800'>Quét mã QR để chuyển khoản</p>
               <p className='mt-1 text-xs text-slate-600'>
-                Mã được tạo sẵn theo khoản phải trả. Sau khi chuyển khoản, hệ thống tự kiểm tra vài giây một lần — khi ngân hàng xác nhận bạn sẽ được chuyển sang trang hoàn tất thanh toán.
+                Mã được tạo sẵn theo khoản phải trả. Phiên quét hiệu lực {Math.round(QR_DISPLAY_MS / 1000)} giây — hết thời gian vui
+                lòng tải lại mã. Sau khi chuyển khoản, hệ thống tự kiểm tra trong cửa sổ 30 giây; khi ngân hàng xác nhận bạn sẽ được chuyển sang trang hoàn tất.
               </p>
+              {qrSecondsLeft != null && qrSecondsLeft > 0 && (
+                <p className='mt-2 text-xs font-semibold text-blue-700'>
+                  Còn lại khoảng {qrSecondsLeft}s để hệ thống tự đối soát sau khi bạn quét.
+                </p>
+              )}
+              {qrSessionExpired && (
+                <div className='mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3'>
+                  <p className='text-sm text-amber-900'>
+                    Đã hết {Math.round(QR_DISPLAY_MS / 1000)} giây. Vui lòng tải lại mã QR nếu bạn cần thanh toán tiếp.
+                  </p>
+                  <button
+                    type='button'
+                    className='rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700'
+                    onClick={() => {
+                      setQrSessionExpired(false)
+                      bankTransferAwaitingWebhookRef.current = true
+                      void queryClient.invalidateQueries({ queryKey: ['payment-vietqr', row?.invoiceId] })
+                    }}
+                  >
+                    Tải lại mã QR
+                  </button>
+                </div>
+              )}
               {vietQrQuery.isLoading && (
                 <div className='mt-4 flex items-center justify-center gap-2 py-8 text-sm text-slate-500'>
                   <span className='material-symbols-outlined animate-spin'>sync</span>
@@ -345,17 +466,22 @@ export default function UserPaymentDetailPage() {
               )}
               {vietQrQuery.isError && (
                 <div className='mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700'>
-                  {getApiErrorMessage(vietQrQuery.error, 'Không tải được mã QR. Thử chọn lại hoặc liên hệ BQL.')}
+                  {getPaymentApiErrorMessage(vietQrQuery.error, 'Không tải được mã QR. Thử chọn lại hoặc liên hệ BQL.')}
                 </div>
               )}
               {vietQrQuery.isSuccess && vietQrQuery.data.qrUrl ? (
                 <>
-                  <div className='mt-3 flex justify-center'>
+                  <div className={`relative mt-3 flex justify-center ${qrSessionExpired ? 'opacity-40' : ''}`}>
                     <img
                       src={vietQrQuery.data.qrUrl}
                       alt='VietQR'
                       className='h-52 w-52 rounded-xl border border-slate-100 object-contain'
                     />
+                    {qrSessionExpired ? (
+                      <div className='absolute inset-0 flex items-center justify-center rounded-xl bg-slate-900/50 text-center text-xs font-bold text-white'>
+                        Hết phiên 30s
+                      </div>
+                    ) : null}
                   </div>
                   {vietQrQuery.data.content ? (
                     <p className='mt-3 text-xs text-slate-600'>

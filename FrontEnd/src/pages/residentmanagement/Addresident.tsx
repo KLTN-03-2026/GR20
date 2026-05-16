@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { residentApi } from 'src/apis/resident_api/residents.api'
 import { toast } from 'react-toastify'
 
 export default function Addresident() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -23,7 +24,8 @@ export default function Addresident() {
       }),
     onSuccess: () => {
       toast.success('Tạo tài khoản cư dân thành công')
-      navigate('/Getresidentlist')
+      queryClient.invalidateQueries({ queryKey: ['residents'] })
+      navigate('/residents')
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Tạo tài khoản thất bại')
@@ -57,7 +59,7 @@ export default function Addresident() {
   }
 
   const handleCancel = () => {
-    navigate('/Getresidentlist')
+    navigate('/residents')
   }
 
   return (

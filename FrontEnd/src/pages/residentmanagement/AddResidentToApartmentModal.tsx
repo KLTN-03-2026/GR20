@@ -34,12 +34,13 @@ export default function AddResidentToApartmentModal({ isOpen, onClose, resident 
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
 
-  const profileId = resident?.id
+  const isUnassigned = resident?.isUnassigned === true
+  const profileId = !isUnassigned ? resident?.id : undefined
 
   const { data: detailRes, isLoading: loadingDetail } = useQuery({
     queryKey: ['resident', profileId],
     queryFn: () => residentApi.getResidentById(profileId!),
-    enabled: isOpen && !!profileId
+    enabled: isOpen && !!profileId && !isUnassigned
   })
 
   const detail = detailRes?.data?.data as ResidentDetailFlat | undefined
@@ -62,17 +63,33 @@ export default function AddResidentToApartmentModal({ isOpen, onClose, resident 
       setEmail('')
       return
     }
+    if (isUnassigned && resident) {
+      setFullName(resident.fullName || '')
+      setPhone(resident.phone || '')
+      setEmail(resident.email ? String(resident.email) : '')
+      return
+    }
     if (detail) {
       setFullName(detail.fullName || resident?.fullName || '')
       setPhone(detail.phone || '')
       setEmail(detail.email ? String(detail.email) : '')
     }
-  }, [isOpen, detail, resident?.fullName])
+  }, [isOpen, detail, resident, isUnassigned])
 
   const addMutation = useMutation({
     mutationFn: async () => {
       const aid = parseInt(apartmentId, 10)
       if (!Number.isFinite(aid)) throw new Error('INVALID_APT')
+
+      if (isUnassigned && resident?.userId) {
+        return residentApi.createResident({
+          userId: Number(resident.userId),
+          apartmentId: aid,
+          relationship,
+          moveInDate
+        })
+      }
+
       return http.post(`/api/apartments/${aid}/residents`, {
         fullName: fullName.trim(),
         phone: phone.trim(),
@@ -124,7 +141,9 @@ export default function AddResidentToApartmentModal({ isOpen, onClose, resident 
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
         <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Thêm cư dân vào căn hộ</h2>
+            <h2 className="text-lg font-bold text-gray-900">
+              {isUnassigned ? 'Gán tài khoản vào căn hộ' : 'Thêm cư dân vào căn hộ'}
+            </h2>
             <p className="text-sm text-gray-500 mt-0.5">{resident.fullName}</p>
           </div>
           <button
@@ -138,7 +157,7 @@ export default function AddResidentToApartmentModal({ isOpen, onClose, resident 
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          {loadingDetail && (
+          {loadingDetail && !isUnassigned && (
             <p className="text-sm text-blue-600">Đang tải thông tin cư dân...</p>
           )}
 

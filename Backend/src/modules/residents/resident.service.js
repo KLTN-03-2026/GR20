@@ -2,7 +2,23 @@ const repo = require("./resident.repository");
 const mapper = require("./resident.mapper");
 const apartmentRepo = require("../apartments/apartment.repository");
 const userService = require("../profile/user.service");
+const userRepo = require("../profile/user.repository");
 const { AppError } = require("../../common/app-error");
+
+const normalizePhone = (raw) => {
+  let p = String(raw).trim().replace(/\s+/g, "");
+  if (p.startsWith("+84")) {
+    p = `0${p.slice(3)}`;
+  } else if (p.startsWith("84") && p.length === 11) {
+    p = `0${p.slice(2)}`;
+  }
+  return p;
+};
+
+const buildResidentPlaceholderEmail = (phoneNorm) => {
+  const digits = phoneNorm.replace(/\D/g, "") || "resident";
+  return `${digits}@resident.local`;
+};
 const {
   getScopedBuildingIdsForList,
 } = require("../../utils/access/scoped-building-access");
@@ -18,7 +34,8 @@ const createResident = async (reqBody) => {
     throw new AppError(400, "apartmentId không hợp lệ");
   }
 
-  const fullName = reqBody.fullName != null ? String(reqBody.fullName).trim() : "";
+  const fullName =
+    reqBody.fullName != null ? String(reqBody.fullName).trim() : "";
   const phone = reqBody.phone != null ? String(reqBody.phone).trim() : "";
   const useRichPayload = fullName.length > 0 && phone.length > 0;
 
@@ -26,7 +43,8 @@ const createResident = async (reqBody) => {
     const created = await apartmentRepo.addResident(apartmentId, {
       fullName,
       phone,
-      email: reqBody.email != null ? String(reqBody.email).trim() || null : null,
+      email:
+        reqBody.email != null ? String(reqBody.email).trim() || null : null,
       relationship: reqBody.relationship || "FAMILY",
       moveInDate: reqBody.moveInDate,
     });
@@ -48,7 +66,10 @@ const createResident = async (reqBody) => {
     );
   }
 
-  const existing = await repo.getResidentByUserAndApartment(userId, apartmentId);
+  const existing = await repo.getResidentByUserAndApartment(
+    userId,
+    apartmentId,
+  );
   if (existing) {
     throw new AppError(409, "Người dùng đã là cư dân của căn hộ này");
   }
@@ -73,7 +94,12 @@ const createResident = async (reqBody) => {
     }
   }
 
-  const entity = mapper.toEntity({ ...reqBody, userId, apartmentId, relationship });
+  const entity = mapper.toEntity({
+    ...reqBody,
+    userId,
+    apartmentId,
+    relationship,
+  });
   const result = await repo.createResident(entity);
 
   if (relationship === "OWNER") {
@@ -90,23 +116,35 @@ const createResident = async (reqBody) => {
 const createResidentAccount = async (reqBody) => {
   const fullName =
     reqBody.fullName != null ? String(reqBody.fullName).trim() : "";
-  const phone = reqBody.phone != null ? String(reqBody.phone).trim() : "";
-  const password =
-    reqBody.password != null ? String(reqBody.password) : "";
+  const phoneRaw = reqBody.phone != null ? String(reqBody.phone).trim() : "";
+  const password = reqBody.password != null ? String(reqBody.password) : "";
 
   if (!fullName) {
     throw new AppError(400, "Vui lòng nhập họ tên");
   }
-  if (!phone) {
+  if (!phoneRaw) {
     throw new AppError(400, "Vui lòng nhập số điện thoại");
   }
   if (!password) {
     throw new AppError(400, "Vui lòng nhập mật khẩu");
   }
+  if (password.length < 6) {
+    throw new AppError(400, "Mật khẩu tối thiểu 6 ký tự");
+  }
 
-  const emailRaw =
-    reqBody.email != null ? String(reqBody.email).trim() : "";
-  const email = emailRaw.length > 0 ? emailRaw : undefined;
+  const phone = normalizePhone(phoneRaw);
+  if (!/^0[1-9][0-9]{8}$/.test(phone)) {
+    throw new AppError(400, "Số điện thoại không hợp lệ (VD: 0901234567)");
+  }
+
+  const existing = await userRepo.getUserByUsername(phone);
+  if (existing) {
+    throw new AppError(409, "Số điện thoại đã được đăng ký");
+  }
+
+  const emailRaw = reqBody.email != null ? String(reqBody.email).trim() : "";
+  const email =
+    emailRaw.length > 0 ? emailRaw : buildResidentPlaceholderEmail(phone);
 
   return userService.createUser({
     username: phone,
@@ -114,6 +152,7 @@ const createResidentAccount = async (reqBody) => {
     phone,
     email,
     password,
+    roleName: "Người Dùng",
   });
 };
 
@@ -146,11 +185,15 @@ const getAllResidents = async (query, currentUser) => {
     };
   }
 
+  const filterByBuilding =
+    query.buildingId != null && String(query.buildingId).trim() !== "";
+
   const result = await repo.getAllResidents({
     page: pageNum,
     size: sizeNum,
     buildingIds: scope.buildingIds,
     status,
+    filterByBuilding,
   });
 
   return {
