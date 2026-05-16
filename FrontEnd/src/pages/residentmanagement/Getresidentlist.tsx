@@ -284,16 +284,6 @@ export default function Getresidentlist() {
                           >
                             <span className='material-symbols-outlined text-sm'>visibility</span>
                           </button>
-                          {!resident.isUnassigned && resident.profileId && (
-                            <button
-                              type='button'
-                              onClick={() => handleDelete(resident)}
-                              className='p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors'
-                              title='Xóa'
-                            >
-                              <span className='material-symbols-outlined text-sm'>delete</span>
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
