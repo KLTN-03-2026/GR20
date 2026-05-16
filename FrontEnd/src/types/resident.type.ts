@@ -20,6 +20,7 @@ export interface Resident1 {
   relationship: string
   status: string
   userId: string
+  isUnassigned?: boolean
 }
 
 export interface ResidentDetail {
