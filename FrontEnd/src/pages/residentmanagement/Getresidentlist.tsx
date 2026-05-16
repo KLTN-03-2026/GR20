@@ -79,6 +79,8 @@ export default function Getresidentlist() {
         return 'Không hoạt động'
       case 'MOVED_OUT':
         return 'Đã chuyển đi'
+      case 'UNASSIGNED':
+        return 'Chưa gán căn'
       default:
         return status
     }
@@ -99,7 +101,8 @@ export default function Getresidentlist() {
   }
 
   // Helper để hiển thị tên relationship
-  const getRelationshipText = (relationship: string) => {
+  const getRelationshipText = (relationship: string | null, isUnassigned?: boolean) => {
+    if (isUnassigned) return 'Tài khoản'
     switch (relationship) {
       case 'OWNER':
         return 'Chủ hộ'
@@ -108,7 +111,7 @@ export default function Getresidentlist() {
       case 'FAMILY':
         return 'Gia đình'
       default:
-        return relationship
+        return relationship || '—'
     }
   }
 
@@ -173,6 +176,7 @@ export default function Getresidentlist() {
                 <option value='ACTIVE'>Đang cư trú</option>
                 <option value='INACTIVE'>Không hoạt động</option>
                 <option value='MOVED_OUT'>Đã chuyển đi</option>
+                <option value='UNASSIGNED'>Chưa gán căn</option>
               </select>
             </div>
 
@@ -217,27 +221,38 @@ export default function Getresidentlist() {
                   </tr>
                 ) : (
                   residents.map((resident) => (
-                    <tr key={resident.id} className='hover:bg-gray-50 transition-colors'>
-                      <td className='p-4 text-sm font-mono text-gray-500'>#{resident.id}</td>
+                    <tr
+                      key={resident.isUnassigned ? `u-${resident.userId}` : resident.id}
+                      className='hover:bg-gray-50 transition-colors'
+                    >
+                      <td className='p-4 text-sm font-mono text-gray-500'>
+                        {resident.isUnassigned ? `U${resident.userId}` : `#${resident.id}`}
+                      </td>
                       <td className='p-4'>
                         <span className='font-semibold text-gray-800'>{resident.fullName}</span>
                       </td>
                       <td className='p-4'>
-                        <span className='text-sm text-gray-600'>{resident.apartmentNumber}</span>
+                        <span className='text-sm text-gray-600'>
+                          {resident.apartmentNumber || '—'}
+                        </span>
                       </td>
                       <td className='p-4'>
-                        <span className='text-sm text-gray-600'>{resident.buildingName}</span>
+                        <span className='text-sm text-gray-600'>{resident.buildingName || '—'}</span>
                       </td>
                       <td className='p-4'>
                         <span
-                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getRelationshipColor(resident.relationship)}`}
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getRelationshipColor(resident.relationship || '')}`}
                         >
-                          {getRelationshipText(resident.relationship)}
+                          {getRelationshipText(resident.relationship, resident.isUnassigned)}
                         </span>
                       </td>
                       <td className='p-4'>
                         <span
-                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(resident.status)}`}
+                          className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
+                            resident.status === 'UNASSIGNED'
+                              ? 'text-amber-700 bg-amber-50'
+                              : getStatusColor(resident.status)
+                          }`}
                         >
                           {getStatusText(resident.status)}
                         </span>
@@ -248,17 +263,11 @@ export default function Getresidentlist() {
                             type='button'
                             onClick={() => setAddToApartmentResident(resident)}
                             className='p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors'
-                            title='Thêm cư dân vào căn hộ'
+                            title={
+                              resident.isUnassigned ? 'Gán vào căn hộ' : 'Thêm cư dân vào căn hộ'
+                            }
                           >
                             <span className='material-symbols-outlined text-sm'>add_home</span>
-                          </button>
-                          <button
-                            type='button'
-                            onClick={() => handleDelete(resident.id)}
-                            className='p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors'
-                            title='Xóa'
-                          >
-                            <span className='material-symbols-outlined text-sm'>delete</span>
                           </button>
                           <button
                             type='button'

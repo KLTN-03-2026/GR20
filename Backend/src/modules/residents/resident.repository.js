@@ -20,95 +20,161 @@ const createResident = async (resident) => {
   return result.rows[0];
 };
 
-const getAllResidents = async ({ page = 0, size = 10, buildingIds, status }) => {
+const RESIDENT_ROLE_NAMES = ["người dùng", "user", "resident"];
+
+const getAllResidents = async ({
+  page = 0,
+  size = 10,
+  buildingIds,
+  status,
+  filterByBuilding = false,
+}) => {
   const offset = page * size;
-  let dataQuery = `
-    SELECT 
-      rp.id,
-      rp.user_id,
-      rp.apartment_id,
-      rp.relationship,
-      rp.move_in_date,
-      rp.move_out_date,
-      rp.status,
-      rp.created_at,
-      u.full_name,
-      u.email,
-      u.phone,
-      u.avatar_url,
-      a.apartment_code as apartment_number,
-      b.name as building_name
-    FROM resident_profiles rp
-    JOIN users u ON rp.user_id = u.id
-    JOIN apartments a ON rp.apartment_id = a.id
-    JOIN buildings b ON a.building_id = b.id
-    WHERE rp.move_out_date IS NULL
-  `;
-
-  let countQuery = `
-    SELECT COUNT(*) 
-    FROM resident_profiles rp
-    WHERE rp.move_out_date IS NULL
-  `;
-
   const queryParams = [];
   let paramIndex = 1;
 
+  const assignedWhere = ["rp.move_out_date IS NULL"];
   if (buildingIds && buildingIds.length > 0) {
-    dataQuery += ` AND b.id = ANY($${paramIndex}::bigint[])`;
-    countQuery += ` AND EXISTS (SELECT 1 FROM apartments a WHERE a.id = rp.apartment_id AND a.building_id = ANY($${paramIndex}::bigint[]))`;
+    assignedWhere.push(`b.id = ANY($${paramIndex}::bigint[])`);
     queryParams.push(buildingIds);
     paramIndex++;
   }
-
-  if (status) {
-    dataQuery += ` AND rp.status = $${paramIndex}`;
-    countQuery += ` AND rp.status = $${paramIndex}`;
+  if (status && status !== "UNASSIGNED") {
+    assignedWhere.push(`rp.status = $${paramIndex}`);
     queryParams.push(status);
     paramIndex++;
   }
 
-  dataQuery += ` ORDER BY rp.id ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  queryParams.push(size, offset);
+  const onlyUnassigned = status === "UNASSIGNED";
+  const includeUnassigned =
+    !filterByBuilding && (!status || status === "UNASSIGNED");
 
+  const assignedSelect = `
+    SELECT
+      rp.id AS profile_id,
+      rp.user_id,
+      rp.apartment_id,
+      rp.relationship::text AS relationship,
+      rp.move_in_date,
+      rp.move_out_date,
+      rp.status::text AS status,
+      rp.created_at,
+      u.full_name,
+      u.email,
+      u.phone,
+      u.avatar_url,
+      a.apartment_code AS apartment_number,
+      b.name AS building_name,
+      false AS is_unassigned
+    FROM resident_profiles rp
+    JOIN users u ON rp.user_id = u.id
+    JOIN apartments a ON rp.apartment_id = a.id
+    JOIN buildings b ON a.building_id = b.id
+    WHERE ${assignedWhere.join(" AND ")}
+  `;
+
+  const unassignedSelect = `
+    SELECT
+      NULL::bigint AS profile_id,
+      u.id AS user_id,
+      NULL::bigint AS apartment_id,
+      NULL::text AS relationship,
+      NULL::date AS move_in_date,
+      NULL::date AS move_out_date,
+      'UNASSIGNED'::text AS status,
+      u.created_at,
+      u.full_name,
+      u.email,
+      u.phone,
+      u.avatar_url,
+      NULL::varchar AS apartment_number,
+      NULL::varchar AS building_name,
+      true AS is_unassigned
+    FROM users u
+    INNER JOIN roles r ON r.id = u.role_id AND r.deleted_at IS NULL
+    WHERE u.is_active = true
+      AND LOWER(TRIM(r.name)) = ANY(ARRAY[${RESIDENT_ROLE_NAMES.map((n) => `'${n}'`).join(", ")}])
+      AND NOT EXISTS (
+        SELECT 1 FROM resident_profiles rp2
+        WHERE rp2.user_id = u.id AND rp2.move_out_date IS NULL
+      )
+  `;
+
+  const parts = [];
+  if (!onlyUnassigned) {
+    parts.push(assignedSelect);
+  }
+  if (includeUnassigned) {
+    parts.push(unassignedSelect);
+  }
+
+  if (parts.length === 0) {
+    return { rows: [], total: 0 };
+  }
+
+  const combinedSql = parts.join(" UNION ALL ");
+  const countQuery = `WITH combined AS (${combinedSql}) SELECT COUNT(*)::int AS count FROM combined`;
+  const dataQuery = `
+    WITH combined AS (${combinedSql})
+    SELECT * FROM combined
+    ORDER BY is_unassigned DESC, full_name ASC NULLS LAST, profile_id ASC NULLS LAST
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
+
+  const countResult = await pool.query(countQuery, queryParams);
+  queryParams.push(size, offset);
   const data = await pool.query(dataQuery, queryParams);
-  
-  const countResult = await pool.query(
-    countQuery,
-    queryParams.slice(0, queryParams.length - 2)
-  );
 
   return {
     rows: data.rows,
-    total: parseInt(countResult.rows[0].count),
+    total: countResult.rows[0].count,
   };
 };
 
+// resident.repository.js
 const getResidentById = async (id) => {
+  console.log('REPO - Looking for id:', id);
+  
   const query = `
     SELECT 
-      rp.id,
-      rp.user_id,
+      rp.id as profile_id,
+      u.id as user_id,
       rp.apartment_id,
       rp.relationship,
       rp.move_in_date,
       rp.move_out_date,
-      rp.status,
-      rp.created_at,
+      COALESCE(rp.status, 'ACTIVE'::resident_status_enum) as status,
+      rp.created_at as profile_created_at,
       u.full_name,
       u.email,
       u.phone,
       u.avatar_url,
       a.apartment_code as apartment_number,
       b.name as building_name
-    FROM resident_profiles rp
-    JOIN users u ON rp.user_id = u.id
-    JOIN apartments a ON rp.apartment_id = a.id
-    JOIN buildings b ON a.building_id = b.id
-    WHERE rp.id = $1
+    FROM users u
+    LEFT JOIN resident_profiles rp ON u.id = rp.user_id
+    LEFT JOIN apartments a ON rp.apartment_id = a.id
+    LEFT JOIN buildings b ON a.building_id = b.id
+    WHERE u.id = $1 AND u.role_id = 5
   `;
+  
   const result = await pool.query(query, [id]);
-  return result.rows[0];
+  
+  // Nếu chưa có profile, tự động tạo với status ACTIVE
+  if (result.rows.length > 0 && !result.rows[0].profile_id) {
+    console.log('Creating resident profile for user', id);
+    
+    await pool.query(`
+      INSERT INTO resident_profiles (user_id, status, move_in_date)
+      VALUES ($1, 'ACTIVE', CURRENT_DATE)
+    `, [id]);
+    
+    // Query lại
+    const newResult = await pool.query(query, [id]);
+    return newResult.rows[0] || null;
+  }
+  
+  return result.rows[0] || null;
 };
 
 const getResidentsByApartmentId = async (apartmentId) => {
@@ -219,6 +285,32 @@ const getResidentByUserAndApartment = async (userId, apartmentId) => {
   return result.rows[0];
 };
 
+/** Chủ hộ đang ACTIVE (đồng bộ logic với apartment.repository addResident) */
+const getActiveOwnerForApartment = async (apartmentId) => {
+  const query = `
+    SELECT rp.id, u.full_name
+    FROM resident_profiles rp
+    JOIN users u ON rp.user_id = u.id
+    WHERE rp.apartment_id = $1
+      AND rp.relationship = 'OWNER'
+      AND rp.status = 'ACTIVE'
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [apartmentId]);
+  return result.rows[0] || null;
+};
+
+const setApartmentOwnerAndOccupied = async (apartmentId, userId) => {
+  const query = `
+    UPDATE apartments
+    SET owner_user_id = $1, status = 'OCCUPIED', updated_at = NOW()
+    WHERE id = $2
+    RETURNING id
+  `;
+  const result = await pool.query(query, [userId, apartmentId]);
+  return result.rows[0] || null;
+};
+
 module.exports = {
   createResident,
   getAllResidents,
@@ -228,4 +320,6 @@ module.exports = {
   updateResident,
   deleteResident,
   getResidentByUserAndApartment,
+  getActiveOwnerForApartment,
+  setApartmentOwnerAndOccupied,
 };

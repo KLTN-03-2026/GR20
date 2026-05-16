@@ -254,7 +254,37 @@ const updatePayment = async (id, body) => {
 
   const row = await repo.updatePayment(pid, mapper.toEntity(payload));
   if (!row) throw new AppError(404, "Không tìm thấy phiếu thanh toán", null, PAY_ERR.PAYMENT_NOT_FOUND);
+  if (String(nextStatus) === "SUCCESS" && String(existing.status) !== "SUCCESS") {
+    const invId = row.invoice_id;
+    if (invId) await repo.markInvoicePaid(invId);
+  }
   return mapper.toResponse(row);
+};
+
+/** Cư dân báo đã nộp tiền mặt — chờ BQL xác nhận (không đặt SUCCESS). */
+const submitUserCashDeclaration = async (userId, paymentId) => {
+  const uid = parsePathId(userId);
+  const pid = parsePathId(paymentId);
+  const row = await repo.getPaymentByUserAndId({ userId: uid, paymentId: pid });
+  if (!row) throw new AppError(404, "Không tìm thấy phiếu thanh toán", null, PAY_ERR.PAYMENT_NOT_FOUND);
+  if (String(row.status) !== "PENDING") {
+    throw new AppError(
+      400,
+      "Phiếu không còn ở trạng thái chờ thanh toán.",
+      { status: row.status },
+      PAY_ERR.PAYMENT_SUBMIT_CASH_INVALID_STATE
+    );
+  }
+  if (String(row.response_code) === "WAIT_ADMIN_CASH") {
+    return mapper.toResponse(row);
+  }
+  await repo.updatePayment(pid, {
+    payment_method: "CASH",
+    payment_gateway: "OFFLINE",
+    response_code: "WAIT_ADMIN_CASH",
+  });
+  const updated = await repo.getPaymentById(pid);
+  return mapper.toResponse(updated);
 };
 const deletePayment = async (id) => {
   const row = await repo.deletePayment(parsePathId(id));
@@ -278,6 +308,7 @@ module.exports = {
   generateMbVietQrByInvoiceId,
   processCassoWebhook,
   updatePayment,
+  submitUserCashDeclaration,
   deletePayment,
   restorePayment,
 };

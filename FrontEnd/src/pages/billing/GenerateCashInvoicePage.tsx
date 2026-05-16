@@ -24,6 +24,10 @@ export default function GenerateCashInvoicePage() {
   return (
     <div className='p-6'>
       <h2 className='mb-4 text-xl font-bold'>Generate Invoice + Cash Payment</h2>
+      <p className='mb-4 max-w-2xl text-sm text-slate-600'>
+        Tổng tiền = tiền thuê (hợp đồng RENT ACTIVE) + điện/nước theo chỉ số kỳ, giống luồng tạo hóa đơn tự động trên
+        trang quản lý hóa đơn.
+      </p>
       {errorMsg && <div className='mb-3 rounded bg-red-50 px-3 py-2 text-sm text-red-600'>{errorMsg}</div>}
       <form
         className='mb-4 grid grid-cols-1 gap-2 md:grid-cols-5'

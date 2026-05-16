@@ -8,7 +8,7 @@ export type ApartmentOption = {
 }
 
 export const apartmentsApi = {
-  getAll(params?: { page?: number; size?: number }) {
+  getAll(params?: { page?: number; size?: number; search?: string; buildingId?: number; floorId?: number }) {
     return http.get<SuccessResponseApi<ApartmentOption[]>>('/api/apartments', { params })
   }
 }

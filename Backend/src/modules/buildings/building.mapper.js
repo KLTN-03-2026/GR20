@@ -27,6 +27,12 @@ const toResponse = (row) => {
   if (row.apartments != null) {
     base.apartments = row.apartments;
   }
+  if (row.linked_floor_count != null) {
+    base.linkedFloorCount = Number(row.linked_floor_count);
+  }
+  if (row.linked_apartment_count != null) {
+    base.linkedApartmentCount = Number(row.linked_apartment_count);
+  }
   return base;
 };
 

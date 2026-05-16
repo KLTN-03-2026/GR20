@@ -8,5 +8,6 @@ router.use(authenticate);
 router.use(requireRole(["ADMIN", "Quản lý"]));
 
 router.get("/dashboard", controller.getDashboard);
+router.get("/system-overview", controller.getSystemOverview);
 
 module.exports = router;

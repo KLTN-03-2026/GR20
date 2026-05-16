@@ -40,7 +40,7 @@ const updateUtilityPricing = async (req, res) => {
 const deleteUtilityPricing = async (req, res) => {
   try {
     const data = await service.deleteUtilityPricing(req.params.id);
-    res.json({ operationType: "Success", message: "Delete utility pricing successfully", code: "OK", data, timestamp: new Date() });
+    res.json({ operationType: "Success", message: "Đã xóa cấu hình giá tiện ích", code: "OK", data, timestamp: new Date() });
   } catch (err) { sendControllerError(res, err); }
 };
 

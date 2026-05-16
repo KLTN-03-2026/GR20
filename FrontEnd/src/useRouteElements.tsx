@@ -1,3 +1,4 @@
+
 import { Navigate, useRoutes } from 'react-router-dom'
 import { useContext } from 'react'
 
@@ -67,24 +68,16 @@ import UserInvoicesPage from './pages/billing/UserInvoicesPage'
 import UserInvoiceDetailPage from './pages/billing/UserInvoiceDetailPage'
 import UserPaymentsPage from './pages/billing/UserPaymentsPage'
 import UserPaymentDetailPage from './pages/billing/UserPaymentDetailPage'
-
+import UserPaymentSuccessPage from './pages/billing/UserPaymentSuccessPage'
 import InvoicesPage from './pages/billing/InvoicesPage'
 import InvoiceDetailAdminPage from './pages/billing/InvoiceDetailAdminPage'
-
 import PaymentsPage from './pages/billing/PaymentsPage'
 import PaymentDetailAdminPage from './pages/billing/PaymentDetailAdminPage'
 
 import UtilityPricingPage from './pages/utility/UtilityPricingPage'
-import UserUtilityPricingPage from './pages/utility/UserUtilityPricingPage'
-import UserUtilityPricingDetailPage from './pages/utility/UserUtilityPricingDetailPage'
-
 import UtilityMetersPage from './pages/utility/UtilityMetersPage'
-import UserUtilityMetersPage from './pages/utility/UserUtilityMetersPage'
-import UserUtilityMeterDetailPage from './pages/utility/UserUtilityMeterDetailPage'
 
 import MeterReadingsPage from './pages/utility/MeterReadingsPage'
-import UserMeterReadingsPage from './pages/utility/UserMeterReadingsPage'
-import UserMeterReadingDetailPage from './pages/utility/UserMeterReadingDetailPage'
 
 import StatisticsReportPage from './pages/statistics/StatisticsReportPage'
 import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
@@ -600,6 +593,22 @@ export default function useRouteElements() {
               <UserPaymentsPage />
             </DashboardLayoutUser>
           )
+        },
+        {
+          path: ':id/success',
+          element: (
+            <DashboardLayoutUser>
+              <UserPaymentSuccessPage />
+            </DashboardLayoutUser>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboardLayoutUser>
+              <UserPaymentDetailPage />
+            </DashboardLayoutUser>
+          )
         }
       ]
     },
@@ -759,84 +768,9 @@ export default function useRouteElements() {
               <MaintenanceRequestDetail />
             </DashboardLayoutUser>
           )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserPaymentDetailPage />
-            </DashboardLayoutUser>
-          )
         }
       ]
     },
-    {
-      path: '/utility-pricing',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityPricingPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityPricingDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-    {
-      path: '/my-utility-meters',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityMetersPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserUtilityMeterDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-    {
-      path: '/my-meter-readings',
-      element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT]} />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboardLayoutUser>
-              <UserMeterReadingsPage />
-            </DashboardLayoutUser>
-          )
-        },
-        {
-          path: ':id',
-          element: (
-            <DashboardLayoutUser>
-              <UserMeterReadingDetailPage />
-            </DashboardLayoutUser>
-          )
-        }
-      ]
-    },
-
     // ADMIN + QUẢN LÝ: tòa nhà, billing, đồng hồ / chỉ số / giá
     {
       path: '/admin/buildings',
@@ -855,6 +789,28 @@ export default function useRouteElements() {
           element: (
             <DashboaedLayoutAdminOrManager>
               <BuildingDetailManagement />
+            </DashboaedLayoutAdminOrManager>
+          )
+        }
+      ]
+    },
+    {
+      path: '/admin/contracts',
+      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER]} />,
+      children: [
+        {
+          index: true,
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <ContractList />
+            </DashboaedLayoutAdminOrManager>
+          )
+        },
+        {
+          path: ':id',
+          element: (
+            <DashboaedLayoutAdminOrManager>
+              <ContractDetail />
             </DashboaedLayoutAdminOrManager>
           )
         }

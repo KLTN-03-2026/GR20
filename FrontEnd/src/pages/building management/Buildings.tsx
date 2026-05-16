@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
+import type { Buildings } from 'src/types/buildings.type'
 import { logResourceConsoleError } from 'src/utils/payment-console-log'
+import { buildingHasLinkedData } from './building-admin-ui'
 import ItemBuilding from './ItemBuilding'
 
 export default function Buildings() {
@@ -13,6 +15,7 @@ export default function Buildings() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [listOperationError, setListOperationError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
@@ -31,7 +34,11 @@ export default function Buildings() {
       ['Code is required', 'Mã tòa nhà là bắt buộc'],
       ['Name is required', 'Tên tòa nhà là bắt buộc'],
       ['Address is required', 'Địa chỉ là bắt buộc'],
-      ['At least one field is required for update', 'Cần ít nhất một trường để cập nhật']
+      ['At least one field is required for update', 'Cần ít nhất một trường để cập nhật'],
+      [
+        'Cannot close building while it still has floors or active apartments. Remove them first.',
+        'Không thể đóng tòa nhà khi còn tầng hoặc căn hộ đang dùng. Hãy gỡ hết tầng và căn trước.'
+      ]
     ]
 
     const matched = translatedMessages.find(([en]) => rawMessage.includes(en))
@@ -86,6 +93,7 @@ export default function Buildings() {
       setIsCreateOpen(false)
       setFormError(null)
       setEditingId(null)
+      setListOperationError(null)
     },
     onError: (error: any) => {
       logResourceConsoleError('Building', 'CreateOrUpdate', error)
@@ -99,9 +107,11 @@ export default function Buildings() {
     onSuccess: (response) => {
       logApiSuccess('Delete', response)
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
+      setListOperationError(null)
     },
     onError: (error: any) => {
       logResourceConsoleError('Building', 'Delete', error)
+      setListOperationError(getApiErrorMessage(error, 'Đóng tòa nhà thất bại'))
     }
   })
 
@@ -110,9 +120,11 @@ export default function Buildings() {
     onSuccess: (response) => {
       logApiSuccess('Reopen', response)
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
+      setListOperationError(null)
     },
     onError: (error: any) => {
       logResourceConsoleError('Building', 'Reopen', error)
+      setListOperationError(getApiErrorMessage(error, 'Mở lại tòa nhà thất bại'))
     }
   })
 
@@ -133,10 +145,17 @@ export default function Buildings() {
     })
   }
 
-  const handleDelete = (building: { id: string; name: string }) => {
+  const handleDelete = (building: Buildings) => {
     if (deleteMutation.isPending) return
-    const ok = window.confirm(`Bạn chắc chắn muốn đóng tòa nhà "${building.name}"?`)
+    if (buildingHasLinkedData(building)) {
+      setListOperationError(
+        'Tòa nhà vẫn còn tầng hoặc căn hộ đang dùng. Hãy xóa hết tầng và căn (hoặc chuyển căn sang bảo trì nếu quy trình cho phép) rồi thử đóng tòa lại.'
+      )
+      return
+    }
+    const ok = window.confirm(`Đóng tòa nhà "${building.name}"? Tòa sẽ chuyển sang trạng thái đã đóng.`)
     if (!ok) return
+    setListOperationError(null)
     deleteMutation.mutate(building.id)
   }
 
@@ -144,6 +163,7 @@ export default function Buildings() {
     if (reopenMutation.isPending) return
     const ok = window.confirm(`Bạn muốn mở lại tòa nhà "${building.name}"?`)
     if (!ok) return
+    setListOperationError(null)
     reopenMutation.mutate(building.id)
   }
 
@@ -162,48 +182,57 @@ export default function Buildings() {
   )
 
   return (
-    <div className='min-h-screen bg-[#F8F9FA] p-8 font-sans'>
+    <div className='min-h-screen bg-slate-50 p-6 font-sans text-slate-900 sm:p-8'>
       <div className='mx-auto max-w-6xl'>
-        <div className='mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
+        <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div>
-            <span className='rounded bg-[#DDE7FF] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0052CC]'>
-              Administration
+            <span className='rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100'>
+              Quản trị
             </span>
-            <h1 className='mt-4 mb-2 text-3xl font-bold text-gray-900'>Quản lý tòa nhà</h1>
-            <p className='text-sm text-gray-500'>Quản lý danh sách tòa nhà với xóa theo trạng thái và lọc dữ liệu.</p>
+            <h1 className='mt-3 text-3xl font-bold tracking-tight text-slate-900'>Quản lý tòa nhà</h1>
+            <p className='mt-1 max-w-2xl text-sm text-slate-600'>
+              Tạo và chỉnh sửa tòa nhà, mở chi tiết để quản lý ảnh, tầng và nhân sự. Chỉ đóng được tòa khi không còn bản ghi tầng và không còn căn hộ đang hoạt động (căn bảo trì không chặn đóng tòa).
+            </p>
           </div>
           <button
             onClick={() => {
               setFormError(null)
+              setListOperationError(null)
               setIsCreateOpen(true)
               setEditingId(null)
             }}
-            className='flex items-center gap-2 rounded-lg bg-[#0052CC] px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-blue-700'
+            className='inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700'
           >
             + Thêm tòa nhà
           </button>
         </div>
 
-        <div className='mb-6 grid grid-cols-1 gap-4 md:grid-cols-4'>
-          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
-            <div className='text-sm text-gray-500'>Tổng trên trang</div>
-            <div className='mt-2 text-3xl font-bold text-gray-900'>{summary.total}</div>
+        <div className='mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4'>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Trên trang này</div>
+            <div className='mt-1 text-2xl font-bold text-slate-900'>{summary.total}</div>
           </div>
-          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
-            <div className='text-sm text-gray-500'>Đang hoạt động</div>
-            <div className='mt-2 text-3xl font-bold text-emerald-600'>{summary.active}</div>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Đang hoạt động</div>
+            <div className='mt-1 text-2xl font-bold text-emerald-600'>{summary.active}</div>
           </div>
-          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
-            <div className='text-sm text-gray-500'>Bảo trì</div>
-            <div className='mt-2 text-3xl font-bold text-amber-600'>{summary.maintenance}</div>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Bảo trì</div>
+            <div className='mt-1 text-2xl font-bold text-amber-600'>{summary.maintenance}</div>
           </div>
-          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
-            <div className='text-sm text-gray-500'>Đã xóa</div>
-            <div className='mt-2 text-3xl font-bold text-red-500'>{summary.closed}</div>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Đã đóng</div>
+            <div className='mt-1 text-2xl font-bold text-slate-600'>{summary.closed}</div>
           </div>
         </div>
 
-        <div className='mb-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm'>
+        {listOperationError && (
+          <div className='mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm'>
+            {listOperationError}
+          </div>
+        )}
+
+        <div className='mb-6 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
           <form
             className='grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto_auto_auto]'
             onSubmit={(event) => {
@@ -229,7 +258,7 @@ export default function Buildings() {
               <option value='ALL'>Tất cả trạng thái</option>
               <option value='ACTIVE'>Đang hoạt động</option>
               <option value='MAINTENANCE'>Bảo trì</option>
-              <option value='CLOSED'>Đã xóa</option>
+              <option value='CLOSED'>Đã đóng</option>
             </select>
             <button className='rounded-lg bg-[#0052CC] px-4 py-2.5 font-semibold text-white transition hover:bg-blue-700'>
               Tìm kiếm
@@ -256,21 +285,21 @@ export default function Buildings() {
           </div>
         </div>
 
-        <div className='overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm'>
+        <div className='overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm'>
           <div className='overflow-x-auto'>
             <table className='w-full border-collapse text-left'>
               <thead>
-                <tr className='border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-400'>
+                <tr className='border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400'>
                   <th className='px-6 py-4'>Tòa nhà</th>
                   <th className='px-6 py-4'>Mã</th>
                   <th className='px-6 py-4'>Địa chỉ</th>
-                  <th className='px-6 py-4 text-center'>Số tầng</th>
-                  <th className='px-6 py-4 text-center'>Số căn</th>
+                  <th className='px-6 py-4 text-center'>Số tầng (kế hoạch)</th>
+                  <th className='px-6 py-4 text-center'>Số căn (kế hoạch)</th>
                   <th className='px-6 py-4'>Trạng thái</th>
-                  <th className='px-6 py-4 text-right'>Hành động</th>
+                  <th className='px-6 py-4 text-right'>Thao tác</th>
                 </tr>
               </thead>
-              <tbody className='text-sm text-gray-700'>
+              <tbody className='text-sm text-slate-700'>
                 {isLoading && (
                   <tr>
                     <td className='px-6 py-8 text-center text-gray-500' colSpan={7}>

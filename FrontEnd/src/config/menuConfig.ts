@@ -188,22 +188,6 @@ export const menuConfig: MenuItem[] = [
     roles: ['Người Dùng']
   },
   {
-    id: 'user-utility-meters',
-    name: 'Đồng hồ của tôi',
-    path: '/my-utility-meters',
-    icon: 'speed',
-    keywords: ['đồng hồ', 'meter', 'công tơ', 'chỉ số điện nước', 'utility meter'],
-    roles: ['Người Dùng']
-  },
-  {
-    id: 'user-meter-readings',
-    name: 'Chỉ số ghi nhận',
-    path: '/my-meter-readings',
-    icon: 'insights',
-    keywords: ['chỉ số', 'meter reading', 'ghi chỉ số', 'lịch sử tiêu thụ', 'usage history'],
-    roles: ['Người Dùng']
-  },
-  {
     id: 'user-invoices',
     name: 'Hóa đơn',
     path: '/invoices',
