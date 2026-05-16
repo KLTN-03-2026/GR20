@@ -2,6 +2,7 @@ const { pool } = require("../../configs/database.config");
 const { AppError } = require("../../common/app-error");
 
 const isUniqueViolation = (err) => err && err.code === "23505";
+const isNotNullViolation = (err) => err && err.code === "23502";
 const parseBool = (value) => {
   if (value === undefined || value === null || value === "") return undefined;
   if (value === true || value === "true" || value === "1") return true;
@@ -35,9 +36,12 @@ const createUser = async (user) => {
     return result.rows[0];
   } catch (err) {
     if (isUniqueViolation(err)) {
-      throw new AppError(409, "Username or email already exists", {
+      throw new AppError(409, "Tên đăng nhập hoặc email đã tồn tại", {
         constraint: err.constraint,
       });
+    }
+    if (isNotNullViolation(err)) {
+      throw new AppError(400, "Thiếu thông tin bắt buộc khi tạo tài khoản");
     }
     throw err;
   }
@@ -69,7 +73,7 @@ const getAllUsers = async ({ page = 0, size = 10, role, search, isActive }) => {
   if (search) {
     values.push(`%${search}%`);
     conditions.push(
-      `(u.username ILIKE $${values.length} OR u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length} OR u.phone ILIKE $${values.length})`
+      `(u.username ILIKE $${values.length} OR u.full_name ILIKE $${values.length} OR u.email ILIKE $${values.length} OR u.phone ILIKE $${values.length})`,
     );
   }
   const active = parseBool(isActive);
@@ -78,7 +82,8 @@ const getAllUsers = async ({ page = 0, size = 10, role, search, isActive }) => {
     conditions.push(`u.is_active = $${values.length}`);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const where =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const dataQuery = `
     SELECT 
@@ -207,6 +212,17 @@ const getUserByUsername = async (username) => {
   return result.rows[0];
 };
 
+const getUserByEmail = async (email) => {
+  const query = `
+    SELECT *
+    FROM users
+    WHERE LOWER(email) = LOWER($1)
+    LIMIT 1
+  `;
+
+  const result = await pool.query(query, [email]);
+  return result.rows[0];
+};
 const updateUserByUsername = async (username, user) => {
   const fields = [];
   const values = [];
@@ -265,7 +281,11 @@ const updateUserByUsername = async (username, user) => {
 //   return result.rows[0];
 // };
 
+const bcrypt = require("bcrypt");
+
 const updatePassword = async (username, newPassword) => {
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
   const query = `
     UPDATE users
     SET password = $1, updated_at = NOW()
@@ -273,8 +293,8 @@ const updatePassword = async (username, newPassword) => {
     RETURNING id
   `;
 
-  // ✅ Lưu trực tiếp, không hash
-  const result = await pool.query(query, [newPassword, username]);
+  const result = await pool.query(query, [hashedPassword, username]);
+
   return result.rows[0];
 };
 
@@ -290,6 +310,15 @@ const updateAvatarUrl = async (username, avatarUrl) => {
   return result.rows[0];
 };
 
-
-
-module.exports = { getUserById, createUser,getAllUsers,updateUser,deleteUser,getUserByUsername,updateUserByUsername,updatePassword,updateAvatarUrl  };
+module.exports = {
+  getUserById,
+  createUser,
+  getAllUsers,
+  updateUser,
+  deleteUser,
+  getUserByUsername,
+  updateUserByUsername,
+  updatePassword,
+  updateAvatarUrl,
+  getUserByEmail,
+};

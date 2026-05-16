@@ -31,6 +31,10 @@ export const paymentsApi = {
   getByUserIdAndPaymentId(userId: string, paymentId: string) {
     return http.get<SuccessResponseApi<any>>(`${URL}/user/${userId}/${paymentId}`)
   },
+  /** Cư dân báo đã nộp tiền mặt — trạng thái SUCCESS chỉ sau khi BQL xác nhận. */
+  submitCashDeclaration(userId: string, paymentId: string) {
+    return http.post<SuccessResponseApi<any>>(`${URL}/user/${userId}/${paymentId}/submit-cash`)
+  },
   getMbVietQrByInvoiceId(invoiceId: string) {
     return http.get<SuccessResponseApi<any>>(`${URL}/by-invoice/${invoiceId}/vietqr-mb`)
   },

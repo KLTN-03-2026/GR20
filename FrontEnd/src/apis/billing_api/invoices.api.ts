@@ -5,7 +5,13 @@ import http from 'src/utils/http'
 const URL = '/api/invoices'
 
 export const invoicesApi = {
-  getAll(params?: { page?: number; size?: number }) {
+  getAll(params?: {
+    page?: number
+    size?: number
+    apartmentId?: number
+    billingMonth?: number
+    billingYear?: number
+  }) {
     return http.get<SuccessResponseApi<Invoice[]>>(URL, { params })
   },
   getById(id: string) {
