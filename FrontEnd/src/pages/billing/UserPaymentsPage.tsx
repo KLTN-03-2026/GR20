@@ -4,6 +4,7 @@ import { useContext, useMemo, useState } from 'react'
 import { paymentsApi } from 'src/apis/billing_api/payments.api'
 import { residentsApi } from 'src/apis/resident_api/residents.api'
 import { AppContext } from 'src/contexts/app.context'
+import { logPaymentConsoleError } from 'src/utils/payment-console-log'
 
 const logApiSuccess = (action: string, response: any) => {
   console.log(`[UserPayments][${action}] success`, {
@@ -11,16 +12,6 @@ const logApiSuccess = (action: string, response: any) => {
     endpoint: response?.config?.url,
     method: response?.config?.method,
     data: response?.data
-  })
-}
-
-const logApiError = (action: string, err: any) => {
-  console.error(`[UserPayments][${action}] error`, {
-    status: err?.response?.status,
-    endpoint: err?.config?.url || err?.response?.config?.url,
-    method: err?.config?.method || err?.response?.config?.method,
-    data: err?.response?.data,
-    message: err?.message
   })
 }
 
@@ -69,7 +60,7 @@ export default function UserPaymentsPage() {
   const fmtMoney = (n: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(n) || 0)
 
-  if (isError) logApiError('GetUserPayments', error)
+  if (isError && error) logPaymentConsoleError('payment-list-load', error)
 
   return (
     <div className='pb-10'>

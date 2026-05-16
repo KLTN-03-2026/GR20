@@ -208,25 +208,74 @@ const getPersonalQrHistory = async (req, res) => {
     const userId = req.user.sub;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    let result = req.query.result || null;
+    const search = req.query.search || null;
+    const fromDate = req.query.fromDate || null;
+    const toDate = req.query.toDate || null;
     
-    const history = await service.getPersonalQrHistory(userId, { page, limit });
+    // Nếu result = 'FAILED' thì thay bằng 3 giá trị
+    if (result === 'FAILED') {
+      result = ['DENIED', 'PIN_FAILED', 'PENDING_PIN'];
+    }
+    
+    const validPage = isNaN(page) || page < 1 ? 1 : page;
+    const validLimit = isNaN(limit) || limit < 1 ? 10 : limit;
+    
+    const history = await service.getPersonalQrHistory(userId, {
+      page: validPage,
+      limit: validLimit,
+      result,
+      search,
+      fromDate,
+      toDate
+    });
     
     res.json({
       operationType: "Success",
       message: "Lấy lịch sử quét QR cá nhân thành công",
       code: "OK",
       data: history.data,
-      totalElements: history.total,
+      totalElements: history.totalElements,
       totalPages: history.totalPages,
       page: history.page,
-      pageSize: history.limit,
+      pageSize: history.pageSize,
       timestamp: new Date()
     });
   } catch (err) {
-    console.error('Error:', err);
-    res.status(500).json({ message: err.message });
+    console.error('Error in getPersonalQrHistory controller:', err);
+    res.status(500).json({ 
+      operationType: "Error",
+      message: err.message, 
+      code: "INTERNAL_ERROR",
+      timestamp: new Date() 
+    });
   }
 };
+
+// const getPersonalQrHistory = async (req, res) => {
+//   try {
+//     const userId = req.user.sub;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+    
+//     const history = await service.getPersonalQrHistory(userId, { page, limit });
+    
+//     res.json({
+//       operationType: "Success",
+//       message: "Lấy lịch sử quét QR cá nhân thành công",
+//       code: "OK",
+//       data: history.data,
+//       totalElements: history.total,
+//       totalPages: history.totalPages,
+//       page: history.page,
+//       pageSize: history.limit,
+//       timestamp: new Date()
+//     });
+//   } catch (err) {
+//     console.error('Error:', err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 
 
 
@@ -343,84 +392,29 @@ const updateMyGuestQrStatus = async (req, res) => {
   }
 };
 
-// Cập nhật thời hạn (chỉ rút ngắn)
-// const updateMyGuestQrValidTo = async (req, res) => {
-//   try {
-//     const userId = req.user.sub;
-//     const { id } = req.params;
-//     const { valid_to, max_entries, visitor_name, visitor_phone, visitor_id_card } = req.body;
-    
-//     if (!valid_to) {
-//       return res.status(400).json({ message: "Thiếu thời hạn mới" });
-//     }
-    
-//     const data = await service.updateMyGuestQrValidTo(
-//       id, userId, valid_to, max_entries, 
-//       visitor_name, visitor_phone, visitor_id_card
-//     );
-    
-//     res.json({
-//       operationType: "Success",
-//       message: "Cập nhật thời hạn và thông tin khách thành công",
-//       code: "OK",
-//       data,
-//       timestamp: new Date()
-//     });
-//   } catch (err) {
-//     console.error('Error:', err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-// const updateMyGuestQrValidTo = async (req, res) => {
-//   try {
-//     const userId = req.user.sub;
-//     const { id } = req.params;
-//     const { valid_to, max_entries, visitor_name, visitor_phone, visitor_id_card } = req.body;
-    
-//     // ✅ Validate: valid_to là bắt buộc
-//     if (!valid_to) {
-//       return res.status(400).json({ 
-//         message: "Thiếu thời hạn mới (valid_to là bắt buộc)" 
-//       });
-//     }
-    
-//     const data = await service.updateMyGuestQrValidTo(
-//       id, 
-//       userId, 
-//       valid_to, 
-//       max_entries,
-//       visitor_name,
-//       visitor_phone,
-//       visitor_id_card
-//     );
-    
-//     res.json({
-//       operationType: "Success",
-//       message: "Cập nhật QR thành công",
-//       code: "OK",
-//       data,
-//       timestamp: new Date()
-//     });
-//   } catch (err) {
-//     console.error('Error:', err);
-//     res.status(400).json({ message: err.message });
-//   }
-// };
+
 
 const updateMyGuestQrValidTo = async (req, res) => {
   try {
     const userId = req.user.sub;
     const { id } = req.params;
-    const { valid_to, max_entries, visitor_name, visitor_phone, visitor_id_card } = req.body;
+    const { 
+      valid_to, 
+      max_entries, 
+      visitor_name, 
+      visitor_phone, 
+      visitor_id_card,
+      pin_code  
+    } = req.body;
     
-    // ❌ THÊM: Chặn resident gửi admin_valid_to_original
+    // Chặn resident gửi admin_valid_to_original
     if (req.body.admin_valid_to_original || req.body.adminValidToOriginal) {
       return res.status(403).json({ 
         message: "Bạn không có quyền thay đổi thời hạn gốc" 
       });
     }
     
-    // ✅ Validate: valid_to là bắt buộc
+    // Validate valid_to là bắt buộc
     if (!valid_to) {
       return res.status(400).json({ 
         message: "Thiếu thời hạn mới (valid_to là bắt buộc)" 
@@ -434,7 +428,8 @@ const updateMyGuestQrValidTo = async (req, res) => {
       max_entries,
       visitor_name,
       visitor_phone,
-      visitor_id_card
+      visitor_id_card,
+      pin_code  // 👈 THÊM PIN
     );
     
     res.json({

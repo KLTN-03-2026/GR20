@@ -83,11 +83,11 @@ export default function ApartmentDetail() {
   const [showForm, setShowForm] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  const apartmentId = Number(id)
+  // const apartmentId = Number(id)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['apartment', apartmentId],
-    queryFn: () => apartmentApi.getApartmentById(Number(apartmentId)),
+    queryKey: ['apartment', id],
+    queryFn: () => apartmentApi.getApartmentById(Number(id)),
     enabled: !!id
   })
 
@@ -129,7 +129,7 @@ export default function ApartmentDetail() {
 
   if (isLoading) {
     return (
-      <div className='flex items-center justify-center min-h-screen'>
+      <div className='flex items-center justify-center min-h-screen ml-64'>
         <div className='flex items-center gap-3 text-slate-400'>
           <span className='material-symbols-outlined animate-spin'>sync</span>
           <span className='text-sm'>Đang tải dữ liệu...</span>
@@ -140,7 +140,7 @@ export default function ApartmentDetail() {
 
   if (!apartment) {
     return (
-      <div className='flex items-center justify-center min-h-screen'>
+      <div className='flex items-center justify-center min-h-screen ml-64'>
         <div className='text-center'>
           <span className='material-symbols-outlined text-4xl text-slate-300 mb-2'>error_outline</span>
           <p className='text-slate-500 font-semibold'>Không tìm thấy căn hộ</p>

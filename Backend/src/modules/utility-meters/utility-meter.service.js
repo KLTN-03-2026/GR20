@@ -1,6 +1,7 @@
 const repo = require("./utility-meter.repository");
 const mapper = require("./utility-meter.mapper");
 const { AppError } = require("../../common/app-error");
+const ERROR_CODES = require("./utility-meter-errors");
 const {
   parseCreateUtilityMeter,
   parseUpdateUtilityMeter,
@@ -30,7 +31,7 @@ const getAllUtilityMeters = async (query) => {
 
 const getUtilityMeterById = async (id) => {
   const row = await repo.getUtilityMeterById(parsePathId(id));
-  if (!row) throw new AppError(404, "Utility meter not found");
+  if (!row) throw new AppError(404, "Utility meter not found", undefined, ERROR_CODES.UTILITY_METER_NOT_FOUND);
   return mapper.toResponse(row);
 };
 
@@ -51,25 +52,31 @@ const getUtilityMeterByUserAndId = async (userId, meterId) => {
   const parsedUserId = parsePathId(userId);
   const parsedMeterId = parsePathId(meterId);
   const row = await repo.getUtilityMeterByUserAndId({ userId: parsedUserId, meterId: parsedMeterId });
-  if (!row) throw new AppError(404, "Utility meter not found");
+  if (!row) throw new AppError(404, "Utility meter not found", undefined, ERROR_CODES.UTILITY_METER_NOT_FOUND);
   return mapper.toResponse(row);
 };
 
 const updateUtilityMeter = async (id, body) => {
   const row = await repo.updateUtilityMeter(parsePathId(id), mapper.toEntity(parseUpdateUtilityMeter(body)));
-  if (!row) throw new AppError(404, "Utility meter not found");
+  if (!row) throw new AppError(404, "Utility meter not found", undefined, ERROR_CODES.UTILITY_METER_NOT_FOUND);
   return mapper.toResponse(row);
 };
 
 const deleteUtilityMeter = async (id) => {
   const row = await repo.deleteUtilityMeter(parsePathId(id));
-  if (!row) throw new AppError(404, "Utility meter not found");
+  if (!row) throw new AppError(404, "Utility meter not found", undefined, ERROR_CODES.UTILITY_METER_NOT_FOUND);
   return { id: row.id };
 };
 
 const restoreUtilityMeter = async (id) => {
   const row = await repo.restoreUtilityMeter(parsePathId(id));
-  if (!row) throw new AppError(404, "Utility meter not found or not inactive");
+  if (!row)
+    throw new AppError(
+      404,
+      "Utility meter not found or not inactive",
+      undefined,
+      ERROR_CODES.UTILITY_METER_NOT_INACTIVE_FOR_RESTORE
+    );
   return { id: row.id };
 };
 

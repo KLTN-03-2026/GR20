@@ -1,9 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
+import { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AppContext } from 'src/contexts/app.context';
 import http from 'src/utils/http';
 
 export default function MyApartment() {
   const navigate = useNavigate();
+
+  const {user} = useContext(AppContext)
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '---';
@@ -20,7 +24,7 @@ export default function MyApartment() {
   });
 
   const apartment = data?.data?.data || null;
-
+  const currentUserId = user?.id;
   const getInitials = (name: string) => {
     if (!name) return '';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -83,10 +87,14 @@ export default function MyApartment() {
             {/* Residents */}
             <section className='bg-white rounded-3xl p-8 shadow-sm border border-slate-100'>
               <h3 className='text-xl font-bold text-slate-900 mb-6'>Thành viên trong hộ</h3>
-              <div className='space-y-4'>
-                {apartment.residents?.length > 0 ? (
+              <div className='space-y-4'>   
+
+                {apartment.residents?.length > 0 ? (      
                   apartment.residents.map((resident: any) => (
-                    <div key={resident.id} className='flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100 transition-colors'>
+                    <div
+                      key={resident.id}
+                      className='flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100 transition-colors'
+                    >
                       <div className='flex items-center gap-4'>
                         <div className='w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 font-bold'>
                           {getInitials(resident.fullName)}
@@ -94,12 +102,15 @@ export default function MyApartment() {
                         <div>
                           <h4 className='font-bold text-slate-900'>{resident.fullName}</h4>
                           <p className='text-xs text-slate-500'>
-                            {resident.relationship === 'OWNER' ? 'Chủ hộ (Bạn)' : 'Thành viên'}
+                            {resident.relationship === 'OWNER' ? 'Chủ hộ' : 'Thành viên'}
+                            {resident.userId === currentUserId && resident.fullName === user?.name &&  ' (Bạn)'} {}
                             {resident.moveInDate && ` • Ở từ ${formatDate(resident.moveInDate)}`}
                           </p>
                         </div>
                       </div>
-                      <span className='px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full uppercase'>Đã xác minh</span>
+                      <span className='px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full uppercase'>
+                        Đã xác minh
+                      </span>
                     </div>
                   ))
                 ) : (
@@ -119,11 +130,15 @@ export default function MyApartment() {
               </div>
               <div className='grid grid-cols-2 gap-y-10 gap-x-4'>
                 <div>
-                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>Số phòng</span>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>
+                    Số phòng
+                  </span>
                   <p className='text-xl font-bold text-slate-900'>{apartment.apartment_code}</p>
                 </div>
                 <div>
-                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>Tòa nhà</span>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>
+                    Tòa nhà
+                  </span>
                   <p className='text-xl font-bold text-slate-900'>{apartment.building_name}</p>
                 </div>
                 <div>
@@ -131,18 +146,24 @@ export default function MyApartment() {
                   <p className='text-xl font-bold text-slate-900'>{apartment.floor_number}</p>
                 </div>
                 <div>
-                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>Diện tích</span>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>
+                    Diện tích
+                  </span>
                   <p className='text-xl font-bold text-slate-900'>{apartment.area} m²</p>
                 </div>
                 <div>
-                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>Phòng ngủ</span>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>
+                    Phòng ngủ
+                  </span>
                   <div className='flex items-center gap-2'>
                     <p className='text-xl font-bold text-slate-900'>{String(apartment.bedrooms).padStart(2, '0')}</p>
                     <span className='material-symbols-outlined text-slate-300'>bed</span>
                   </div>
                 </div>
                 <div>
-                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>Phòng tắm</span>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1'>
+                    Phòng tắm
+                  </span>
                   <div className='flex items-center gap-2'>
                     <p className='text-xl font-bold text-slate-900'>{String(apartment.bathrooms).padStart(2, '0')}</p>
                     <span className='material-symbols-outlined text-slate-300'>bathtub</span>
@@ -158,7 +179,9 @@ export default function MyApartment() {
                   <span className='material-symbols-outlined'>description</span>
                 </div>
                 <div>
-                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1'>Hợp đồng</span>
+                  <span className='text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1'>
+                    Hợp đồng
+                  </span>
                   <h4 className='text-xl font-bold text-slate-900'>Thông tin hợp đồng</h4>
                   <p className='text-xs text-slate-400 mt-1'>Xem chi tiết hợp đồng thuê/mua căn hộ</p>
                 </div>
@@ -173,16 +196,23 @@ export default function MyApartment() {
                     </div>
                     <div className='flex justify-between p-3 bg-slate-50 rounded-xl'>
                       <span className='text-sm text-slate-500'>Trạng thái</span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${apartment.currentContract.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${apartment.currentContract.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
+                      >
                         {apartment.currentContract.status}
                       </span>
                     </div>
                     <div className='flex justify-between p-3 bg-slate-50 rounded-xl'>
                       <span className='text-sm text-slate-500'>Tiền thuê/tháng</span>
-                      <span className='text-sm font-bold text-slate-800'>{formatCurrency(apartment.currentContract.monthlyRent)} VND</span>
+                      <span className='text-sm font-bold text-slate-800'>
+                        {formatCurrency(apartment.currentContract.monthlyRent)} VND
+                      </span>
                     </div>
                   </div>
-                  <button onClick={() => navigate('/MyContract')} className='w-full py-4 bg-blue-600 rounded-xl text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2'>
+                  <button
+                    onClick={() => navigate('/MyContract')}
+                    className='w-full py-4 bg-blue-600 rounded-xl text-white font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2'
+                  >
                     <span className='material-symbols-outlined'>visibility</span>
                     Xem chi tiết hợp đồng
                   </button>
@@ -199,13 +229,17 @@ export default function MyApartment() {
                   <span className='material-symbols-outlined'>warning</span>
                   <span>Báo cáo sự cố kỹ thuật</span>
                 </div>
-                <span className='material-symbols-outlined text-slate-300 group-hover:text-blue-600'>chevron_right</span>
+                <span className='material-symbols-outlined text-slate-300 group-hover:text-blue-600'>
+                  chevron_right
+                </span>
               </button>
-              <p className='text-[11px] text-slate-400 italic'>Lưu ý: Bạn có thể theo dõi tiến độ xử lý sự cố trong mục Phản hồi.</p>
+              <p className='text-[11px] text-slate-400 italic'>
+                Lưu ý: Bạn có thể theo dõi tiến độ xử lý sự cố trong mục Phản hồi.
+              </p>
             </div>
           </div>
         </div>
       </main>
     </div>
-  );
+  )
 }

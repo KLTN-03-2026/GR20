@@ -1,5 +1,6 @@
 const { pool } = require("../../configs/database.config");
 const { AppError } = require("../../common/app-error");
+const ERROR_CODES = require("./meter-reading-errors");
 
 const isForeignKeyViolation = (err) => err && err.code === "23503";
 
@@ -19,7 +20,8 @@ const createMeterReading = async (entity) => {
     ]);
     return result.rows[0];
   } catch (err) {
-    if (isForeignKeyViolation(err)) throw new AppError(400, "Invalid meterId");
+    if (isForeignKeyViolation(err))
+      throw new AppError(400, "Invalid meterId", undefined, ERROR_CODES.INVALID_METER_ID_FOR_READING);
     throw err;
   }
 };
@@ -144,7 +146,8 @@ const updateMeterReading = async (id, entity) => {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
-    if (isForeignKeyViolation(err)) throw new AppError(400, "Invalid meterId");
+    if (isForeignKeyViolation(err))
+      throw new AppError(400, "Invalid meterId", undefined, ERROR_CODES.INVALID_METER_ID_FOR_READING);
     throw err;
   }
 };

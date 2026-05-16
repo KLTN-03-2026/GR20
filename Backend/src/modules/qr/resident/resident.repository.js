@@ -301,21 +301,6 @@ const getMyGuestQrs = async (userId, options = {}) => {
   let params = [userId];
   let paramIndex = 2;
 
-  // 👉 TẠM THỜI BỎ HẾT FILTER ĐỂ TEST
-  // if (search && search.trim()) {
-  //   conditions.push(`(v.name ILIKE $${paramIndex} OR v.phone ILIKE $${paramIndex} OR gq.qr_code ILIKE $${paramIndex})`);
-  //   params.push(`%${search.trim()}%`);
-  //   paramIndex++;
-  // }
-
-  // if (status && status.trim()) {
-  //   conditions.push(`gq.status = $${paramIndex}`);
-  //   params.push(status.toUpperCase());
-  //   paramIndex++;
-  // }
-
-  // ❌ KHÔNG thêm BẤT KỲ điều kiện lọc nào khác
-
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   console.log('userId:', userId);  // 👈 Debug: in ra userId
@@ -325,6 +310,7 @@ const getMyGuestQrs = async (userId, options = {}) => {
     SELECT 
       gq.id,
       gq.qr_code,
+      gq.pin_code,
       gq.valid_from,
       gq.valid_to,
       gq.max_entries,
@@ -471,14 +457,15 @@ const updateMyGuestQrValidTo = async (
   maxEntries,
   visitorName, 
   visitorPhone, 
-  visitorIdCard
+  visitorIdCard,
+  pinCode
 ) => {
   const client = await pool.connect();
   
   try {
     await client.query('BEGIN');
     
-    // 1️⃣ LẤY THÔNG TIN QR
+    // 1️⃣ LẤY THÔNG TIN QR HIỆN TẠI
     const checkQuery = `
       SELECT 
         gq.id, 
@@ -488,7 +475,8 @@ const updateMyGuestQrValidTo = async (
         gq.max_entries, 
         gq.used_entries, 
         gq.status, 
-        gq.visitor_id
+        gq.visitor_id,
+        gq.pin_code
       FROM guest_qr_codes gq
       WHERE gq.id = $1 AND gq.host_user_id = $2
     `;
@@ -505,125 +493,91 @@ const updateMyGuestQrValidTo = async (
       throw new Error("Lỗi: Không tìm thấy thời hạn gốc. Vui lòng liên hệ admin.");
     }
     
-    // Chuyển đổi sang Date object
-    const adminValidToOriginal = new Date(currentQr.admin_valid_to_original);
-    const newValidToDate = new Date(newValidTo);
-    const validFromDate = new Date(currentQr.valid_from);
-    
-    // Validation 1: Không được vượt quá admin_valid_to_original
-    if (newValidToDate.getTime() > adminValidToOriginal.getTime()) {
-      throw new Error(
-        `Không thể kéo dài quá ${adminValidToOriginal.toISOString().split('T')[0]}. ` +
-        `Bạn chỉ có thể cập nhật đến ngày này hoặc sớm hơn.`
-      );
+    // Validation thời gian (nếu có cập nhật valid_to)
+    if (newValidTo) {
+      const adminValidToOriginal = new Date(currentQr.admin_valid_to_original);
+      const newValidToDate = new Date(newValidTo);
+      const validFromDate = new Date(currentQr.valid_from);
+      
+      if (newValidToDate.getTime() > adminValidToOriginal.getTime()) {
+        throw new Error(`Không thể kéo dài quá ${adminValidToOriginal.toISOString().split('T')[0]}`);
+      }
+      
+      if (newValidToDate.getTime() < validFromDate.getTime()) {
+        throw new Error(`Thời hạn không thể sớm hơn ngày bắt đầu`);
+      }
     }
     
-    // Validation 2: Không được cập nhật về trước ngày bắt đầu
-    if (newValidToDate.getTime() < validFromDate.getTime()) {
-      throw new Error(
-        `Thời hạn không thể sớm hơn ngày bắt đầu (${validFromDate.toISOString().split('T')[0]})`
-      );
-    }
-    
-    // Validation 3: QR phải đang hoạt động
     if (currentQr.status !== 'ACTIVE') {
       throw new Error("QR đã bị khóa hoặc không hoạt động");
     }
     
-    // 3️⃣ CẬP NHẬP VISITOR INFORMATION
-    let finalVisitorId = currentQr.visitor_id;
-    
-    // 👑 QUAN TRỌNG: Kiểm tra xem có muốn cập nhật visitor hay không
-    // Nếu cả 3 trường đều là chuỗi rỗng hoặc undefined -> XÓA visitor
-    const shouldClearVisitor = 
-      (visitorName === "" || visitorName === null || visitorName === undefined) &&
-      (visitorPhone === "" || visitorPhone === null || visitorPhone === undefined) &&
-      (visitorIdCard === "" || visitorIdCard === null || visitorIdCard === undefined);
-    
-    const hasVisitorUpdate = 
+    // 👉 KIỂM TRA XEM CÓ THAY ĐỔI THÔNG TIN KHÁCH KHÔNG
+    const hasVisitorInfoChange = 
       (visitorName && visitorName !== "") ||
       (visitorPhone && visitorPhone !== "") ||
       (visitorIdCard && visitorIdCard !== "");
     
-    if (shouldClearVisitor && currentQr.visitor_id) {
-      // 🔥 XÓA visitor: set visitor_id = NULL
-      finalVisitorId = null;
-      console.log('✅ Clear visitor (set to NULL)');
-    } 
-    else if (hasVisitorUpdate) {
-      // 🔥 CÓ thông tin visitor mới
-      if (currentQr.visitor_id) {
-        // Cập nhật visitor hiện tại
-        const updateVisitorQuery = `
-          UPDATE visitors 
-          SET 
-            name = $1,
-            phone = $2,
-            id_card = $3
-          WHERE id = $4
-          RETURNING id
-        `;
-        
-        await client.query(updateVisitorQuery, [
-          visitorName || null,
-          visitorPhone || null,
-          visitorIdCard || null,
-          currentQr.visitor_id
-        ]);
-        console.log('✅ Updated existing visitor');
-        finalVisitorId = currentQr.visitor_id;
-      } 
-      else {
-        // Tạo mới visitor (chỉ tạo khi có tên)
-        if (visitorName && visitorName !== "") {
-          const insertVisitorQuery = `
-            INSERT INTO visitors (host_user_id, name, phone, id_card, created_at)
-            VALUES ($1, $2, $3, $4, NOW())
-            RETURNING id
-          `;
-          const insertResult = await client.query(insertVisitorQuery, [
-            parseInt(userId),
-            visitorName,
-            visitorPhone || null,
-            visitorIdCard || null
-          ]);
-          finalVisitorId = insertResult.rows[0].id;
-          console.log('✅ Created new visitor');
-        } else {
-          // Không có tên thì không tạo visitor
-          finalVisitorId = null;
-          console.log('⚠️ No visitor name provided, keep visitor NULL');
-        }
-      }
+    // 👉 KIỂM TRA XEM CÓ THAY ĐỔI PIN KHÔNG
+    const hasPinChange = pinCode !== undefined && pinCode !== currentQr.pin_code;
+    
+    // 👉 QUYẾT ĐỊNH CÓ RESET USED_ENTRIES HAY KHÔNG
+    let shouldResetUsedEntries = false;
+    let newVisitorId = currentQr.visitor_id;
+    
+    // CHỈ TẠO VISITOR MỚI KHI THAY ĐỔI THÔNG TIN KHÁCH (TÊN, SĐT, CCCD)
+    if (hasVisitorInfoChange && visitorName && visitorName !== "") {
+      const insertVisitorQuery = `
+        INSERT INTO visitors (host_user_id, name, phone, id_card, created_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        RETURNING id
+      `;
+      const insertResult = await client.query(insertVisitorQuery, [
+        parseInt(userId),
+        visitorName,
+        visitorPhone || null,
+        visitorIdCard || null
+      ]);
+      newVisitorId = insertResult.rows[0].id;
+      shouldResetUsedEntries = true;
+      console.log('✅ Created NEW visitor, will reset used_entries to 0');
     }
     
-    // 4️⃣ CẬP NHẬP MAX_ENTRIES
+    // 3️⃣ CẬP NHẬT MAX_ENTRIES (nếu có)
     const finalMaxEntries = maxEntries !== undefined && maxEntries !== null 
       ? maxEntries 
       : currentQr.max_entries;
     
-    // 5️⃣ CẬP NHẬP GUEST_QR_CODES
+    // 4️⃣ CẬP NHẬT USED_ENTRIES
+    const finalUsedEntries = shouldResetUsedEntries ? 0 : currentQr.used_entries;
+    
+    // 5️⃣ CẬP NHẬT PIN (nếu có thay đổi)
+    const finalPinCode = hasPinChange ? pinCode : currentQr.pin_code;
+    
+    // 6️⃣ CẬP NHẬT GUEST_QR_CODES
     const updateQuery = `
       UPDATE guest_qr_codes 
       SET 
-        valid_to = $1,
+        valid_to = COALESCE($1, valid_to),
         max_entries = $2,
-        visitor_id = $3
-      WHERE id = $4 AND host_user_id = $5
+        visitor_id = $3,
+        used_entries = $4,
+        pin_code = $5
+      WHERE id = $6 AND host_user_id = $7
       RETURNING *
     `;
     
     await client.query(updateQuery, [
-      newValidTo,
+      newValidTo || currentQr.valid_to,
       finalMaxEntries,
-      finalVisitorId,
+      newVisitorId,
+      finalUsedEntries,
+      finalPinCode,
       parseInt(qrId),
       parseInt(userId)
     ]);
     
-    console.log('✅ Updated guest_qr_codes table');
-    
-    // 6️⃣ LẤY THÔNG TIN ĐẦY ĐỦ
+    // 7️⃣ LẤY THÔNG TIN ĐẦY ĐỦ ĐỂ TRẢ VỀ
     const finalQuery = `
       SELECT 
         gq.id,
@@ -635,6 +589,7 @@ const updateMyGuestQrValidTo = async (
         gq.used_entries,
         gq.status,
         gq.created_at,
+        gq.pin_code,
         v.name AS visitor_name,
         v.phone AS visitor_phone,
         v.id_card AS visitor_id_card,
@@ -649,12 +604,10 @@ const updateMyGuestQrValidTo = async (
     
     await client.query('COMMIT');
     
-    console.log('✅ Transaction committed successfully');
     return finalResult.rows[0];
     
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('❌ Transaction rolled back:', err.message);
     throw err;
   } finally {
     client.release();
@@ -717,8 +670,8 @@ const getMyGuestQrHistory = async (qrId, userId, options = {}) => {
       gq.valid_to,
       gq.max_entries,
       gq.used_entries,
-      v.name AS visitor_name,
-      v.phone AS visitor_phone,
+      COALESCE(al.snapshot_visitor_name, v.name) AS visitor_name,
+      COALESCE(al.snapshot_visitor_phone, v.phone) AS visitor_phone,
       v.id_card AS visitor_id_card,
       u.full_name AS host_name,
       a.apartment_code
@@ -757,10 +710,81 @@ const getMyGuestQrHistory = async (qrId, userId, options = {}) => {
   };
 };
 
-const getPersonalQrHistory = async (userId, page = 1, limit = 10) => {
-  const offset = (page - 1) * limit;
+const createAccessLogWithSnapshot = async (data) => {
+  const {
+    qrCodeId,
+    direction,
+    gate,
+    result: scanResult,
+    scannedBy,
+    buildingId,
+    scanTime = new Date()
+  } = data;
+
+  const query = `
+    INSERT INTO access_logs (
+      qr_code_id,
+      scan_time,
+      direction,
+      gate,
+      result,
+      scanned_by,
+      building_id,
+      snapshot_visitor_name,
+      snapshot_visitor_phone
+    )
+    SELECT 
+      $1, $2, $3, $4, $5, $6, $7,
+      v.name,
+      v.phone
+    FROM guest_qr_codes gq
+    LEFT JOIN visitors v ON v.id = gq.visitor_id
+    WHERE gq.id = $1
+    RETURNING *
+  `;
+
+  const result = await pool.query(query, [
+    qrCodeId,
+    scanTime,
+    direction,
+    gate,
+    scanResult,
+    scannedBy,
+    buildingId
+  ]);
+
+  return result.rows[0];
+};
+
+const getPersonalQrHistory = async (userId, options = {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    result = null,
+    search = null,
+    fromDate = null,
+    toDate = null
+  } = options;
+  
+  // ✅ Đảm bảo page và limit là số nguyên hợp lệ
+  const validPage = Math.max(1, parseInt(page) || 1);
+  const validLimit = Math.max(1, parseInt(limit) || 10);
+  const offset = (validPage - 1) * validLimit;
   
   try {
+    // Kiểm tra userId hợp lệ
+    if (!userId || isNaN(parseInt(userId))) {
+      return {
+        data: [],
+        total: 0,
+        page: validPage,
+        limit: validLimit,
+        totalPages: 0
+      };
+    }
+    
+    const parsedUserId = parseInt(userId);
+    
     // Lấy personal_qr_code_id của user
     const getPersonalQrQuery = `
       SELECT id FROM qr_codes 
@@ -768,21 +792,67 @@ const getPersonalQrHistory = async (userId, page = 1, limit = 10) => {
       ORDER BY created_at DESC
       LIMIT 1
     `;
-    const personalQrResult = await pool.query(getPersonalQrQuery, [userId]);
+    const personalQrResult = await pool.query(getPersonalQrQuery, [parsedUserId]);
     
     if (personalQrResult.rows.length === 0) {
       return {
         data: [],
         total: 0,
-        page,
-        limit,
+        page: validPage,
+        limit: validLimit,
         totalPages: 0
       };
     }
     
     const personalQrId = personalQrResult.rows[0].id;
     
-    // Lấy lịch sử quét từ access_logs (có tên tòa nhà)
+    // Xây dựng câu lệnh WHERE với các filter
+    let conditions = [`al.personal_qr_code_id = $1`];
+    let params = [personalQrId];
+    let paramIndex = 2;
+    
+    // Filter theo kết quả (SUCCESS/DENIED)
+    if (result && result !== '') {
+  if (Array.isArray(result) && result.length > 0) {
+    // Nếu là array, dùng IN
+    const placeholders = result.map((_, i) => `$${paramIndex + i}`).join(',');
+    conditions.push(`al.result IN (${placeholders})`);
+    params.push(...result);
+    paramIndex += result.length;
+  } else if (typeof result === 'string') {
+    // Nếu là string đơn
+    conditions.push(`al.result = $${paramIndex}`);
+    params.push(result);
+    paramIndex++;
+  }
+}
+    
+    // Filter theo search (tòa nhà, người quét)
+    if (search && search.trim()) {
+      conditions.push(`(b.name ILIKE $${paramIndex} OR u.full_name ILIKE $${paramIndex})`);
+      params.push(`%${search.trim()}%`);
+      paramIndex++;
+    }
+    
+    // Filter theo ngày bắt đầu
+    if (fromDate && fromDate.trim()) {
+      conditions.push(`DATE(al.scan_time) >= $${paramIndex}`);
+      params.push(fromDate);
+      paramIndex++;
+    }
+    
+    // Filter theo ngày kết thúc
+    if (toDate && toDate.trim()) {
+      conditions.push(`DATE(al.scan_time) <= $${paramIndex}`);
+      params.push(toDate);
+      paramIndex++;
+    }
+    
+    const whereClause = conditions.length > 0 
+      ? `WHERE ${conditions.join(' AND ')}` 
+      : '';
+    
+    // Lấy lịch sử quét từ access_logs
     const query = `
       SELECT 
         al.id,
@@ -796,32 +866,35 @@ const getPersonalQrHistory = async (userId, page = 1, limit = 10) => {
       FROM access_logs al
       LEFT JOIN users u ON u.id = al.scanned_by
       LEFT JOIN buildings b ON b.id = al.building_id
-      WHERE al.personal_qr_code_id = $1
+      ${whereClause}
       ORDER BY al.scan_time DESC
-      LIMIT $2 OFFSET $3
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     
-    const result = await pool.query(query, [personalQrId, limit, offset]);
+    const dataResult = await pool.query(query, [...params, validLimit, offset]);
     
     // Đếm tổng số bản ghi
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM access_logs
-      WHERE personal_qr_code_id = $1
+      FROM access_logs al
+      LEFT JOIN users u ON u.id = al.scanned_by
+      LEFT JOIN buildings b ON b.id = al.building_id
+      ${whereClause}
     `;
-    const countResult = await pool.query(countQuery, [personalQrId]);
-    const total = parseInt(countResult.rows[0].total);
+    
+    const countResult = await pool.query(countQuery, params);
+    const total = parseInt(countResult.rows[0]?.total || 0);
     
     return {
-      data: result.rows,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
+      data: dataResult.rows,
+      total: total,
+      page: validPage,
+      limit: validLimit,
+      totalPages: Math.ceil(total / validLimit)
     };
     
   } catch (err) {
-    console.error('Error in getPersonalQrHistory:', err);
+    console.error('Error in getPersonalQrHistory repository:', err);
     throw err;
   }
 };
@@ -834,5 +907,6 @@ module.exports = { createGuestQr, getGuestQrsByHost, getGuestQrById, updateGuest
   updateMyGuestQrStatus,
   updateMyGuestQrValidTo,
   getMyGuestQrHistory,
-  getPersonalQrHistory
+  getPersonalQrHistory,
+  createAccessLogWithSnapshot
  };

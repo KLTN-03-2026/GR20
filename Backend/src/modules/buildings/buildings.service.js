@@ -1,6 +1,7 @@
 const repo = require("./building.repository");
 const mapper = require("./building.mapper");
 const { AppError } = require("../../common/app-error");
+const ERROR_CODES = require("./building-errors");
 const {
   parseCreateBuilding,
   parseUpdateBuilding,
@@ -18,16 +19,44 @@ const createBuilding = async (reqBody) => {
   };
 };
 
-const getAllBuildings = async (query) => {
-  const { page, size, search, status } = parseBuildingPagination(query);
+const { buildingIdsFromUser } = require("../../common/building-scope");
 
-  const result = await repo.getAllBuildings({ page, size, search, status });
+const getAllBuildings = async (query, user) => {
+  const parsed = parseBuildingPagination(query);
+  const {
+    page,
+    size,
+    search,
+    status,
+    includeApartments: includeApartmentsParam,
+  } = parsed;
+
+  const buildingIds = buildingIdsFromUser(user);
+
+  let includeApartments = includeApartmentsParam;
+  if (includeApartments === undefined) {
+    includeApartments = Boolean(
+      user &&
+        user.role !== "ADMIN" &&
+        buildingIds !== null &&
+        buildingIds.length > 0,
+    );
+  }
+
+  const result = await repo.getAllBuildings({
+    page,
+    size,
+    search,
+    status,
+    buildingIds,
+    includeApartments,
+  });
 
   return {
     data: result.rows.map(mapper.toResponse),
     size: result.rows.length,
     totalElements: result.total,
-    totalPages: Math.ceil(result.total / size),
+    totalPages: Math.ceil(result.total / size) || 0,
     page: Number(page),
     pageSize: Number(size),
   };
@@ -38,7 +67,7 @@ const getBuildingById = async (id) => {
   const data = await repo.getBuildingById(parsedId);
 
   if (!data) {
-    throw new AppError(404, "Building not found");
+    throw new AppError(404, "Building not found", undefined, ERROR_CODES.BUILDING_NOT_FOUND);
   }
 
   return mapper.toResponse(data);
@@ -53,7 +82,7 @@ const updateBuilding = async (id, reqBody) => {
   const updated = await repo.updateBuilding(parsedId, entity);
 
   if (!updated) {
-    throw new AppError(404, "Building not found");
+    throw new AppError(404, "Building not found", undefined, ERROR_CODES.BUILDING_NOT_FOUND);
   }
 
   return mapper.toResponse(updated);
@@ -65,7 +94,7 @@ const deleteBuilding = async (id) => {
   const deleted = await repo.deleteBuilding(parsedId);
 
   if (!deleted) {
-    throw new AppError(404, "Building not found");
+    throw new AppError(404, "Building not found", undefined, ERROR_CODES.BUILDING_NOT_FOUND);
   }
 
   return { id: deleted.id };

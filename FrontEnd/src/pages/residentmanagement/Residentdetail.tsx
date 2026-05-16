@@ -1,9 +1,8 @@
-// src/pages/residents/ResidentDetail.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { residentApi} from 'src/apis/resident_api/residents.api'
+import { residentApi12} from 'src/apis/resident_api/residents.api'
 
 
 export default function ResidentDetail() {
@@ -20,7 +19,7 @@ export default function ResidentDetail() {
   // Lấy chi tiết cư dân
   const { data: residentData, isLoading, refetch } = useQuery({
     queryKey: ['resident', id],
-    queryFn: () => residentApi.getResidentById(id!),
+    queryFn: () => residentApi12.getResidentById(id!),
     enabled: !!id
   })
 
@@ -28,7 +27,7 @@ export default function ResidentDetail() {
 
   // Cập nhật cư dân
   const updateMutation = useMutation({
-    mutationFn: (data: any) => residentApi.updateResident(id!, data),
+    mutationFn: (data: any) => residentApi12.updateResident(id!, data),
     onSuccess: () => {
       toast.success('Cập nhật thông tin thành công')
       setIsEditing(false)
@@ -65,7 +64,7 @@ export default function ResidentDetail() {
   }
 
   const handleBack = () => {
-    navigate('..')
+    navigate('/Getresidentlist')
   }
 
   // Helper functions
@@ -161,21 +160,24 @@ export default function ResidentDetail() {
   return (
     <div className="flex-1 overflow-y-auto bg-surface px-8 py-8">
       {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 mb-8">
+      {/* <nav className="flex items-center gap-2 mb-8">
         <button onClick={handleBack} className="text-on-surface-variant text-sm font-medium hover:text-primary transition-colors">
           Quản lý Cư dân
         </button>
-        
-       
+      </nav> */}
+      <nav className="flex items-center gap-2 mb-8">
+        <button 
+          onClick={handleBack} 
+          className="text-on-surface-variant text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Quản lý Cư dân
+         </button>
       </nav>
 
       {/* Header Action Row */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">THÔNG TIN HỒ SƠ</h1>
-          <p className="text-on-surface-variant max-w-lg leading-relaxed">
-            Cập nhật và quản lý thông tin chi tiết về cư dân, hợp đồng thuê và các dịch vụ liên quan.
-          </p>
         </div>
         <div className="flex gap-3">
           {!isEditing ? (

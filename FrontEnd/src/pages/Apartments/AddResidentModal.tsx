@@ -41,6 +41,7 @@ export default function AddResidentModal({
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+//load data khi sửa
   useEffect(() => {
     if (resident) {
       setFormData({
@@ -59,62 +60,78 @@ export default function AddResidentModal({
   const addMutation = useMutation({
     mutationFn: (data: any) => http.post(`/api/apartments/${apartmentId}/residents`, data),
     onError: (err: any) => {
-      const message = err.response?.data?.message;
+      const message = err.response?.data?.message
       if (message) {
-        if (message.includes('Email')) setErrors({ email: message });
-        else if (message.includes('Số điện thoại') || message.includes('SDT')) setErrors({ phone: message });
-        else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message });
-        else if (message.includes('Căn hộ chưa có chủ hộ')) setErrors({ relationship: message });
-        else setErrors({ fullName: message });
+        if (message.includes('Email')) setErrors({ email: message })
+        else if (message.includes('Số điện thoại') || message.includes('SDT')) setErrors({ phone: message })
+        else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message })
+        // else if (message.includes('Căn hộ chưa có chủ hộ')) setErrors({ relationship: message });
+        else setErrors({ fullName: message })
       }
     },
+    //   onSuccess: () => {
+    //     setFormData(initialFormData);
+    //     setErrors({});
+    //     onClose();
+    //     window.location.reload();
+    //   },
+    // });
     onSuccess: () => {
-      setFormData(initialFormData);
-      setErrors({});
-      onClose();
-      window.location.reload();
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId.toString()] })
+      queryClient.invalidateQueries({ queryKey: ['apartments'] })
+      setFormData(initialFormData)
+      setErrors({})
+      onClose()
+    }
+  })
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => http.put(`/api/apartments/residents/${resident?.id}`, data),
     onError: (err: any) => {
-      const message = err.response?.data?.message;
+      const message = err.response?.data?.message
       if (message) {
-        if (message.includes('Email')) setErrors({ email: message });
-        else if (message.includes('Số điện thoại') || message.includes('SDT')) setErrors({ phone: message });
-        else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message });
-        else setErrors({ fullName: message });
+        if (message.includes('Email')) setErrors({ email: message })
+        // else if (message.includes('Số điện thoại') || message.includes('SDT')) setErrors({ phone: message })
+        else if (message.includes('chủ hộ') || message.includes('OWNER')) setErrors({ relationship: message })
+        else setErrors({ fullName: message })
       }
     },
+    //   onSuccess: () => {
+    //     setFormData(initialFormData)
+    //     setErrors({})
+    //     onClose()
+    //     window.location.reload()
+    //   }
+    // })
     onSuccess: () => {
-      setFormData(initialFormData);
-      setErrors({});
-      onClose();
-      window.location.reload();
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId.toString()] })
+      queryClient.invalidateQueries({ queryKey: ['apartments'] })
+      setFormData(initialFormData)
+      setErrors({})
+      onClose()
+    }
+  })
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string> = {}
 
-    if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên';
+    if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên'
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Vui lòng nhập số điện thoại';
+      newErrors.phone = 'Vui lòng nhập số điện thoại'
     } else if (!/^(0|\+84)[1-9][0-9]{8}$/.test(formData.phone.trim())) {
-      newErrors.phone = 'Số điện thoại không hợp lệ (VD: 0901234567)';
+      newErrors.phone = 'Số điện thoại không hợp lệ (VD: 0901234567)'
     }
 
     if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = 'Email không hợp lệ (VD: example@email.com)';
+      newErrors.email = 'Email không hợp lệ (VD: example@email.com)'
     }
 
-    if (!formData.moveInDate) newErrors.moveInDate = 'Vui lòng chọn ngày vào ở';
+    if (!formData.moveInDate) newErrors.moveInDate = 'Vui lòng chọn ngày vào ở'
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

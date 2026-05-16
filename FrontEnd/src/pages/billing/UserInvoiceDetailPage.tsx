@@ -67,7 +67,9 @@ export default function UserInvoiceDetailPage() {
         <nav className='mb-6 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-400'>
           <Link to='/' className='hover:text-blue-500'>Trang chủ</Link>
           <span className='material-symbols-outlined text-xs'>chevron_right</span>
-          <Link to='/invoices' className='hover:text-blue-500'>Hóa đơn của tôi</Link>
+          <Link to='/invoices' className='hover:text-blue-500'>
+            Hóa đơn của tôi
+          </Link>
           <span className='material-symbols-outlined text-xs'>chevron_right</span>
           <span className='font-semibold text-blue-600'>Chi tiết</span>
         </nav>
@@ -87,7 +89,9 @@ export default function UserInvoiceDetailPage() {
       <nav className='mb-6 flex flex-wrap items-center gap-2 text-sm font-medium text-slate-400'>
         <Link to='/' className='hover:text-blue-500'>Trang chủ</Link>
         <span className='material-symbols-outlined text-xs'>chevron_right</span>
-        <Link to='/invoices' className='hover:text-blue-500'>Hóa đơn của tôi</Link>
+        <Link to='/invoices' className='hover:text-blue-500'>
+          Hóa đơn của tôi
+        </Link>
         <span className='material-symbols-outlined text-xs'>chevron_right</span>
         <span className='font-semibold text-blue-600'>Chi tiết hóa đơn</span>
       </nav>
@@ -163,7 +167,7 @@ export default function UserInvoiceDetailPage() {
               to='/payments'
               className='mt-4 inline-flex items-center gap-2 text-xs font-bold text-blue-200 hover:text-white hover:underline'
             >
-              Thanh toán tại “Thanh toán của tôi” 
+              Sang trang Thanh toán của tôi
               <span className='material-symbols-outlined text-sm'>payments</span>
             </Link>
           </div>

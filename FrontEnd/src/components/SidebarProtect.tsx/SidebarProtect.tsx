@@ -63,7 +63,7 @@ export default function SidebarProtect() {
             <span className='text-sm font-manrope'>Lịch sử ra vào</span>
           </NavLink>
 
-          <NavLink to='/residents' className={getNavClass}>
+          <NavLink to='/SecurityResident' className={getNavClass}>
             <span className='material-symbols-outlined'>person_search</span>
             <span className='text-sm font-manrope'>Tra cứu cư dân</span>
           </NavLink>

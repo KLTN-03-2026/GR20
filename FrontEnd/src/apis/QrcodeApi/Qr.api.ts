@@ -10,7 +10,10 @@ import type {
   QRGuestList,
   QRGuestDetail,
   historyQrGuestId,
-  HistoryMe
+  HistoryMe,
+  QrScanResult,
+  QRScanResponse,
+  VerifyPinResponse
 } from 'src/types/qrcode.type'
 
 export type Status = {
@@ -52,8 +55,24 @@ export const QRCodeApi = {
   getQrcodeMe() {
     return http.get<SuccessResponseApi<QrcodeMe>>('api/qr/resident/me')
   },
-  getHistoryMe() {
-    return http.get<SuccessResponseApi<HistoryMe[]>>('api/qr/resident/history/me')
+  getHistoryMe(params?: {
+    page?: number
+    limit?: number
+    result?: string
+    search?: string
+    fromDate?: string
+    toDate?: string
+  }) {
+    return http.get<SuccessResponseApi<HistoryMe[]>>('api/qr/resident/history/me', {
+      params: {
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+        result: params?.result || undefined,
+        search: params?.search || undefined,
+        fromDate: params?.fromDate || undefined,
+        toDate: params?.toDate || undefined
+      }
+    })
   },
 
   getQrGuesrList() {
@@ -74,24 +93,33 @@ export const QRCodeApi = {
       visitor_name: string
       visitor_phone: string
       visitor_id_card: string
+      pin_code: string
     }
   ) {
     return http.put<SuccessResponseApi<QRGuestDetail>>(`/api/qr/resident/guest-qrs/${id}/valid-to`, body)
   },
-  // putBodyQRGuest(
-  //   id: string,
-  //   body: {
-  //     valid_to?: string
-  //     max_entries?: number
-  //     visitor_name?: string
-  //     visitor_phone?: string
-  //     visitor_id_card?: string
-  //   }
-  // ) {
-  //   return http.put<SuccessResponseApi<QRGuestDetail>>(`/api/qr/resident/guest-qrs/${id}/status`, body)
-  // },
-  getHistoryQrKhachId(id: string) {
-    return http.get<SuccessResponseApi<historyQrGuestId[]>>(`api/qr/resident/guest-qrs/${id}/history`)
+
+  getHistoryQrKhachId(
+    id: string,
+    params?: {
+      page?: number
+      limit?: number
+      result?: string
+      search?: string
+      fromDate?: string
+      toDate?: string
+    }
+  ) {
+    return http.get<SuccessResponseApi<historyQrGuestId[]>>(`api/qr/resident/guest-qrs/${id}/history`, {
+      params: {
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+        result: params?.result || undefined,
+        search: params?.search || undefined,
+        fromDate: params?.fromDate || undefined,
+        toDate: params?.toDate || undefined
+      }
+    })
   },
 
   // ==================== GUARD (Bảo vệ) ====================
@@ -104,7 +132,7 @@ export const QRCodeApi = {
       building_id?: number
     }
   ) {
-    return http.get<SuccessResponseApi<ResultQrcode>>(`api/qr/guard/scan/${qrCode}`, { params })
+    return http.get<SuccessResponseApi<QRScanResponse>>(`api/qr/guard/scan/${qrCode}`, { params })
   },
 
   scanPersonalQr(
@@ -115,9 +143,18 @@ export const QRCodeApi = {
       building_id?: number
     }
   ) {
-    return http.get<SuccessResponseApi<ResultQrcode1>>(`api/qr/guard/scan/${qrCode}`, { params })
+    return http.get<SuccessResponseApi<QRScanResponse>>(`api/qr/guard/scan/${qrCode}`, { params })
   },
-
+  scanVerifyPin(qrCode: string, pinCode: string, options?: any) {
+    return http.post<SuccessResponseApi<VerifyPinResponse>>('api/qr/guard/verify-pin', {
+      qrCode,
+      pinCode,
+      scanMetadata: options?.scanMetadata || {
+        direction: 'IN',
+        gate: 'Cổng chính'
+      }
+    })
+  },
   getGuestQrHistory(params?: {
     page?: number
     limit?: number

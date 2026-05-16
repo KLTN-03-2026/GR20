@@ -26,27 +26,39 @@ const createFloor = async (floor) => {
 };
 
 // ================= GET ALL (PAGINATION) =================
-const getAllFloors = async ({ page = 0, size = 10 }) => {
+/** @param {{ page?: number, size?: number, buildingIds?: null|number[] }} opts — buildingIds null = mọi tòa; [] = không dòng nào */
+const getAllFloors = async ({ page = 0, size = 10, buildingIds }) => {
+  if (buildingIds && buildingIds.length === 0) {
+    return { rows: [], total: 0 };
+  }
+
   const offset = page * size;
+  const values = [];
+  let where = `WHERE is_deleted = TRUE`;
+
+  if (buildingIds && buildingIds.length > 0) {
+    values.push(buildingIds);
+    where += ` AND building_id = ANY($${values.length}::bigint[])`;
+  }
+
+  const lim = values.length + 1;
+  const off = values.length + 2;
 
   const dataQuery = `
     SELECT * FROM floors
-    WHERE is_deleted = TRUE
-    ORDER BY id ASC
-    LIMIT $1 OFFSET $2
+    ${where}
+    ORDER BY building_id ASC, floor_number ASC, id ASC
+    LIMIT $${lim} OFFSET $${off}
   `;
 
-  const countQuery = `
-    SELECT COUNT(*) FROM floors
-    WHERE is_deleted = TRUE
-  `;
+  const countQuery = `SELECT COUNT(*)::int FROM floors ${where}`;
 
-  const data = await pool.query(dataQuery, [size, offset]);
-  const count = await pool.query(countQuery);
+  const data = await pool.query(dataQuery, [...values, size, offset]);
+  const count = await pool.query(countQuery, values);
 
   return {
     rows: data.rows,
-    total: parseInt(count.rows[0].count),
+    total: parseInt(count.rows[0].count, 10),
   };
 };
 

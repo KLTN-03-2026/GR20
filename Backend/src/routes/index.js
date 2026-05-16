@@ -73,10 +73,13 @@ const vehicleRoute = require("../modules/vehicles/vehicle.route");
 const visitorRoute = require("../modules/visitors/visitor.route");
 const contractRoute = require("../modules/contracts/contract.route");
 const amenityRoute = require("../modules/amenities/amenity.route");
+const statisticsRoute = require("../modules/statistics/statistics.route");
+const dashboardProtection = require("../modules/dashboard_Protection/dashboard.routes");
 
 router.use("/uploads", express.static("uploads"));
 
 router.use("/qr", qrRoute);
+router.use("/dashboard", dashboardProtection);
 
 // Các routes khác
 router.use("/buildings", buildingRoute);
@@ -108,6 +111,7 @@ router.use("/payments", paymentRoute);
 router.use("/vehicles", vehicleRoute);
 router.use("/visitors", visitorRoute);
 router.use("/contracts", contractRoute);
+router.use("/statistics", statisticsRoute);
 
 router.use("/amenities", amenityRoute);
 router.use("/buildings/:buildingId/amenities", amenityRoute);

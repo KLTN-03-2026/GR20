@@ -28,7 +28,14 @@ const createApartment = async (apartment) => {
 };
 
 // ================= GET ALL =================
-const getAllApartments = async ({ page = 0, size = 10, buildingId, floorId, search }) => {
+/** buildingIds: null/undefined = không lọc theo tòa; mảng không rỗng = WHERE building_id = ANY(...) — giá trị do service truyền (service đọc JWT/query), layer này không đụng auth */
+const getAllApartments = async ({
+  page = 0,
+  size = 10,
+  buildingId,
+  floorId,
+  search,
+}) => {
   const offset = page * size;
   const params = [];
   let paramIndex = 1;
@@ -46,13 +53,17 @@ const getAllApartments = async ({ page = 0, size = 10, buildingId, floorId, sear
   let countQuery = `SELECT COUNT(*) FROM apartments a WHERE a.status != 'MAINTENANCE'`;
   const countParams = [];
   let countParamIndex = 1;
+
   if (buildingId) { countQuery += ` AND a.building_id = $${countParamIndex}`; countParams.push(buildingId); countParamIndex++; }
   if (floorId) { countQuery += ` AND a.floor_id = $${countParamIndex}`; countParams.push(floorId); countParamIndex++; }
   if (search) { countQuery += ` AND a.apartment_code ILIKE $${countParamIndex}`; countParams.push(`%${search}%`); countParamIndex++; }
   dataQuery += ` ORDER BY f.floor_number ASC, a.apartment_code ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  
   params.push(size, offset);
+
   const data = await pool.query(dataQuery, params);
   const count = await pool.query(countQuery, countParams);
+
   return { rows: data.rows, total: parseInt(count.rows[0].count) };
 };
 
@@ -118,6 +129,7 @@ const updateApartment = async (id, apartment) => {
   if (apartment.balcony_direction !== undefined) { fields.push(`balcony_direction = $${index++}`); values.push(apartment.balcony_direction); }
   if (apartment.status !== undefined) { fields.push(`status = $${index++}`); values.push(apartment.status); }
   if (fields.length === 0) throw new AppError(400, "No fields to update");
+  
   fields.push(`updated_at = NOW()`);
   values.push(id);
   const query = `UPDATE apartments SET ${fields.join(", ")} WHERE id = $${index} RETURNING *`;
@@ -186,8 +198,8 @@ const addResident = async (apartmentId, data) => {
     if (!userId) {
       const email = data.email || null;
       const newUser = await client.query(
-        `INSERT INTO users (username, password, full_name, phone, email, is_active)
-         VALUES ($1, $2, $3, $4, $5, true) RETURNING id`,
+        `INSERT INTO users (username, password, full_name, phone, email, role_id, is_active)
+         VALUES ($1, $2, $3, $4, $5, 5, true) RETURNING id`,
         [data.phone, "123456", data.fullName, data.phone, email],
       );
       userId = newUser.rows[0].id;
@@ -260,6 +272,12 @@ const addResident = async (apartmentId, data) => {
 };
 
 module.exports = {
-  createApartment, getAllApartments, getApartmentsByBuilding, getApartmentsByFloor,
-  getApartmentById, updateApartment, deleteApartment, addResident,
+  createApartment,
+  getAllApartments,
+  getApartmentsByBuilding,
+  getApartmentsByFloor,
+  getApartmentById,
+  updateApartment,
+  deleteApartment,
+  addResident,
 };

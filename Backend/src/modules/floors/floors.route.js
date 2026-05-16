@@ -1,12 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("./floors.controller");
+const { optionalVerifyToken } = require("../../middlewares/auth.middleware");
 
 // import apartments route
 const apartmentRouter = require("../apartments/apartment.route");
 
 // 🆕 GET FLOORS BY BUILDING - Đặt TRƯỚC /:id
-router.get("/building/:buildingId", controller.getFloorsByBuilding);
+router.get(
+  "/building/:buildingId",
+  optionalVerifyToken,
+  controller.getFloorsByBuilding,
+);
 
 // CREATE
 router.post("/", controller.createFloor);

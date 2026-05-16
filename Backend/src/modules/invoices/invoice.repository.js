@@ -25,6 +25,26 @@ const getApartmentById = async (apartmentId, client = pool) => {
   return result.rows[0];
 };
 
+/** Hợp đồng thuê (RENT) đang ACTIVE, có tiền thuê, giao với kỳ hóa đơn (tháng/năm). */
+const getActiveRentContractForBillingMonth = async (apartmentId, billingMonth, billingYear, client = pool) => {
+  const result = await client.query(
+    `
+      SELECT id, monthly_rent, contract_type, start_date, end_date
+      FROM contracts
+      WHERE apartment_id = $1
+        AND status = 'ACTIVE'
+        AND contract_type = 'RENT'
+        AND COALESCE(monthly_rent, 0) > 0
+        AND start_date <= (make_date($3::int, $2::int, 1) + INTERVAL '1 month' - INTERVAL '1 day')
+        AND end_date >= make_date($3::int, $2::int, 1)
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [apartmentId, billingMonth, billingYear]
+  );
+  return result.rows[0];
+};
+
 const getActiveMetersByApartment = async (apartmentId, client = pool) => {
   const result = await client.query(
     `
@@ -233,6 +253,7 @@ const restoreInvoice = async (id) => {
 module.exports = {
   createInvoice,
   getApartmentById,
+  getActiveRentContractForBillingMonth,
   getActiveMetersByApartment,
   getLatestReadingByMonth,
   getActivePriceByMeterTypeAtDate,
