@@ -100,7 +100,11 @@ const createResident = async (reqBody) => {
     apartmentId,
     relationship,
   });
-  const result = await repo.createResident(entity);
+
+  const orphanProfile = await repo.getUnassignedProfileByUserId(userId);
+  const result = orphanProfile
+    ? await repo.assignUnassignedProfile(orphanProfile.id, entity)
+    : await repo.createResident(entity);
 
   if (relationship === "OWNER") {
     await repo.setApartmentOwnerAndOccupied(apartmentId, userId);
@@ -236,29 +240,34 @@ const getAllResidents = async (query, currentUser) => {
 };
 
 const getResidentById = async (id) => {
-  console.log('SERVICE - Called with id:', id, 'type:', typeof id);
-  
-  // Chuyển id sang số nguyên
-  const numericId = parseInt(id);
-  console.log('SERVICE - Numeric id:', numericId);
-  
-  // Kiểm tra id hợp lệ
-  if (isNaN(numericId)) {
-    throw new Error("Invalid resident ID");
+  const raw = String(id).trim();
+
+  if (raw.startsWith("u-")) {
+    const userId = Number(raw.slice(2));
+    if (!Number.isFinite(userId)) {
+      throw new AppError(400, "Mã cư dân không hợp lệ");
+    }
+    const data = await repo.getResidentByUserId(userId);
+    if (!data) {
+      throw new AppError(404, "Không tìm thấy cư dân");
+    }
+    return mapper.toResponse(data);
   }
-  
-  const data = await repo.getResidentById(numericId);
-  console.log('SERVICE - Data from repo:', data ? 'Has data' : 'No data');
-  
+
+  const profileId = Number(raw);
+  if (!Number.isFinite(profileId)) {
+    throw new AppError(400, "Mã cư dân không hợp lệ");
+  }
+
+  let data = await repo.getResidentById(profileId);
   if (!data) {
-    throw new Error(`Resident with id ${numericId} not found`);
+    data = await repo.getResidentByUserId(profileId);
   }
-  
-  console.log('SERVICE - Mapping to response');
-  const response = mapper.toResponse(data);
-  console.log('SERVICE - Mapped response:', response);
-  
-  return response;
+  if (!data) {
+    throw new AppError(404, "Không tìm thấy cư dân");
+  }
+
+  return mapper.toResponse(data);
 };
 
 const getResidentsByApartmentId = async (apartmentId) => {

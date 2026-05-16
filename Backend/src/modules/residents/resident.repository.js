@@ -33,7 +33,10 @@ const getAllResidents = async ({
   const queryParams = [];
   let paramIndex = 1;
 
-  const assignedWhere = ["rp.move_out_date IS NULL"];
+  const assignedWhere = [
+    "rp.move_out_date IS NULL",
+    "rp.apartment_id IS NOT NULL",
+  ];
   if (buildingIds && buildingIds.length > 0) {
     assignedWhere.push(`b.id = ANY($${paramIndex}::bigint[])`);
     queryParams.push(buildingIds);
@@ -75,7 +78,14 @@ const getAllResidents = async ({
 
   const unassignedSelect = `
     SELECT
-      NULL::bigint AS profile_id,
+      (
+        SELECT rp3.id FROM resident_profiles rp3
+        WHERE rp3.user_id = u.id
+          AND rp3.move_out_date IS NULL
+          AND rp3.apartment_id IS NULL
+        ORDER BY rp3.id DESC
+        LIMIT 1
+      ) AS profile_id,
       u.id AS user_id,
       NULL::bigint AS apartment_id,
       NULL::text AS relationship,
@@ -93,10 +103,15 @@ const getAllResidents = async ({
     FROM users u
     INNER JOIN roles r ON r.id = u.role_id AND r.deleted_at IS NULL
     WHERE u.is_active = true
-      AND LOWER(TRIM(r.name)) = ANY(ARRAY[${RESIDENT_ROLE_NAMES.map((n) => `'${n}'`).join(", ")}])
+      AND (
+        u.role_id = 5
+        OR LOWER(TRIM(r.name)) = ANY(ARRAY[${RESIDENT_ROLE_NAMES.map((n) => `'${n}'`).join(", ")}])
+      )
       AND NOT EXISTS (
         SELECT 1 FROM resident_profiles rp2
-        WHERE rp2.user_id = u.id AND rp2.move_out_date IS NULL
+        WHERE rp2.user_id = u.id
+          AND rp2.move_out_date IS NULL
+          AND rp2.apartment_id IS NOT NULL
       )
   `;
 
@@ -117,7 +132,7 @@ const getAllResidents = async ({
   const dataQuery = `
     WITH combined AS (${combinedSql})
     SELECT * FROM combined
-    ORDER BY is_unassigned DESC, full_name ASC NULLS LAST, profile_id ASC NULLS LAST
+    ORDER BY created_at DESC NULLS LAST, full_name ASC NULLS LAST, profile_id ASC NULLS LAST
     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
 
@@ -131,49 +146,73 @@ const getAllResidents = async ({
   };
 };
 
-// resident.repository.js
 const getResidentById = async (id) => {
-  console.log('REPO - Looking for id:', id);
-  
   const query = `
     SELECT 
-      rp.id as profile_id,
-      u.id as user_id,
+      rp.id AS profile_id,
+      u.id AS user_id,
       rp.apartment_id,
       rp.relationship,
       rp.move_in_date,
       rp.move_out_date,
-      COALESCE(rp.status, 'ACTIVE'::resident_status_enum) as status,
-      rp.created_at as profile_created_at,
+      rp.status::text AS status,
+      rp.created_at AS profile_created_at,
       u.full_name,
       u.email,
       u.phone,
       u.avatar_url,
-      a.apartment_code as apartment_number,
-      b.name as building_name
-    FROM users u
-    LEFT JOIN resident_profiles rp ON u.id = rp.user_id
+      a.apartment_code AS apartment_number,
+      b.name AS building_name
+    FROM resident_profiles rp
+    JOIN users u ON rp.user_id = u.id
     LEFT JOIN apartments a ON rp.apartment_id = a.id
     LEFT JOIN buildings b ON a.building_id = b.id
-    WHERE u.id = $1 AND u.role_id = 5
+    WHERE rp.id = $1
   `;
-  
+
   const result = await pool.query(query, [id]);
-  
-  // Nếu chưa có profile, tự động tạo với status ACTIVE
-  if (result.rows.length > 0 && !result.rows[0].profile_id) {
-    console.log('Creating resident profile for user', id);
-    
-    await pool.query(`
-      INSERT INTO resident_profiles (user_id, status, move_in_date)
-      VALUES ($1, 'ACTIVE', CURRENT_DATE)
-    `, [id]);
-    
-    // Query lại
-    const newResult = await pool.query(query, [id]);
-    return newResult.rows[0] || null;
-  }
-  
+  return result.rows[0] || null;
+};
+
+/** Chi tiết theo user_id — tài khoản chưa gán căn hoặc hồ sơ chưa có apartment_id */
+const getResidentByUserId = async (userId) => {
+  const query = `
+    SELECT
+      rp.id AS profile_id,
+      u.id AS user_id,
+      rp.apartment_id,
+      rp.relationship::text AS relationship,
+      rp.move_in_date,
+      rp.move_out_date,
+      CASE
+        WHEN rp.id IS NULL OR rp.apartment_id IS NULL THEN 'UNASSIGNED'
+        ELSE rp.status::text
+      END AS status,
+      COALESCE(rp.created_at, u.created_at) AS profile_created_at,
+      u.full_name,
+      u.email,
+      u.phone,
+      u.avatar_url,
+      a.apartment_code AS apartment_number,
+      b.name AS building_name
+    FROM users u
+    LEFT JOIN LATERAL (
+      SELECT *
+      FROM resident_profiles
+      WHERE user_id = u.id AND move_out_date IS NULL
+      ORDER BY
+        CASE WHEN apartment_id IS NULL THEN 0 ELSE 1 END,
+        id DESC
+      LIMIT 1
+    ) rp ON true
+    LEFT JOIN apartments a ON rp.apartment_id = a.id
+    LEFT JOIN buildings b ON a.building_id = b.id
+    WHERE u.id = $1
+      AND u.is_active = true
+      AND u.role_id = 5
+  `;
+
+  const result = await pool.query(query, [userId]);
   return result.rows[0] || null;
 };
 
@@ -276,6 +315,40 @@ const deleteResident = async (id) => {
   return result.rows[0];
 };
 
+const getUnassignedProfileByUserId = async (userId) => {
+  const query = `
+    SELECT id FROM resident_profiles
+    WHERE user_id = $1
+      AND move_out_date IS NULL
+      AND apartment_id IS NULL
+    ORDER BY id DESC
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [userId]);
+  return result.rows[0] || null;
+};
+
+const assignUnassignedProfile = async (profileId, resident) => {
+  const query = `
+    UPDATE resident_profiles
+    SET apartment_id = $2,
+        relationship = $3,
+        move_in_date = COALESCE($4, CURRENT_DATE),
+        status = COALESCE($5::resident_status_enum, 'ACTIVE'::resident_status_enum),
+        updated_at = NOW()
+    WHERE id = $1
+    RETURNING id
+  `;
+  const result = await pool.query(query, [
+    profileId,
+    resident.apartment_id,
+    resident.relationship,
+    resident.move_in_date,
+    resident.status || "ACTIVE",
+  ]);
+  return result.rows[0];
+};
+
 const getResidentByUserAndApartment = async (userId, apartmentId) => {
   const query = `
     SELECT id FROM resident_profiles 
@@ -315,11 +388,14 @@ module.exports = {
   createResident,
   getAllResidents,
   getResidentById,
+  getResidentByUserId,
   getResidentsByApartmentId,
   getUserApartments,
   updateResident,
   deleteResident,
   getResidentByUserAndApartment,
+  getUnassignedProfileByUserId,
+  assignUnassignedProfile,
   getActiveOwnerForApartment,
   setApartmentOwnerAndOccupied,
 };
