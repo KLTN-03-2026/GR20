@@ -131,31 +131,50 @@ const getAllResidents = async ({
   };
 };
 
+// resident.repository.js
 const getResidentById = async (id) => {
+  console.log('REPO - Looking for id:', id);
+  
   const query = `
     SELECT 
-      rp.id,
-      rp.user_id,
+      rp.id as profile_id,
+      u.id as user_id,
       rp.apartment_id,
       rp.relationship,
       rp.move_in_date,
       rp.move_out_date,
-      rp.status,
-      rp.created_at,
+      COALESCE(rp.status, 'ACTIVE'::resident_status_enum) as status,
+      rp.created_at as profile_created_at,
       u.full_name,
       u.email,
       u.phone,
       u.avatar_url,
       a.apartment_code as apartment_number,
       b.name as building_name
-    FROM resident_profiles rp
-    JOIN users u ON rp.user_id = u.id
-    JOIN apartments a ON rp.apartment_id = a.id
-    JOIN buildings b ON a.building_id = b.id
-    WHERE rp.id = $1
+    FROM users u
+    LEFT JOIN resident_profiles rp ON u.id = rp.user_id
+    LEFT JOIN apartments a ON rp.apartment_id = a.id
+    LEFT JOIN buildings b ON a.building_id = b.id
+    WHERE u.id = $1 AND u.role_id = 5
   `;
+  
   const result = await pool.query(query, [id]);
-  return result.rows[0];
+  
+  // Nếu chưa có profile, tự động tạo với status ACTIVE
+  if (result.rows.length > 0 && !result.rows[0].profile_id) {
+    console.log('Creating resident profile for user', id);
+    
+    await pool.query(`
+      INSERT INTO resident_profiles (user_id, status, move_in_date)
+      VALUES ($1, 'ACTIVE', CURRENT_DATE)
+    `, [id]);
+    
+    // Query lại
+    const newResult = await pool.query(query, [id]);
+    return newResult.rows[0] || null;
+  }
+  
+  return result.rows[0] || null;
 };
 
 const getResidentsByApartmentId = async (apartmentId) => {

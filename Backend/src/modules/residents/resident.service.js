@@ -116,35 +116,64 @@ const createResident = async (reqBody) => {
 const createResidentAccount = async (reqBody) => {
   const fullName =
     reqBody.fullName != null ? String(reqBody.fullName).trim() : "";
+
   const phoneRaw = reqBody.phone != null ? String(reqBody.phone).trim() : "";
+
   const password = reqBody.password != null ? String(reqBody.password) : "";
 
+  const email =
+    reqBody.email != null ? String(reqBody.email).trim().toLowerCase() : "";
+
+  // Full name
   if (!fullName) {
     throw new AppError(400, "Vui lòng nhập họ tên");
   }
+
+  // Phone
   if (!phoneRaw) {
     throw new AppError(400, "Vui lòng nhập số điện thoại");
   }
-  if (!password) {
-    throw new AppError(400, "Vui lòng nhập mật khẩu");
-  }
-  if (password.length < 6) {
-    throw new AppError(400, "Mật khẩu tối thiểu 6 ký tự");
-  }
 
   const phone = normalizePhone(phoneRaw);
+
   if (!/^0[1-9][0-9]{8}$/.test(phone)) {
     throw new AppError(400, "Số điện thoại không hợp lệ (VD: 0901234567)");
   }
 
-  const existing = await userRepo.getUserByUsername(phone);
-  if (existing) {
+  // Email required
+  if (!email) {
+    throw new AppError(400, "Vui lòng nhập email");
+  }
+
+  // Email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email)) {
+    throw new AppError(400, "Email không đúng định dạng");
+  }
+
+  // Password
+  if (!password) {
+    throw new AppError(400, "Vui lòng nhập mật khẩu");
+  }
+
+  if (password.length < 6) {
+    throw new AppError(400, "Mật khẩu tối thiểu 6 ký tự");
+  }
+
+  // Check duplicate phone
+  const existingPhone = await userRepo.getUserByUsername(phone);
+
+  if (existingPhone) {
     throw new AppError(409, "Số điện thoại đã được đăng ký");
   }
 
-  const emailRaw = reqBody.email != null ? String(reqBody.email).trim() : "";
-  const email =
-    emailRaw.length > 0 ? emailRaw : buildResidentPlaceholderEmail(phone);
+  // Check duplicate email
+  const existingEmail = await userRepo.getUserByEmail(email);
+
+  if (existingEmail) {
+    throw new AppError(409, "Email đã được đăng ký");
+  }
 
   return userService.createUser({
     username: phone,
@@ -207,13 +236,29 @@ const getAllResidents = async (query, currentUser) => {
 };
 
 const getResidentById = async (id) => {
-  const data = await repo.getResidentById(id);
-
-  if (!data) {
-    throw new Error("Resident not found");
+  console.log('SERVICE - Called with id:', id, 'type:', typeof id);
+  
+  // Chuyển id sang số nguyên
+  const numericId = parseInt(id);
+  console.log('SERVICE - Numeric id:', numericId);
+  
+  // Kiểm tra id hợp lệ
+  if (isNaN(numericId)) {
+    throw new Error("Invalid resident ID");
   }
-
-  return mapper.toResponse(data);
+  
+  const data = await repo.getResidentById(numericId);
+  console.log('SERVICE - Data from repo:', data ? 'Has data' : 'No data');
+  
+  if (!data) {
+    throw new Error(`Resident with id ${numericId} not found`);
+  }
+  
+  console.log('SERVICE - Mapping to response');
+  const response = mapper.toResponse(data);
+  console.log('SERVICE - Mapped response:', response);
+  
+  return response;
 };
 
 const getResidentsByApartmentId = async (apartmentId) => {

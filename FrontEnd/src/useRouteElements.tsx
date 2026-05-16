@@ -1,22 +1,15 @@
 import { Navigate, useRoutes } from 'react-router-dom'
+import { useContext } from 'react'
+
 import { ROLES } from 'src/constants/roles'
+import { AppContext } from './contexts/app.context'
+
 import Buildings from './pages/building management/Buildings'
 import BuildingDetailManagement from './pages/building management/BuildingDetailManagement'
+
 import Profile from './pages/profile_Management/Profile'
+
 import ScanQr from './pages/QRCODE_USER/Scanqr'
-import Login from './pages/Login'
-import HomePage from './pages/HomePage'
-
-import DashboardLayoutUser from './layout/DashboardLayoutUser'
-import DashboardLayoutProtect from './layout/DashboardLayoutProtect'
-import ResidentNotifications from './pages/notifications/ResidentNotifications'
-import AdminNotifications from './pages/notifications/AdminNotifications'
-import EmployeeManagement from './pages/employees/EmployeeManagement'
-import Getresidentlist from './pages/residentmanagement/Getresidentlist'
-import Addresident from './pages/residentmanagement/Addresident'
-import ResidentDetail from './pages/residentmanagement/Residentdetail'
-import ChatPage from './pages/chat/ChatPage'
-
 import QrcodeManagement from './pages/QRCODE_USER/QrcodeManagement'
 import ViewQRcodeDetails from './pages/QRCODE_USER/ViewQRcodeDetails'
 import ResultQrcode from './pages/QRCODE_USER/ResultQrcode'
@@ -28,48 +21,76 @@ import QrcodeManagementAdmin from './pages/QrcodeAdmin/QrcodeManagementAdmin'
 import ViewAllHistoryQrcode from './pages/QrcodeAdmin/ViewAllHistoryQrcode'
 import ViewDetailResident from './pages/QrcodeAdmin/ViewDetailResident'
 
-import DashboaedLayoutStaff from './layout/DashboaedLayoutStaff'
-import DashboaedLayoutAdmin from './layout/DashboaedLayoutAdmin'
-import DashboaedLayoutManager from './layout/DashboaedLayoutManager'
+import Login from './pages/Login'
+import HomePage from './pages/HomePage'
+
+import ResidentNotifications from './pages/notifications/ResidentNotifications'
+import AdminNotifications from './pages/notifications/AdminNotifications'
+
+import EmployeeManagement from './pages/employees/EmployeeManagement'
+
+import Getresidentlist from './pages/residentmanagement/Getresidentlist'
+import Addresident from './pages/residentmanagement/Addresident'
+import ResidentDetail from './pages/residentmanagement/Residentdetail'
+
+import ChatPage from './pages/chat/ChatPage'
 
 import SecurityResident from './pages/security_CuDan/SecurityResident'
 import ResidentDetailPage from './pages/security_CuDan/ResidentDetailModal'
-
-import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute'
-import RoleRedirect from './components/RoleRedirect/RoleRedirect'
 
 import HomePageSecurity from './pages/HomePageScurity/HomePageScurity'
 import HomePageAdmin from './pages/HomePageAdmin/HomePageAdmin'
 import HomePageStaff from './pages/HomePageStaff/HomePageStaff'
 import HomePageManager from './pages/HomePageManager/HomePageManager'
-import UserInvoicesPage from './pages/billing/UserInvoicesPage'
-import UserPaymentsPage from './pages/billing/UserPaymentsPage'
+
+import Apartment from './pages/Apartments/Apartment'
+import ApartmentDetail from './pages/Apartments/ApartmentDetail'
+import ApartmentForm from './pages/Apartments/ApartmentForm'
+
+import MyApartment from './pages/MyApartment/MyApartment'
+import MyContract from './pages/MyApartment/MyContract'
+
 import GetMaintenanceRequestList from './pages/maintenance request management/GetMaintenanceRequestList'
 import MaintenanceRequestDetail from './pages/maintenance request management/MaintenanceRequestDetail'
 import AddMaintenanceRequest from './pages/maintenance request management/AddMaintenanceRequest'
+
 import GetResidentRequestList from './pages/resident request management/GetResidentRequestList'
 import GetResidentRequestDetail from './pages/resident request management/GetResidentRequestDetail'
-// import ContractList from './pages/Contracts/ContractList'
-// import ContractDetail from './pages/Contracts/ContractDetail'
-import MyContract from './pages/MyApartment/MyContract'
-import { useContext } from 'react'
-import { AppContext } from './contexts/app.context'
+
+import ContractList from './pages/Contracts/ContractList'
+import ContractDetail from './pages/Contracts/ContractDetail'
+
+import AmenityList from './pages/Amenities/AmenityList'
+import AmenityDetail from './pages/Amenities/AmenityDetail'
+
+import UserInvoicesPage from './pages/billing/UserInvoicesPage'
 import UserInvoiceDetailPage from './pages/billing/UserInvoiceDetailPage'
+import UserPaymentsPage from './pages/billing/UserPaymentsPage'
 import UserPaymentDetailPage from './pages/billing/UserPaymentDetailPage'
 import UserPaymentSuccessPage from './pages/billing/UserPaymentSuccessPage'
 import InvoicesPage from './pages/billing/InvoicesPage'
 import InvoiceDetailAdminPage from './pages/billing/InvoiceDetailAdminPage'
 import PaymentsPage from './pages/billing/PaymentsPage'
 import PaymentDetailAdminPage from './pages/billing/PaymentDetailAdminPage'
-import ContractList from './pages/Contracts/ContractList'
-import ContractDetail from './pages/Contracts/ContractDetail'
-import UtilityMetersPage from './pages/utility/UtilityMetersPage'
-import MeterReadingsPage from './pages/utility/MeterReadingsPage'
+
 import UtilityPricingPage from './pages/utility/UtilityPricingPage'
-import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
-import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManager'
+import UtilityMetersPage from './pages/utility/UtilityMetersPage'
+
+import MeterReadingsPage from './pages/utility/MeterReadingsPage'
+
 import StatisticsReportPage from './pages/statistics/StatisticsReportPage'
 import ResetPinPage from './pages/PinReset/ResetPinPage'
+import StatisticsReportShell from './pages/statistics/StatisticsReportShell'
+
+import DashboardLayoutUser from './layout/DashboardLayoutUser'
+import DashboardLayoutProtect from './layout/DashboardLayoutProtect'
+import DashboaedLayoutStaff from './layout/DashboaedLayoutStaff'
+import DashboaedLayoutAdmin from './layout/DashboaedLayoutAdmin'
+import DashboaedLayoutManager from './layout/DashboaedLayoutManager'
+import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManager'
+
+import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute'
+import RoleRedirect from './components/RoleRedirect/RoleRedirect'
 
 export default function useRouteElements() {
   const { user } = useContext(AppContext)
@@ -419,20 +440,20 @@ export default function useRouteElements() {
         }
       ]
     },
-    {
-      path: '/ContractList/:id',
-      element: <ProtectedRoute />,
-      children: [
-        {
-          index: true,
-          element: (
-            <DashboaedLayoutAdmin>
-              <ContractDetail />
-            </DashboaedLayoutAdmin>
-          )
-        }
-      ]
-    },
+    // {
+    //   path: '/ContractList/:id',
+    //   element: <ProtectedRoute />,
+    //   children: [
+    //     {
+    //       index: true,
+    //       element: (
+    //         <DashboaedLayoutAdmin>
+    //           <ContractDetail />
+    //         </DashboaedLayoutAdmin>
+    //       )
+    //     }
+    //   ]
+    // },
     {
       path: '/abc',
       element: <ProtectedRoute />,
@@ -600,6 +621,118 @@ export default function useRouteElements() {
       )
     },
 
+    //Apartment
+    {
+      path: '/Apartment',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <Apartment />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/ApartmentDetail/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ApartmentDetail />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/ApartmentForm',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ApartmentForm apartmentId={null} isOpen={true} onClose={() => window.history.back()} />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    //myApartment
+    {
+      path: '/MyApartment',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <MyApartment />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/MyContract',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <MyContract />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/amenities',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <AmenityList />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/my-amenities',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <AmenityList isResident={true} />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/amenities/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <AmenityDetail />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/my-amenities/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.RESIDENT]}>
+          <DashboardLayoutUser>
+            <AmenityDetail />
+          </DashboardLayoutUser>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/contractList',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ContractList />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: '/admin/contractList/:id',
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <DashboaedLayoutAdmin>
+            <ContractDetail />
+          </DashboaedLayoutAdmin>
+        </ProtectedRoute>
+      )
+    },
     {
       path: '/ResidentDetail/:id',
       element: (

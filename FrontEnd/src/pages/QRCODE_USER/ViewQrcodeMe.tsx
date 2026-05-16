@@ -3,7 +3,7 @@ import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
 import { toast } from 'react-toastify'
 import { useState } from 'react'
 import { ChangePinModal } from '../PinReset/ChangePinModal'
-
+import { useNavigate } from 'react-router-dom'
 export default function ViewQrcodeMe() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [historyPage] = useState(1)
@@ -35,7 +35,7 @@ export default function ViewQrcodeMe() {
 
   const qrInfo = qrData?.data?.data
   const isSuccess = qrData?.data?.code === 'OK'
-
+  const navigate = useNavigate()
   const historyList = historyData?.data?.data || []
   const totalElements = historyData?.data?.totalElements || 0
   const totalPages = historyData?.data?.totalPages || 0
@@ -192,6 +192,16 @@ export default function ViewQrcodeMe() {
       <div className='max-w-6xl mx-auto p-8 md:p-12'>
         {/* Hero Title Section */}
         <header className='mb-8'>
+          <div className='flex items-center justify-between mb-4'>
+            <button
+              onClick={() => navigate(-1)}
+              className='flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors'
+            >
+              <span className='material-symbols-outlined text-base'>arrow_back</span>
+              Quay lại
+            </button>
+            {/* Có thể thêm nút khác ở đây nếu cần */}
+          </div>
           <div className='flex flex-col md:flex-row md:items-end justify-between gap-4'>
             <div className='space-y-1'>
               <h1 className='text-3xl md:text-4xl font-extrabold text-on-surface tracking-tight'>Mã QR Cá nhân</h1>

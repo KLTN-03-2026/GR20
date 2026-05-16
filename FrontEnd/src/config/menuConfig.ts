@@ -92,6 +92,54 @@ export const menuConfig: MenuItem[] = [
     roles: ['Bảo vệ', 'ADMIN']
   },
   {
+    id: 'apartments-lookup',
+    name: 'Tra cứu căn hộ',
+    path: '/Apartment',
+    icon: 'apartment',
+    keywords: ['căn hộ', 'tra cứu căn hộ', 'apartment', 'thông tin căn hộ', 'thêm cư dân', 'Thêm mới căn hộ', 'Sửa căn hộ'],
+    roles: ['Bảo vệ', 'ADMIN']
+  },
+  {
+    id: 'contracts-lookup',
+    name: 'Tra cứu hợp đồng',
+    path: '/admin/contractList',
+    icon: 'description',
+    keywords: ['hợp đồng', 'tra cứu hợp đồng', 'contract', 'thông tin hợp đồng', 'căn hộ', 'Thêm mới hợp đồng'],
+    roles: ['ADMIN']
+  },
+  {
+    id: 'amenities-lookup',
+    name: 'Tra cứu tiện ích',
+    path: '/admin/amenities',
+    icon: 'pool',
+    keywords: ['tiện ích', 'tra cứu tiện ích', 'amenity', 'thông tin tiện ích', 'tiện ích tòa nhà', 'Thêm mới tiện ích'],
+    roles: ['ADMIN']
+  },
+  {
+    id: 'apartments-lookup',
+    name: 'Tra cứu căn hộ',
+    path: '/MyApartment',
+    icon: 'apartment',
+    keywords: ['căn hộ', 'tra cứu căn hộ', 'apartment', 'thông tin căn hộ', 'tòa nhà'],
+    roles: ['Người Dùng']
+  },
+  {
+    id: 'contracts-lookup',
+    name: 'Tra cứu hợp đồng',
+    path: '/MyContract',
+    icon: 'description',
+    keywords: ['hợp đồng', 'tra cứu hợp đồng', 'contract', 'thông tin hợp đồng', 'căn hộ'],
+    roles: ['Người Dùng']
+  },
+  {
+    id: 'amenities-lookup',
+    name: 'Tra cứu tiện ích',
+    path: '/my-amenities',
+    icon: 'pool',
+    keywords: ['tiện ích', 'tra cứu tiện ích', 'amenity', 'thông tin tiện ích', 'tiện ích tòa nhà'],
+    roles: ['Người Dùng']
+  },
+{
     id: 'building-management',
     name: 'Quản lý tòa nhà',
     path: '/admin/buildings',

@@ -19,7 +19,7 @@ const checkUserBelongsToApartment = async (userId, apartmentId) => {
   return result.rows.length > 0;
 };
 
-const getAllPersonalQrs = async (queryParams = {}, currentUser) => {
+const getAllPersonalQrs = async (queryParams = {}, currentUser = null) => {
   const {
     page = 1,
     limit = 10,

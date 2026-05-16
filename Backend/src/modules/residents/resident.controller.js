@@ -66,8 +66,14 @@ const getAllResidents = async (req, res) => {
 
 const getResidentById = async (req, res) => {
   try {
+    console.log('CONTROLLER - Request params:', req.params);
+    console.log('CONTROLLER - Resident ID:', req.params.id);
+    
+    // Gọi service với id từ params
     const data = await service.getResidentById(req.params.id);
-
+    
+    console.log('CONTROLLER - Data returned:', data);
+    
     res.json({
       operationType: "Success",
       message: "Get resident successfully",
@@ -77,10 +83,15 @@ const getResidentById = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
+    console.error('CONTROLLER - Error:', err.message);
     res.status(404).json({
       message: err.message,
     });
   }
+};
+
+module.exports = {
+  getResidentById  // QUAN TRỌNG: Phải export
 };
 
 const getResidentsByApartmentId = async (req, res) => {

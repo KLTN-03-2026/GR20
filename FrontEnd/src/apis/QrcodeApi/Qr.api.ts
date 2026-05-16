@@ -93,7 +93,7 @@ export const QRCodeApi = {
       visitor_name: string
       visitor_phone: string
       visitor_id_card: string
-      pin_code: string
+      // pin_code: string
     }
   ) {
     return http.put<SuccessResponseApi<QRGuestDetail>>(`/api/qr/resident/guest-qrs/${id}/valid-to`, body)

@@ -83,6 +83,8 @@ export default function ApartmentDetail() {
   const [showForm, setShowForm] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  // const apartmentId = Number(id)
+
   const { data, isLoading } = useQuery({
     queryKey: ['apartment', id],
     queryFn: () => apartmentApi.getApartmentById(Number(id)),
@@ -127,7 +129,7 @@ export default function ApartmentDetail() {
 
   if (isLoading) {
     return (
-      <div className='flex items-center justify-center min-h-screen'>
+      <div className='flex items-center justify-center min-h-screen ml-64'>
         <div className='flex items-center gap-3 text-slate-400'>
           <span className='material-symbols-outlined animate-spin'>sync</span>
           <span className='text-sm'>Đang tải dữ liệu...</span>
@@ -138,7 +140,7 @@ export default function ApartmentDetail() {
 
   if (!apartment) {
     return (
-      <div className='flex items-center justify-center min-h-screen'>
+      <div className='flex items-center justify-center min-h-screen ml-64'>
         <div className='text-center'>
           <span className='material-symbols-outlined text-4xl text-slate-300 mb-2'>error_outline</span>
           <p className='text-slate-500 font-semibold'>Không tìm thấy căn hộ</p>
@@ -192,8 +194,11 @@ export default function ApartmentDetail() {
                 <img
                   alt={apartment.apartmentCode}
                   className='w-full h-full object-cover'
-                  crossOrigin="anonymous"
-                  src={(import.meta.env.VITE_DOMAIN_API + apartment.imageUrl) || 'https://via.placeholder.com/800x450?text=No+Image'}
+                  crossOrigin='anonymous'
+                  src={
+                    import.meta.env.VITE_DOMAIN_API + apartment.imageUrl ||
+                    'https://via.placeholder.com/800x450?text=No+Image'
+                  }
                 />
 
                 {/* Upload overlay */}
@@ -224,7 +229,10 @@ export default function ApartmentDetail() {
                 <div className='flex justify-between items-center mb-4'>
                   <h3 className='text-base font-semibold text-slate-800'>Danh sách cư dân</h3>
                   <button
-                    onClick={() => setShowAddResident(true)}
+                    onClick={() => {
+                      setEditingResident(null)
+                      setShowAddResident(true)
+                    }}
                     className='px-4 py-2 text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-all shadow-sm'
                   >
                     <span className='material-symbols-outlined text-lg mr-1 align-middle'>person_add</span>
@@ -276,6 +284,7 @@ export default function ApartmentDetail() {
                                     onClick={() => {
                                       setEditingResident(resident)
                                       setShowAddResident(true)
+                                      setOpenMenuId(null)
                                     }}
                                     className='w-full px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors'
                                   >
@@ -439,13 +448,6 @@ export default function ApartmentDetail() {
       </main>
       {/* Apartment Form Modal */}
       <ApartmentForm apartmentId={Number(id)} isOpen={showForm} onClose={() => setShowForm(false)} />
-
-      <AddResidentModal
-        apartmentId={Number(id)}
-        apartmentCode={apartment.apartmentCode}
-        isOpen={showAddResident}
-        onClose={() => setShowAddResident(false)}
-      />
 
       <AddResidentModal
         apartmentId={Number(id)}

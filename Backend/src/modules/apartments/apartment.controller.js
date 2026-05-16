@@ -151,6 +151,8 @@ const deleteApartment = async (req, res) => {
 // ADD Resident
 const addResident = async (req, res) => {
   try {
+    console.log('📝 ADD RESIDENT BODY:', JSON.stringify(req.body));
+    console.log('📝 APARTMENT ID:', req.params.id);
     const data = await service.addResident(req.params.id, req.body);
     res.status(201).json({
       operationType: "Success",
@@ -159,6 +161,8 @@ const addResident = async (req, res) => {
       data,
     });
   } catch (err) {
+     console.log('❌ ADD RESIDENT ERROR:', err.message);
+    console.log('❌ FULL ERROR:', err);
     sendError(res, err);
   }
 };
@@ -250,12 +254,23 @@ const moveOutResident = async (req, res) => {
   }
 };
 
+
 // UPDATE Resident
 const updateResident = async (req, res) => {
   try {
-    const { relationship, moveInDate } = req.body;
+    console.log("📝 UPDATE RESIDENT BODY:", JSON.stringify(req.body));
+    console.log("📝 UPDATE RESIDENT ID:", req.params.id);
+    const { fullName, phone, email, relationship, moveInDate } = req.body;
 
-    // 1. Update resident_profile
+    // 1. Lấy thông tin cũ
+    const oldUser = await pool.query(
+      `SELECT phone, full_name FROM users WHERE id = (
+      SELECT user_id FROM resident_profiles WHERE id = $1
+    )`,
+      [req.params.id],
+    );
+
+    // 2. Update resident_profile
     const result = await pool.query(
       `UPDATE resident_profiles SET relationship = $1, move_in_date = $2 WHERE id = $3 RETURNING user_id, apartment_id`,
       [relationship, moveInDate, req.params.id],
@@ -265,7 +280,54 @@ const updateResident = async (req, res) => {
       return res.status(404).json({ message: "Resident not found" });
     }
 
-    // 2. Nếu chuyển thành OWNER → update apartments
+    const userId = result.rows[0].user_id;
+
+    // 3. Update users - giữ email cũ nếu không nhập mới
+    if (email) {
+      await pool.query(
+        `UPDATE users SET full_name = $1, phone = $2, email = $3 WHERE id = $4`,
+        [fullName || null, phone || null, email, userId],
+      );
+    } else {
+      await pool.query(
+        `UPDATE users SET full_name = $1, phone = $2 WHERE id = $3`,
+        [fullName || null, phone || null, userId],
+      );
+    }
+
+    // 4. Nếu SĐT thay đổi → gửi thông báo chat
+    if (phone && oldUser.rows[0]?.phone !== phone) {
+      const message = `🔔 SĐT đăng nhập của bạn đã được cập nhật thành ${phone} bởi BQL.`;
+
+      // Lưu vào bảng notifications hoặc chat_messages
+      const notifResult = await pool.query(
+        `INSERT INTO notifications (title, content, sender_id, building_id, type, is_banner, created_at)
+        VALUES ('Cập nhật số điện thoại', $1, $2, 
+       (SELECT building_id FROM apartments WHERE id = $3), 
+       'NORMAL', false, NOW())
+     RETURNING id`,
+        [message, userId, result.rows[0].apartment_id],
+      );
+
+      await pool.query(
+        `INSERT INTO notification_receivers (notification_id, user_id, is_read)
+     VALUES ($1, $2, false)`,
+        [notifResult.rows[0].id, userId],
+      );
+      // Emit socket
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`user_${userId}`).emit("new_notification", {
+          id: notifResult.rows[0].id,
+          title: "Cập nhật số điện thoại",
+          message: message,
+          type: "NORMAL",
+          created_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    // 5. Nếu chuyển thành OWNER → update apartments
     if (relationship === "OWNER") {
       await pool.query(
         `UPDATE apartments SET owner_user_id = $1, status = 'OCCUPIED', updated_at = NOW() WHERE id = $2`,
@@ -275,6 +337,9 @@ const updateResident = async (req, res) => {
 
     res.json({ operationType: "Success", message: "Resident updated" });
   } catch (err) {
+    console.log('❌ UPDATE ERROR:', err.message);
+    console.log('❌ ERROR DETAIL:', err.detail);
+    console.log('❌ ERROR CODE:', err.code);
     res.status(500).json({ message: err.message });
   }
 };

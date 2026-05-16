@@ -4,6 +4,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import http from 'src/utils/http';
 import AmenityForm from './AmenityForm';
 
+
+
 export default function AmenityDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

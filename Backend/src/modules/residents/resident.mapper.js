@@ -12,20 +12,25 @@ const toEntity = (req) => {
 };
 
 const toResponse = (row) => {
+  if (!row) return null;
+  
   return {
-    id: row.id,
-    userId: row.user_id,
+    id: row.profile_id ? String(row.profile_id) : null,  // Có thể null nếu chưa có profile
+    userId: String(row.user_id),
     fullName: row.full_name,
     email: row.email,
     phone: row.phone,
     avatarUrl: row.avatar_url,
-    apartmentId: row.apartment_id,
-    apartmentNumber: row.apartment_number,
-    buildingName: row.building_name,
-    relationship: row.relationship,
-    moveInDate: row.move_in_date,
-    status: row.status,
-    createdAt: row.created_at,
+    apartmentId: row.apartment_id || null,
+    apartmentNumber: row.apartment_number || null,
+    buildingName: row.building_name || null,
+    relationship: row.relationship || null,
+    moveInDate: row.move_in_date || null,
+    moveOutDate: row.move_out_date || null,
+    status: row.status || 'UNASSIGNED',
+    isUnassigned: !row.apartment_id || row.status === 'UNASSIGNED',
+    hasProfile: !!row.profile_id,  // Thêm flag để biết đã có profile chưa
+    createdAt: row.profile_created_at || null,
   };
 };
 

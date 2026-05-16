@@ -100,7 +100,7 @@ const { buildingIdsFromUser } = require("../../../common/building-scope");
 //   };
 // };
 // Trong admin.repository.js - getAllPersonalQrs
-const getAllPersonalQrs = async (options = {}) => {
+const getAllPersonalQrs = async (options = {}, currentUser = null) => {
   const {
     page = 1,
     limit = 10,
