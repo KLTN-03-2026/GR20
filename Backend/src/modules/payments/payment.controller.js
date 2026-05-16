@@ -1,87 +1,99 @@
-const { ZodError } = require("zod");
+const { sendControllerError } = require("../../common/send-controller-error");
 const { AppError } = require("../../common/app-error");
 const service = require("./payment.service");
+const PAY_ERR = require("./payment-errors");
 
-const sendError = (res, err) => {
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      code: "VALIDATION_ERROR",
-      message: "Validation failed",
-      errors: err.flatten().fieldErrors,
-      formErrors: err.flatten().formErrors,
-    });
+const assertUserIdMatchesParam = (req) => {
+  const uid = req.user?.id != null ? String(req.user.id) : req.user?.sub != null ? String(req.user.sub) : "";
+  if (!uid || uid !== String(req.params.userId)) {
+    throw new AppError(403, "Không được phép truy cập thanh toán của tài khoản khác.", undefined, PAY_ERR.PAYMENT_FORBIDDEN_SCOPE);
   }
-  if (err instanceof AppError) return res.status(err.statusCode).json({ code: "APP_ERROR", message: err.message, details: err.details });
-  return res.status(500).json({ code: "INTERNAL_ERROR", message: err.message });
 };
 
 const createPayment = async (req, res) => {
   try {
     const data = await service.createPayment(req.body);
     res.status(201).json({ operationType: "Success", message: "Create payment successfully", code: "CREATED", data, size: 1, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getAllPayments = async (req, res) => {
   try {
     const result = await service.getAllPayments(req.query);
     res.json({ operationType: "Success", message: "success", code: "OK", ...result, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentById = async (req, res) => {
   try {
     const data = await service.getPaymentById(req.params.id);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentDetailById = async (req, res) => {
   try {
     const data = await service.getPaymentDetailById(req.params.id);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 
 const getLatestPaymentByInvoiceId = async (req, res) => {
   try {
     const data = await service.getLatestPaymentByInvoiceId(req.params.invoiceId);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentsByUserId = async (req, res) => {
   try {
+    assertUserIdMatchesParam(req);
     const result = await service.getPaymentsByUserId(req.params.userId, req.query);
     res.json({ operationType: "Success", message: "success", code: "OK", ...result, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const getPaymentByUserAndId = async (req, res) => {
   try {
+    assertUserIdMatchesParam(req);
     const data = await service.getPaymentByUserAndId(req.params.userId, req.params.id);
     res.json({ operationType: "Success", message: "Get payment detail successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
+};
+
+const submitUserCashDeclaration = async (req, res) => {
+  try {
+    assertUserIdMatchesParam(req);
+    const data = await service.submitUserCashDeclaration(req.params.userId, req.params.id);
+    res.json({
+      operationType: "Success",
+      message: "Đã gửi thông tin nộp tiền mặt. Ban quản lý sẽ xác nhận khi nhận đủ tiền.",
+      code: "OK",
+      data,
+      size: 1,
+      timestamp: new Date(),
+    });
+  } catch (err) { sendControllerError(res, err); }
 };
 
 const generateMbVietQrByInvoiceId = async (req, res) => {
   try {
     const data = await service.generateMbVietQrByInvoiceId(req.params.invoiceId);
     res.json({ operationType: "Success", message: "Generate VietQR successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const updatePayment = async (req, res) => {
   try {
     const data = await service.updatePayment(req.params.id, req.body);
     res.json({ operationType: "Success", message: "Update payment successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const deletePayment = async (req, res) => {
   try {
     const data = await service.deletePayment(req.params.id);
     res.json({ operationType: "Success", message: "Delete payment successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 const restorePayment = async (req, res) => {
   try {
     const data = await service.restorePayment(req.params.id);
     res.json({ operationType: "Success", message: "Restore payment successfully", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 
 const cassoWebhook = async (req, res) => {
@@ -112,7 +124,7 @@ const cassoWebhook = async (req, res) => {
     const data = await service.processCassoWebhook(req.body, secret);
     console.log("[CASSO][Webhook] result:", data);
     res.json({ operationType: "Success", message: "Webhook received", code: "OK", data, timestamp: new Date() });
-  } catch (err) { sendError(res, err); }
+  } catch (err) { sendControllerError(res, err); }
 };
 
 module.exports = {
@@ -123,6 +135,7 @@ module.exports = {
   getLatestPaymentByInvoiceId,
   getPaymentsByUserId,
   getPaymentByUserAndId,
+  submitUserCashDeclaration,
   generateMbVietQrByInvoiceId,
   updatePayment,
   deletePayment,

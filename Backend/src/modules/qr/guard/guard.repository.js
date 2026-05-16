@@ -78,10 +78,33 @@ const getGuestQrById = async (id) => {
 };
 
 // Tạo access log
+// const createAccessLog = async (logData) => {
+//   const query = `
+//     INSERT INTO access_logs (qr_code_id, personal_qr_code_id, user_id, scanned_by, building_id, direction, gate, scan_time, result)
+//     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+//     RETURNING *
+//   `;
+//   const result = await pool.query(query, [
+//     logData.qr_code_id || null,
+//     logData.personal_qr_code_id || null,
+//     logData.user_id || null,
+//     logData.scanned_by || null,
+//     logData.building_id || null,
+//     logData.direction || 'IN',
+//     logData.gate || null,
+//     logData.result || 'SUCCESS'
+//   ]);
+//   return result.rows[0];
+// };
+
 const createAccessLog = async (logData) => {
   const query = `
-    INSERT INTO access_logs (qr_code_id, personal_qr_code_id, user_id, scanned_by, building_id, direction, gate, scan_time, result)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+    INSERT INTO access_logs (
+      qr_code_id, personal_qr_code_id, user_id, scanned_by, 
+      building_id, direction, gate, scan_time, result,
+      snapshot_visitor_name, snapshot_visitor_phone
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10)
     RETURNING *
   `;
   const result = await pool.query(query, [
@@ -92,10 +115,13 @@ const createAccessLog = async (logData) => {
     logData.building_id || null,
     logData.direction || 'IN',
     logData.gate || null,
-    logData.result || 'SUCCESS'
+    logData.result || 'SUCCESS',
+    logData.snapshot_visitor_name || null,   // 👈 THÊM
+    logData.snapshot_visitor_phone || null   // 👈 THÊM
   ]);
   return result.rows[0];
 };
+
 
 // Cập nhật số lần đã dùng
 const incrementUsedEntries = async (id) => {
@@ -331,6 +357,29 @@ const getGuestQrHistory = async (hostUserId, options = {}) => {
     limit: parseInt(limit),
     totalPages: Math.ceil(parseInt(countResult.rows[0]?.total || 0) / limit)
   };
+};
+
+// Thêm hàm này vào guard.repository.js
+const getGuestQrByCodeWithPin = async (qrCode) => {
+  const query = `
+    SELECT 
+      gq.*,
+      gq.pin_code,
+      gq.pin_failed_count,
+      gq.pin_locked,
+      v.name AS visitor_name,
+      v.phone AS visitor_phone,
+      v.id_card AS visitor_id_card,
+      a.apartment_code,
+      u.full_name AS host_name
+    FROM guest_qr_codes gq
+    LEFT JOIN visitors v ON v.id = gq.visitor_id
+    LEFT JOIN apartments a ON a.id = gq.apartment_id
+    LEFT JOIN users u ON u.id = gq.host_user_id
+    WHERE gq.qr_code = $1
+  `;
+  const result = await pool.query(query, [qrCode]);
+  return result.rows[0];
 };
 
 module.exports = {

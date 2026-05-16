@@ -8,7 +8,7 @@ export default function ResidentDetailPage() {
 
   const { data: residentResponse, isLoading } = useQuery({
     queryKey: ['residentDetail', id],
-    queryFn: () => SecurityApi.getResidentDetail(id),
+    queryFn: () => SecurityApi.getResidentDetail(id as string),
     enabled: !!id
   })
 
@@ -18,17 +18,17 @@ export default function ResidentDetailPage() {
 
   // console.log(resident.contracts)
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return 'Chưa cập nhật'
     return new Date(dateString).toLocaleDateString('vi-VN')
   }
 
-  const formatDateTime = (dateString) => {
+  const formatDateTime = (dateString: string) => {
     if (!dateString) return 'Chưa có'
     return new Date(dateString).toLocaleString('vi-VN')
   }
 
-  const getGenderLabel = (gender) => {
+  const getGenderLabel = (gender: string) => {
     if (gender === 'MALE') return 'Nam'
     if (gender === 'FEMALE') return 'Nữ'
     return 'Khác'

@@ -106,9 +106,8 @@ export default function GuestQRTable() {
     },
     onError: () => toast.error('Thu hồi thất bại')
   })
-
   const updateMutation = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { validTo: string; status: string } }) =>
+    mutationFn: ({ id, body }: { id: string; body: { validTo: string; status: string; pin_code?: string } }) =>
       qrApiAdmin.PutQrQuest(body, id),
     onSuccess: () => {
       toast.success('Cập nhật thành công')
@@ -121,7 +120,14 @@ export default function GuestQRTable() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (body: { hostUserId: string; apartmentId: string; validTo: string }) => qrApiAdmin.PostQrGuest(body),
+    mutationFn: (body: {
+      hostUserId: string
+      apartmentId: string
+      validTo: string
+      visitorName: string
+      visitorPhone: string
+      pinCode?: string
+    }) => qrApiAdmin.PostQrGuest(body),
     onSuccess: () => {
       toast.success('Tạo mã QR khách thành công')
       queryClient.invalidateQueries({ queryKey: ['residents'] })
@@ -134,7 +140,7 @@ export default function GuestQRTable() {
   // ==================== HANDLERS ====================
 
   // Xem lịch sử
-  const handleViewHistory = (resident) => {
+  const handleViewHistory = (resident: any) => {
     if (!resident.guest_qr_id) {
       toast.warning('Cư dân chưa có mã QR')
       return
@@ -145,7 +151,7 @@ export default function GuestQRTable() {
   }
 
   // Xóa
-  const handleDelete = (resident) => {
+  const handleDelete = (resident: any) => {
     if (!resident.guest_qr_id) {
       toast.warning('Cư dân chưa có mã QR')
       return
@@ -156,7 +162,7 @@ export default function GuestQRTable() {
   }
 
   // Cập nhật
-  const handleUpdate = (resident) => {
+  const handleUpdate = (resident: any) => {
     if (!resident.guest_qr_id) {
       toast.warning('Cư dân chưa có mã QR')
       return

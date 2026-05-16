@@ -253,7 +253,8 @@ export default function ContractList() {
                     <td className='px-6 py-5 text-right'>
                       <div className='flex items-center justify-end gap-1'>
                         <button
-                          onClick={() => navigate(`ttt/${contract.id}`)}
+                          onClick={() => navigate(`/admin/contractList/${contract.id}`)}
+                          // onClick={() => navigate(`ttt/${contract.id}`)}
                           className='p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
                         >
                           <span className='material-symbols-outlined text-lg'>visibility</span>

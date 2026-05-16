@@ -72,8 +72,8 @@ export default function UserMeterReadingDetailPage() {
             Trang chủ
           </Link>
           <span className='material-symbols-outlined text-xs'>chevron_right</span>
-          <Link to='/my-meter-readings' className='hover:text-blue-500'>
-            Chỉ số của tôi
+          <Link to='/invoices' className='hover:text-blue-500'>
+            Hóa đơn
           </Link>
           <span className='material-symbols-outlined text-xs'>chevron_right</span>
           <span className='font-semibold text-blue-600'>Chi tiết</span>
@@ -98,8 +98,8 @@ export default function UserMeterReadingDetailPage() {
           Trang chủ
         </Link>
         <span className='material-symbols-outlined text-xs'>chevron_right</span>
-        <Link to='/my-meter-readings' className='hover:text-blue-500'>
-          Chỉ số của tôi
+        <Link to='/invoices' className='hover:text-blue-500'>
+          Hóa đơn
         </Link>
         <span className='material-symbols-outlined text-xs'>chevron_right</span>
         <span className='font-semibold text-blue-600'>Chi tiết chỉ số</span>
@@ -234,7 +234,7 @@ export default function UserMeterReadingDetailPage() {
 
       <div className='mt-8 flex gap-4'>
         <Link
-          to='/my-meter-readings'
+          to='/invoices'
           className='inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50'
         >
           <span className='material-symbols-outlined text-lg'>arrow_back</span>

@@ -266,14 +266,16 @@ export const changePasswordSchema = yup.object({
 
 export type ChangePasswordFormData = yup.InferType<typeof changePasswordSchema>
 
-/** Form cập nhật hồ sơ trong `Profile.tsx` — gửi `UserApi.updateProfile`. */
+// rules.ts
 export const updateProfileSchema = yup.object({
-  fullName: yup.string().trim().required('Họ và tên là bắt buộc').max(160),
-  email: yup.string().trim().required('Email là bắt buộc').email('Email không hợp lệ').max(160),
-  phone: yup.string().trim().required('Số điện thoại là bắt buộc').max(20),
-  gender: yup.string().oneOf(['MALE', 'FEMALE', 'OTHER'], 'Giới tính không hợp lệ').required(),
-  dateOfBirth: yup.string().required('Ngày sinh là bắt buộc'),
-  avatarUrl: yup.string().max(500).default('')
+  fullName: yup.string().required('Vui lòng nhập họ tên'),
+  phone: yup
+    .string()
+    .required('Vui lòng nhập số điện thoại')
+    .matches(/^(0[0-9]{9}|84[0-9]{9}|\+84[0-9]{9})$/, 'Số điện thoại không hợp lệ'),
+  dateOfBirth: yup.string().required('Vui lòng chọn ngày sinh'),
+  gender: yup.string().required('Vui lòng chọn giới tính').oneOf(['MALE', 'FEMALE', 'OTHER']),
+  avatarUrl: yup.string().optional()
 })
 
 export type UpdateProfileFormData = yup.InferType<typeof updateProfileSchema>

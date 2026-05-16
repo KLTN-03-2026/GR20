@@ -81,7 +81,7 @@ export default function Profile() {
   })
   const dataProfile = data?.data?.data
 
-  console.log(dataProfile)
+  // console.log(dataProfile)
 
   const {
     register: registerPassword,
@@ -109,7 +109,7 @@ export default function Profile() {
     resolver: yupResolver(updateProfileSchema) as any,
     defaultValues: {
       fullName: '',
-      email: '',
+      // email: '',
       phone: '',
       gender: 'OTHER',
       dateOfBirth: '',
@@ -134,7 +134,7 @@ export default function Profile() {
   useEffect(() => {
     if (dataProfile) {
       setValue('fullName', dataProfile.fullName || '')
-      setValue('email', dataProfile.email || '')
+      // setValue('email', dataProfile.email || '')
       setValue('phone', dataProfile.phone || '')
       setValue('gender', (dataProfile.gender as 'MALE' | 'FEMALE' | 'OTHER') || 'OTHER')
       setValue('dateOfBirth', formatDateForInput(dataProfile.dateOfBirth))
@@ -172,7 +172,7 @@ export default function Profile() {
 
   const onSubmit: SubmitHandler<UpdateProfileFormData> = (data) => {
     // Validate required fields
-    if (!data.fullName || !data.email || !data.phone || !data.gender || !data.dateOfBirth) {
+    if (!data.fullName || !data.phone || !data.gender || !data.dateOfBirth) {
       toast.error('Vui lòng điền đầy đủ thông tin bắt buộc')
       return
     }
@@ -272,15 +272,6 @@ export default function Profile() {
             <p className='text-sm text-[#717786] mt-1 italic'>Tham gia từ {formatDateVN(dataProfile.createdAt)}</p>
           </div>
 
-          <div className='flex gap-4'>
-            <Link
-              to={'/viewQrcodeMe'}
-              className='px-8 py-3 bg-gradient-to-tr bg-slate-50 hover:bg-slate-100 text-blue-600 rounded-xl font-semibold shadow-lg shadow-blue-900/10  active:scale-95 transition-all flex items-center gap-2'
-            >
-              <span className='material-symbols-outlined text-lg'>qr_code</span>
-              Mã QR
-            </Link>
-          </div>
           <div className='flex gap-4'>
             <button
               onClick={() => setIsModalOpen(true)}
@@ -527,6 +518,7 @@ export default function Profile() {
       )}
 
       {/* Modal Chỉnh sửa hồ sơ */}
+      {/* Modal Chỉnh sửa hồ sơ */}
       {isModalOpen && (
         <div
           className='fixed inset-0 z-[60] flex items-center justify-center p-6'
@@ -545,9 +537,9 @@ export default function Profile() {
               <div className='flex justify-between items-start'>
                 <div>
                   <p className='label-md uppercase tracking-[0.2em] text-[#005ab7] text-[10px] font-extrabold mb-2'>
-                    Profile Integrity
+                    Chỉnh sửa hồ sơ
                   </p>
-                  <h2 className='text-3xl font-extrabold text-[#191c1e] tracking-tight'>Update Information</h2>
+                  <h2 className='text-3xl font-extrabold text-[#191c1e] tracking-tight'>Cập nhật thông tin</h2>
                 </div>
                 <button
                   type='button'
@@ -563,56 +555,42 @@ export default function Profile() {
             {/* Modal Form */}
             <div className='px-10 py-4 max-h-[716px] overflow-y-auto no-scrollbar'>
               <form onSubmit={handleSubmit(onSubmit)} className='space-y-8'>
-                {/* Name & Email Row */}
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+                {/* Họ tên */}
+                <div className='grid grid-cols-1 gap-8'>
                   <div className='group'>
                     <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-3 px-1'>
-                      Full Name
+                      Họ tên <span className='text-red-500'>*</span>
                     </label>
                     <Input
                       register={register}
                       name='fullName'
                       errorMassage={errors.fullName?.message}
                       classNameInput='w-full bg-[#f2f4f6] border-0 rounded-xl px-4 py-3.5 text-sm font-medium focus:ring-1 focus:ring-[#005ab7] focus:bg-white transition-all'
-                      placeholder='Enter full name'
+                      placeholder='Nhập họ tên'
                       type='text'
-                    />
-                  </div>
-
-                  <div className='group'>
-                    <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-3 px-1'>
-                      Email Address
-                    </label>
-                    <Input
-                      register={register}
-                      name='email'
-                      errorMassage={errors.email?.message}
-                      classNameInput='w-full bg-[#f2f4f6] border-0 rounded-xl px-4 py-3.5 text-sm font-medium focus:ring-1 focus:ring-[#005ab7] focus:bg-white transition-all'
-                      placeholder='email@example.com'
-                      type='email'
                     />
                   </div>
                 </div>
 
-                {/* Phone & DOB Row */}
+                {/* Số điện thoại & Ngày sinh */}
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
                   <div className='group'>
                     <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-3 px-1'>
-                      Phone Number
+                      Số điện thoại <span className='text-red-500'>*</span>
                     </label>
                     <Input
                       register={register}
                       name='phone'
                       errorMassage={errors.phone?.message}
                       classNameInput='w-full bg-[#f2f4f6] border-0 rounded-xl px-4 py-3.5 text-sm font-medium focus:ring-1 focus:ring-[#005ab7] focus:bg-white transition-all'
-                      placeholder='+84 000 000 000'
+                      placeholder='0912345678'
                       type='tel'
                     />
                   </div>
 
                   <div className='group'>
                     <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-3 px-1'>
-                      Date of Birth
+                      Ngày sinh <span className='text-red-500'>*</span>
                     </label>
                     <Input
                       register={register}
@@ -624,16 +602,17 @@ export default function Profile() {
                   </div>
                 </div>
 
+                {/* Giới tính */}
                 <div className='group'>
                   <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-4 px-1'>
-                    Biological Identity
+                    Giới tính <span className='text-red-500'>*</span>
                   </label>
                   <div className='grid grid-cols-3 gap-4'>
                     {(['MALE', 'FEMALE', 'OTHER'] as const).map((gender) => (
                       <label
                         key={gender}
                         className={`relative flex items-center justify-center p-4 rounded-xl cursor-pointer border transition-all ${
-                          currentGender === gender // 👈 Đổi từ dataProfile?.gender thành currentGender
+                          currentGender === gender
                             ? 'border-[#005ab7]/20 bg-[#005ab7]/5 text-[#005ab7]'
                             : 'border-[#c1c6d7]/10 bg-[#f2f4f6] hover:bg-[#eceef0] text-[#414754]'
                         }`}
@@ -645,7 +624,9 @@ export default function Profile() {
                             {gender === 'FEMALE' && 'female'}
                             {gender === 'OTHER' && 'transgender'}
                           </span>
-                          <span className='text-[10px] font-bold tracking-widest uppercase'>{gender}</span>
+                          <span className='text-[10px] font-bold tracking-widest uppercase'>
+                            {gender === 'MALE' ? 'NAM' : gender === 'FEMALE' ? 'NỮ' : 'KHÁC'}
+                          </span>
                         </div>
                       </label>
                     ))}
@@ -658,6 +639,154 @@ export default function Profile() {
 
                 {/* Submit Button */}
                 <div className='flex justify-end gap-4 pt-4'>
+                  <button
+                    type='button'
+                    onClick={() => setIsModalOpen(false)}
+                    className='px-6 py-2.5 bg-[#f2f4f6] text-[#414754] rounded-xl font-semibold hover:bg-[#e6e8ea] transition-all'
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type='submit'
+                    disabled={updateProfileMutation.isPending}
+                    className='px-6 py-2.5 bg-[#005ab7] text-white rounded-xl font-semibold hover:bg-[#004a9a] disabled:opacity-50 transition-all'
+                  >
+                    {updateProfileMutation.isPending ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Chỉnh sửa hồ sơ */}
+      {isModalOpen && (
+        <div
+          className='fixed inset-0 z-[60] flex items-center justify-center p-6'
+          onClick={() => setIsModalOpen(false)}
+        >
+          {/* Backdrop */}
+          <div className='absolute inset-0 bg-slate-900/40' onClick={() => setIsModalOpen(false)}></div>
+
+          {/* Modal Content */}
+          <div
+            className='relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl shadow-blue-900/20 overflow-hidden border border-outline-variant/20'
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className='px-10 pt-10 pb-6'>
+              <div className='flex justify-between items-start'>
+                <div>
+                  <p className='label-md uppercase tracking-[0.2em] text-[#005ab7] text-[10px] font-extrabold mb-2'>
+                    Chỉnh sửa hồ sơ
+                  </p>
+                  <h2 className='text-3xl font-extrabold text-[#191c1e] tracking-tight'>Cập nhật thông tin</h2>
+                </div>
+                <button
+                  type='button'
+                  onClick={() => setIsModalOpen(false)}
+                  className='w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#eceef0] transition-colors'
+                >
+                  <span className='material-symbols-outlined text-[#717786]'>close</span>
+                </button>
+              </div>
+              <div className='h-[1px] w-full bg-gradient-to-r from-[#005ab7]/20 via-[#005ab7]/5 to-transparent mt-6'></div>
+            </div>
+
+            {/* Modal Form */}
+            <div className='px-10 py-4 max-h-[716px] overflow-y-auto no-scrollbar'>
+              <form onSubmit={handleSubmit(onSubmit)} className='space-y-8'>
+                {/* Họ tên */}
+                <div className='grid grid-cols-1 gap-8'>
+                  <div className='group'>
+                    <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-3 px-1'>
+                      Họ tên <span className='text-red-500'>*</span>
+                    </label>
+                    <Input
+                      register={register}
+                      name='fullName'
+                      errorMassage={errors.fullName?.message}
+                      classNameInput='w-full bg-[#f2f4f6] border-0 rounded-xl px-4 py-3.5 text-sm font-medium focus:ring-1 focus:ring-[#005ab7] focus:bg-white transition-all'
+                      placeholder='Nhập họ tên'
+                      type='text'
+                    />
+                  </div>
+                </div>
+
+                {/* Số điện thoại & Ngày sinh */}
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+                  <div className='group'>
+                    <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-3 px-1'>
+                      Số điện thoại <span className='text-red-500'>*</span>
+                    </label>
+                    <Input
+                      register={register}
+                      name='phone'
+                      errorMassage={errors.phone?.message}
+                      classNameInput='w-full bg-[#f2f4f6] border-0 rounded-xl px-4 py-3.5 text-sm font-medium focus:ring-1 focus:ring-[#005ab7] focus:bg-white transition-all'
+                      placeholder='0912345678'
+                      type='tel'
+                    />
+                  </div>
+
+                  <div className='group'>
+                    <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-3 px-1'>
+                      Ngày sinh <span className='text-red-500'>*</span>
+                    </label>
+                    <Input
+                      register={register}
+                      name='dateOfBirth'
+                      errorMassage={errors.dateOfBirth?.message}
+                      classNameInput='w-full bg-[#f2f4f6] border-0 rounded-xl px-4 py-3.5 text-sm font-medium focus:ring-1 focus:ring-[#005ab7] focus:bg-white transition-all'
+                      type='date'
+                    />
+                  </div>
+                </div>
+
+                {/* Giới tính */}
+                <div className='group'>
+                  <label className='block label-md uppercase tracking-widest text-[10px] text-[#717786] font-bold mb-4 px-1'>
+                    Giới tính <span className='text-red-500'>*</span>
+                  </label>
+                  <div className='grid grid-cols-3 gap-4'>
+                    {(['MALE', 'FEMALE', 'OTHER'] as const).map((gender) => (
+                      <label
+                        key={gender}
+                        className={`relative flex items-center justify-center p-4 rounded-xl cursor-pointer border transition-all ${
+                          currentGender === gender
+                            ? 'border-[#005ab7]/20 bg-[#005ab7]/5 text-[#005ab7]'
+                            : 'border-[#c1c6d7]/10 bg-[#f2f4f6] hover:bg-[#eceef0] text-[#414754]'
+                        }`}
+                      >
+                        <input type='radio' value={gender} {...register('gender')} className='hidden' />
+                        <div className='flex flex-col items-center gap-1'>
+                          <span className='material-symbols-outlined'>
+                            {gender === 'MALE' && 'male'}
+                            {gender === 'FEMALE' && 'female'}
+                            {gender === 'OTHER' && 'transgender'}
+                          </span>
+                          <span className='text-[10px] font-bold tracking-widest uppercase'>
+                            {gender === 'MALE' ? 'NAM' : gender === 'FEMALE' ? 'NỮ' : 'KHÁC'}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  {errors.gender && <p className='text-red-500 text-sm mt-1'>{errors.gender.message}</p>}
+                </div>
+
+                {/* Avatar URL (hidden field) */}
+                <Input register={register} name='avatarUrl' type='hidden' />
+
+                {/* Submit Button */}
+                <div className='flex justify-end gap-4 pt-4'>
+                  <button
+                    type='button'
+                    onClick={() => setIsModalOpen(false)}
+                    className='px-6 py-2.5 bg-[#f2f4f6] text-[#414754] rounded-xl font-semibold hover:bg-[#e6e8ea] transition-all'
+                  >
+                    Hủy
+                  </button>
                   <button
                     type='submit'
                     disabled={updateProfileMutation.isPending}

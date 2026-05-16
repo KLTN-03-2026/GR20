@@ -1,39 +1,4 @@
-
-
 const service = require("./guard.service");
-
-// const scanQr = async (req, res) => {
-//   try {
-//     const { direction, gate, building_id } = req.query;
-    
-    
-//     // Lấy user_id từ token (người quét - bảo vệ)
-//     const scannedBy = req.user?.sub || req.user?.id;
-    
-//     if (!scannedBy) {
-//       return res.status(401).json({ message: 'Unauthorized: Cannot identify user' });
-//     }
-    
-//     const data = await service.scanQr(req.params.qrCode, {
-//       direction,
-//       gate,
-//       building_id: building_id ? parseInt(building_id) : null,
-//       scannedBy
-//     });
-    
-//     res.json({ 
-//       operationType: "Success", 
-//       message: "QR hợp lệ", 
-//       code: "OK", 
-//       data, 
-//       timestamp: new Date() 
-//     });
-//   } catch (err) {
-//     console.error('Scan error:', err.message);
-//     res.status(400).json({ message: err.message });
-//   }
-// };
-
 
 const scanQr = async (req, res) => {
   try {
@@ -55,7 +20,18 @@ const scanQr = async (req, res) => {
       scannedBy
     });
     
-    // ✅ FIX: Chỉ trả OK khi thực sự success
+    // Nếu yêu cầu PIN thì trả về REQUIRE_PIN (không ghi log)
+    if (data.requiresPin) {
+      return res.json({
+        operationType: "Success",
+        message: "QR hợp lệ, vui lòng nhập PIN",
+        code: "REQUIRE_PIN",
+        data,
+        timestamp: new Date()
+      });
+    }
+    
+    // QR không cần PIN -> SUCCESS (đã ghi log)
     res.json({
       operationType: "Success",
       message: "QR hợp lệ",
@@ -65,12 +41,52 @@ const scanQr = async (req, res) => {
     });
   } catch (err) {
     console.error('Scan error:', err.message);
-    
-    // ✅ FIX: Trả code khác OK khi có lỗi
     res.status(400).json({
       operationType: "Failed",
       message: err.message,
-      code: "INVALID_QR"  // Thay vì OK
+      code: "INVALID_QR"
+    });
+  }
+};
+
+const verifyPin = async (req, res) => {
+  try {
+    const { qrCode, pinCode, scanMetadata } = req.body;
+    const scannedBy = req.user?.sub || req.user?.id;
+    
+    if (!qrCode || !pinCode) {
+      return res.status(400).json({
+        operationType: "Failed",
+        message: "Thiếu qrCode hoặc pinCode",
+        code: "MISSING_FIELDS"
+      });
+    }
+    
+    // 👇 Truyền scanMetadata (chứa buildingId, direction, gate) cho verifyPin
+    const result = await service.verifyPin(
+      qrCode, 
+      pinCode, 
+      scannedBy,
+      scanMetadata || {}  // 👈 THÊM metadata từ lúc scan
+    );
+    
+    res.json({
+      operationType: "Success",
+      message: "PIN chính xác, mở cửa thành công",
+      code: "OK",
+      data: {
+        success: result.success,
+        message: result.message,
+        qrData: result.qrData
+      },
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('Verify PIN error:', err.message);
+    res.status(400).json({
+      operationType: "Failed",
+      message: err.message,
+      code: err.code || "INVALID_PIN"
     });
   }
 };
@@ -106,17 +122,16 @@ const getGuestQrHistory = async (req, res) => {
       });
     }
     
-    // ✅ Đảm bảo trả về đầy đủ các field
     res.json({
       operationType: "Success",
       message: "Get history successfully",
       code: "OK",
-      data: data.data || [],           // Mảng dữ liệu
-      size: data.data?.length || 0,    // Số lượng phần tử hiện tại
-      totalElements: data.totalElements || 0,  // Tổng số bản ghi
-      totalPages: data.totalPages || 0,        // Tổng số trang
-      page: data.page || 1,                    // Trang hiện tại
-      pageSize: data.pageSize || 10,           // Số bản ghi mỗi trang
+      data: data.data || [],
+      size: data.data?.length || 0,
+      totalElements: data.totalElements || 0,
+      totalPages: data.totalPages || 0,
+      page: data.page || 1,
+      pageSize: data.pageSize || 10,
       timestamp: new Date()
     });
   } catch (err) {
@@ -130,4 +145,5 @@ const getGuestQrHistory = async (req, res) => {
   }
 };
 
-module.exports = { scanQr, getGuestQrHistory };
+module.exports = { scanQr, verifyPin, getGuestQrHistory };
+

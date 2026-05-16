@@ -1,10 +1,8 @@
-// src/pages/residents/ResidentDetail.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { residentApi} from 'src/apis/resident_api/residents.api'
-
+import { residentApi12 } from 'src/apis/resident_api/residents.api'
 
 export default function ResidentDetail() {
   const { id } = useParams<{ id: string }>()
@@ -16,11 +14,14 @@ export default function ResidentDetail() {
     status: '',
     moveInDate: ''
   })
+  const [errors, setErrors] = useState({
+    moveInDate: ''
+  })
 
   // Lấy chi tiết cư dân
   const { data: residentData, isLoading, refetch } = useQuery({
     queryKey: ['resident', id],
-    queryFn: () => residentApi.getResidentById(id!),
+    queryFn: () => residentApi12.getResidentById(id!),
     enabled: !!id
   })
 
@@ -28,10 +29,11 @@ export default function ResidentDetail() {
 
   // Cập nhật cư dân
   const updateMutation = useMutation({
-    mutationFn: (data: any) => residentApi.updateResident(id!, data),
+    mutationFn: (data: any) => residentApi12.updateResident(id!, data),
     onSuccess: () => {
       toast.success('Cập nhật thông tin thành công')
       setIsEditing(false)
+      setErrors({ moveInDate: '' })
       queryClient.invalidateQueries({ queryKey: ['resident', id] })
       refetch()
     },
@@ -40,6 +42,50 @@ export default function ResidentDetail() {
     }
   })
 
+  // Hàm lấy ngày hiện tại theo định dạng YYYY-MM-DD (không bị ảnh hưởng timezone)
+  const getTodayString = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Hàm validate ngày chuyển đến (so sánh chuỗi, tránh lỗi timezone)
+  const validateMoveInDate = (date: string, currentStatus?: string): { isValid: boolean; message: string } => {
+    // Rule 1: Không được để trống
+    if (!date) {
+      return { isValid: false, message: 'Vui lòng chọn ngày chuyển đến' }
+    }
+
+    const todayStr = getTodayString()
+    
+    // Rule 2: Ngày chuyển đến không được trong tương lai
+    // So sánh chuỗi trực tiếp để tránh lỗi timezone
+    if (currentStatus !== 'PENDING' && date > todayStr) {
+      return { isValid: false, message: 'Ngày chuyển đến không thể trong tương lai' }
+    }
+
+    // Rule 3: Ngày chuyển đến không được quá xa (ví dụ: không quá 10 năm)
+    const tenYearsAgo = new Date()
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10)
+    const tenYearsAgoStr = `${tenYearsAgo.getFullYear()}-${String(tenYearsAgo.getMonth() + 1).padStart(2, '0')}-${String(tenYearsAgo.getDate()).padStart(2, '0')}`
+    
+    if (date < tenYearsAgoStr) {
+      return { isValid: false, message: 'Ngày chuyển đến không hợp lệ (quá 10 năm trước)' }
+    }
+
+    // Rule 4: Kiểm tra với ngày tạo hồ sơ (nếu có)
+    if (resident?.createdAt) {
+      const createdDateStr = resident.createdAt.split('T')[0]
+      if (date < createdDateStr) {
+        return { isValid: false, message: 'Ngày chuyển đến phải sau hoặc bằng ngày tạo hồ sơ' }
+      }
+    }
+
+    return { isValid: true, message: '' }
+  }
+
   const handleEdit = () => {
     if (resident) {
       setEditForm({
@@ -47,11 +93,23 @@ export default function ResidentDetail() {
         status: resident.status,
         moveInDate: resident.moveInDate?.split('T')[0] || ''
       })
+      setErrors({ moveInDate: '' })
       setIsEditing(true)
     }
   }
 
   const handleSave = () => {
+    // Validate ngày chuyển đến
+    const validation = validateMoveInDate(editForm.moveInDate, editForm.status)
+    
+    if (!validation.isValid) {
+      setErrors({ moveInDate: validation.message })
+      toast.error(validation.message)
+      return
+    }
+
+    // Xóa lỗi nếu hợp lệ
+    setErrors({ moveInDate: '' })
     updateMutation.mutate(editForm)
   }
 
@@ -62,10 +120,11 @@ export default function ResidentDetail() {
       status: '',
       moveInDate: ''
     })
+    setErrors({ moveInDate: '' })
   }
 
   const handleBack = () => {
-    navigate('..')
+    navigate('/Getresidentlist')
   }
 
   // Helper functions
@@ -160,22 +219,19 @@ export default function ResidentDetail() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-surface px-8 py-8">
-      {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 mb-8">
-        <button onClick={handleBack} className="text-on-surface-variant text-sm font-medium hover:text-primary transition-colors">
+        <button 
+          onClick={handleBack} 
+          className="text-on-surface-variant text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
           Quản lý Cư dân
         </button>
-        
-       
       </nav>
 
       {/* Header Action Row */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">THÔNG TIN HỒ SƠ</h1>
-          <p className="text-on-surface-variant max-w-lg leading-relaxed">
-            Cập nhật và quản lý thông tin chi tiết về cư dân, hợp đồng thuê và các dịch vụ liên quan.
-          </p>
         </div>
         <div className="flex gap-3">
           {!isEditing ? (
@@ -186,7 +242,6 @@ export default function ResidentDetail() {
               >
                 Chỉnh sửa
               </button>
-              
             </>
           ) : (
             <>
@@ -259,7 +314,6 @@ export default function ResidentDetail() {
             <div className="mt-10 space-y-4 pt-8 border-t border-surface-container-low">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
-                  
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-[10px] uppercase font-bold text-outline-variant tracking-wider">Email</p>
@@ -268,7 +322,6 @@ export default function ResidentDetail() {
               </div>
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
-                  
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-[10px] uppercase font-bold text-outline-variant tracking-wider">Điện thoại</p>
@@ -303,7 +356,6 @@ export default function ResidentDetail() {
           {/* Basic Info Card */}
           <div className="bg-surface-container-lowest rounded-xl p-8 shadow-sm shadow-blue-900/5">
             <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
-              
               Thông tin cư trú
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-12">
@@ -323,7 +375,6 @@ export default function ResidentDetail() {
                 <label className="text-[10px] uppercase font-bold text-outline-variant tracking-widest block mb-2">Mối quan hệ</label>
                 {!isEditing ? (
                   <div className="flex items-center gap-3">
-                    
                     <span className={`font-bold ${getRelationshipColor(resident.relationship)} px-3 py-1 rounded-full text-sm`}>
                       {getRelationshipText(resident.relationship)}
                     </span>
@@ -341,27 +392,44 @@ export default function ResidentDetail() {
                 )}
               </div>
 
+              {/* Phần Ngày chuyển đến đã được sửa */}
               <div className="space-y-1">
-                <label className="text-[10px] uppercase font-bold text-outline-variant tracking-widest block mb-2">Ngày dời đến</label>
+                <label className="text-[10px] uppercase font-bold text-outline-variant tracking-widest block mb-2">
+                  Ngày chuyển đến <span className="text-red-500">*</span>
+                </label>
                 {!isEditing ? (
                   <div className="flex items-center gap-3">
-                   
                     <span className="font-semibold text-on-surface">{formatDate(resident.moveInDate)}</span>
                   </div>
                 ) : (
-                  <input
-                    type="date"
-                    value={editForm.moveInDate}
-                    onChange={(e) => setEditForm({ ...editForm, moveInDate: e.target.value })}
-                    className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
+                  <div>
+                    <input
+                      type="date"
+                      value={editForm.moveInDate}
+                      max={editForm.status === 'PENDING' ? undefined : getTodayString()}
+                      onChange={(e) => {
+                        setEditForm({ ...editForm, moveInDate: e.target.value })
+                        // Xóa lỗi khi người dùng thay đổi
+                        if (errors.moveInDate) {
+                          setErrors({ moveInDate: '' })
+                        }
+                      }}
+                      className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all
+                        ${errors.moveInDate ? 'border-red-500 focus:ring-red-500' : 'border-gray-200'}`}
+                    />
+                    {errors.moveInDate && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">error</span>
+                        {errors.moveInDate}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] uppercase font-bold text-outline-variant tracking-widest block mb-2">Ngày tạo hồ sơ</label>
                 <div className="flex items-center gap-3">
-                  
                   <span className="font-semibold text-on-surface">{formatDate(resident.createdAt)}</span>
                 </div>
               </div>
@@ -393,7 +461,6 @@ export default function ResidentDetail() {
           <div className="bg-surface-container-low rounded-xl p-8 border border-surface-container">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-lg font-bold text-on-surface">Nhật ký hoạt động</h3>
-              
             </div>
             <div className="space-y-6">
               <div className="flex gap-4">

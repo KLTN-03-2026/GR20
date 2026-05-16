@@ -47,29 +47,35 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>thông báo</span>
           </NavLink>
 
-          <NavLink to='/resident/apartment' className={getNavClass}>
+          <NavLink to='/MyApartment' className={getNavClass}>
             <span className='material-symbols-outlined'>apartment</span>
             <span className='text-sm font-manrope'>Thông tin căn hộ</span>
           </NavLink>
 
-          <NavLink to='/resident/maintenance-request' className={getNavClass}>
+          <NavLink to='/MyContract' className={getNavClass}>
+            <span className='material-symbols-outlined'>contract</span>
+            <span className='text-sm font-manrope'>Thông tin hợp đồng</span>
+          </NavLink>
+
+          {/* <NavLink to='/resident/maintenance-request' className={getNavClass}> */}
+          <NavLink to='/resident/GetMaintenanceRequestList' className={getNavClass}>
             <span className='material-symbols-outlined'>build</span>
             <span className='text-sm font-manrope'>Gửi yêu cầu bảo trì</span>
           </NavLink>
 
-          <NavLink to='/resident/request-history' className={getNavClass}>
+          {/* <NavLink to='/resident/request-history' className={getNavClass}>
             <span className='material-symbols-outlined'>history</span>
             <span className='text-sm font-manrope'>Lịch sử yêu cầu</span>
+          </NavLink> */}
+
+          <NavLink to='/invoices' className={getNavClass}>
+            <span className='material-symbols-outlined'>receipt_long</span>
+            <span className='text-sm font-manrope'>Hóa đơn</span>
           </NavLink>
 
-          <NavLink to='/UserInvoicesPage' className={getNavClass}>
-            <span className='material-symbols-outlined'>apartment</span>
-            <span className='text-sm font-manrope'>Hóa đơn thanh toán</span>
-          </NavLink>
-
-          <NavLink to='/UserPaymentsPage' className={getNavClass}>
-            <span className='material-symbols-outlined'>credit_card</span>
-            <span className='text-sm font-manrope'>Lịch sử thanh toán</span>
+          <NavLink to='/payments' className={getNavClass}>
+            <span className='material-symbols-outlined'>payments</span>
+            <span className='text-sm font-manrope'>Thanh toán</span>
           </NavLink>
 
           <NavLink to='/resident/qrcode' className={getNavClass}>
@@ -77,7 +83,12 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>Quản lý QR</span>
           </NavLink>
 
-          <NavLink to='/resident/amenities' className={getNavClass}>
+          <NavLink to='/resident/guest-qr' className={getNavClass}>
+            <span className='material-symbols-outlined'>qr_code_scanner</span>
+            <span className='text-sm font-manrope'>Tạo QR cho khách</span>
+          </NavLink>
+
+          <NavLink to='/my-amenities' className={getNavClass}>
             <span className='material-symbols-outlined'>spa</span>
             <span className='text-sm font-manrope'>Tiện ích tòa nhà</span>
           </NavLink>

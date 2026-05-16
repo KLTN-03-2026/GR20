@@ -85,6 +85,11 @@ const paginationSchema = z.object({
   size: z.coerce.number().int().min(1).max(1000).default(10),
   search: z.string().trim().optional(),
   status: buildingStatusSchema.optional(),
+  /** true: mỗi tòa kèm mảng apartments (trừ căn MAINTENANCE). Mặc định: bật khi đã đăng nhập và không phải ADMIN (quản lý/cư dân xem căn trong tòa). */
+  includeApartments: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "true")),
 });
 
 /** @param {unknown} body */

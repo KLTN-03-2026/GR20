@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import http from 'src/utils/http'
 import ApartmentForm from './ApartmentForm'
 import DeleteConfirmModal from './DeleteConfirmModal'
+import AIAssistantWidget from 'src/components/AIAssistantWidget'
 
 export default function Apartment() {
   const navigate = useNavigate()
@@ -262,7 +263,7 @@ export default function Apartment() {
                   </div>
                   <div className='col-span-2 flex justify-end gap-1'>
                     <button
-                      onClick={() => navigate(`/apartments/${item.id}`)}
+                      onClick={() => navigate(`/ApartmentDetail/${item.id}`)}
                       className='p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
                       title='Xem chi tiết'
                     >
@@ -380,6 +381,8 @@ export default function Apartment() {
           </div>
         </div>
       </div>
+
+      {/* <AIAssistantWidget occupancyRate={stats.occupancyRate} expiringContracts={stats.expiringContracts} /> */}
 
       <ApartmentForm
         apartmentId={editingApartmentId}

@@ -51,14 +51,9 @@ export default function SidebarStaff() {
             <span className='text-sm font-manrope'>Tổng quan</span>
           </NavLink>
 
-          <NavLink to='/staff/requests' className={getNavClass}>
+          <NavLink to='/GetResidentRequestList' className={getNavClass}>
             <span className='material-symbols-outlined'>assignment</span>
-            <span className='text-sm font-manrope'>Quản lý yêu cầu</span>
-          </NavLink>
-
-          <NavLink to='/staff/request-detail' className={getNavClass}>
-            <span className='material-symbols-outlined'>description</span>
-            <span className='text-sm font-manrope'>Chi tiết yêu cầu</span>
+            <span className='text-sm font-manrope'>Quản lý yêu cầu cư dân</span>
           </NavLink>
 
           <NavLink to='/staff/residents' className={getNavClass}>

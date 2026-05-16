@@ -4,6 +4,15 @@ import { useContext, useMemo, useState } from 'react'
 import { paymentsApi } from 'src/apis/billing_api/payments.api'
 import { residentsApi } from 'src/apis/resident_api/residents.api'
 import { AppContext } from 'src/contexts/app.context'
+import { logPaymentConsoleError } from 'src/utils/payment-console-log'
+import {
+  formatVnd,
+  invoiceStatusBadgeClass,
+  invoiceStatusVi,
+  paymentStatusBadgeClass,
+  paymentStatusVi
+} from 'src/utils/billing-ui'
+import { formatInvoicePeriodLabel } from 'src/utils/invoice-period-helpers'
 
 const logApiSuccess = (action: string, response: any) => {
   console.log(`[UserPayments][${action}] success`, {
@@ -11,16 +20,6 @@ const logApiSuccess = (action: string, response: any) => {
     endpoint: response?.config?.url,
     method: response?.config?.method,
     data: response?.data
-  })
-}
-
-const logApiError = (action: string, err: any) => {
-  console.error(`[UserPayments][${action}] error`, {
-    status: err?.response?.status,
-    endpoint: err?.config?.url || err?.response?.config?.url,
-    method: err?.config?.method || err?.response?.config?.method,
-    data: err?.response?.data,
-    message: err?.message
   })
 }
 
@@ -66,10 +65,19 @@ export default function UserPaymentsPage() {
     [payments, myApartmentIds, statusFilter]
   )
 
-  const fmtMoney = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(n) || 0)
+  const apartmentLabelById = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const a of apartments) {
+      const id = Number(a.apartmentId)
+      if (!Number.isFinite(id)) continue
+      const num = String(a.apartmentNumber || '').trim()
+      const bld = String(a.buildingName || '').trim()
+      m.set(id, num && bld ? `${num} · ${bld}` : num || bld || `Căn #${id}`)
+    }
+    return m
+  }, [apartments])
 
-  if (isError) logApiError('GetUserPayments', error)
+  if (isError && error) logPaymentConsoleError('payment-list-load', error)
 
   return (
     <div className='pb-10'>
@@ -85,7 +93,11 @@ export default function UserPaymentsPage() {
         <h1 className='mb-2 text-3xl font-extrabold text-slate-900'>Thanh toán của tôi</h1>
         <div className='h-1.5 w-20 rounded-full bg-gradient-to-r from-blue-500 to-blue-700' />
         <p className='mt-2 text-sm text-slate-500'>
-          Hóa đơn theo căn hộ của bạn. Mở chi tiết để xem dòng tiền; thanh toán trực tiếp trên trang đó.
+          Lịch sử và trạng thái các lần thanh toán. Để thanh toán hóa đơn mới, vào mục{' '}
+          <Link to='/invoices' className='font-semibold text-blue-600 hover:underline'>
+            Hóa đơn của tôi
+          </Link>
+          .
         </p>
       </div>
 
@@ -113,7 +125,7 @@ export default function UserPaymentsPage() {
           <table className='w-full min-w-[760px] border-collapse text-left'>
             <thead>
               <tr className='border-b border-slate-100 bg-slate-50/80'>
-                {['Mã hóa đơn', 'Căn hộ', 'Kỳ', 'Số tiền', 'TT hóa đơn', 'TT thanh toán', 'Hành động'].map((h) => (
+                {['Mã hóa đơn', 'Căn hộ', 'Kỳ', 'Số tiền', 'Hóa đơn', 'Thanh toán', 'Hành động'].map((h) => (
                   <th
                     key={h}
                     className={`whitespace-nowrap px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 ${
@@ -144,38 +156,46 @@ export default function UserPaymentsPage() {
               {!isLoading &&
                 myInvoices.map((row: any) => {
                   const paymentId = String(row.id)
-                  const pending = row.status === 'PENDING'
+                  const invSt = String(row.invoiceStatus || '').toUpperCase()
+                  const paySt = String(row.status || '').toUpperCase()
                   return (
                     <tr key={paymentId} className='hover:bg-slate-50/50'>
                       <td className='px-6 py-4 text-sm font-medium text-slate-800'>
                         {row.invoiceCode || row.invoiceId}
                       </td>
-                      <td className='px-6 py-4 text-sm text-slate-700'>Apt {row.apartmentId}</td>
+                      <td className='px-6 py-4 text-sm text-slate-700'>
+                        {apartmentLabelById.get(Number(row.apartmentId)) ?? `Căn #${row.apartmentId}`}
+                      </td>
                       <td className='px-6 py-4 text-sm tabular-nums text-slate-700'>
-                        {row.billingMonth}/{row.billingYear}
+                        {formatInvoicePeriodLabel({
+                          billingMonth: row.billingMonth,
+                          billingYear: row.billingYear
+                        })}
                       </td>
                       <td className='px-6 py-4 text-sm font-semibold tabular-nums text-slate-800'>
-                        {fmtMoney(Number(row.amount) || 0)}
+                        {formatVnd(row.amount)}
                       </td>
-                      <td className='px-6 py-4 text-sm text-slate-700'>{row.invoiceStatus || '—'}</td>
-                      <td className='px-6 py-4 text-sm text-slate-700'>{row.status}</td>
                       <td className='px-6 py-4'>
-                        <div className='flex flex-wrap justify-end gap-2'>
-                          <Link
-                            to={`/payments/${paymentId}`}
-                            className='rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50'
-                          >
-                            Chi tiết
-                          </Link>
-                          {pending && (
-                            <Link
-                              to={`/payments/${paymentId}?checkout=1`}
-                              className='rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700'
-                            >
-                              Thanh toán
-                            </Link>
-                          )}
-                        </div>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${invoiceStatusBadgeClass(row.invoiceStatus)}`}
+                        >
+                          {invoiceStatusVi[invSt] || row.invoiceStatus || '—'}
+                        </span>
+                      </td>
+                      <td className='px-6 py-4'>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusBadgeClass(row.status)}`}
+                        >
+                          {paymentStatusVi[paySt] || row.status}
+                        </span>
+                      </td>
+                      <td className='px-6 py-4 text-right'>
+                        <Link
+                          to={`/payments/${paymentId}`}
+                          className='inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50'
+                        >
+                          Chi tiết
+                        </Link>
                       </td>
                     </tr>
                   )

@@ -5,6 +5,9 @@ const {
   parseCreateApartment,
   parseUpdateApartment,
 } = require("./apartment.request");
+const {
+  getScopedBuildingIdsForList,
+} = require("../../utils/access/scoped-building-access");
 
 // CREATE
 const createApartment = async (reqBody) => {
@@ -17,25 +20,53 @@ const createApartment = async (reqBody) => {
   };
 };
 
-// GET ALL
-const getAllApartments = async (query) => {
-  const { page = 0, size = 10, buildingId, floorId, search } = query;
+/** currentUser = req.user sau router.use(authenticate) */
+const getAllApartments = async (query, currentUser) => {
+  const { page = 0, size = 10, floorId, search } = query;
+  const sizeNum = Number(size);
+  const pageNum = Number(page);
+
+  const scope = getScopedBuildingIdsForList(currentUser, query);
+
+  if (scope.deny) {
+    return {
+      data: [],
+      size: 0,
+      totalElements: 0,
+      totalPages: 0,
+      page: pageNum,
+      pageSize: sizeNum,
+    };
+  }
+
+  const { buildingIds } = scope;
+
+  if (Array.isArray(buildingIds) && buildingIds.length === 0) {
+    return {
+      data: [],
+      size: 0,
+      totalElements: 0,
+      totalPages: 0,
+      page: pageNum,
+      pageSize: sizeNum,
+    };
+  }
 
   const result = await repo.getAllApartments({
-    page: Number(page),
-    size: Number(size),
-    buildingId: buildingId || undefined,
+    page: pageNum,
+    size: sizeNum,
     floorId: floorId || undefined,
     search: search || undefined,
+    buildingIds,
   });
 
   return {
     data: result.rows.map(mapper.toResponse),
     size: result.rows.length,
     totalElements: result.total,
-    totalPages: Math.ceil(result.total / size),
-    page: Number(page),
-    pageSize: Number(size),
+    totalPages: Math.ceil(result.total / sizeNum) || 0,
+    page: pageNum,
+    pageSize: sizeNum,
   };
 };
 
@@ -67,7 +98,6 @@ const getApartmentsByFloor = async (floorId, query) => {
   };
 };
 
-// GET BY ID
 const getApartmentById = async (id) => {
   const data = await repo.getApartmentById(id);
 
@@ -78,7 +108,6 @@ const getApartmentById = async (id) => {
   return mapper.toResponse(data);
 };
 
-// UPDATE
 const updateApartment = async (id, reqBody) => {
   const parsed = parseUpdateApartment(reqBody);
   const entity = mapper.toEntity(parsed);
@@ -92,7 +121,6 @@ const updateApartment = async (id, reqBody) => {
   return mapper.toResponse(updated);
 };
 
-// DELETE
 const deleteApartment = async (id) => {
   const deleted = await repo.deleteApartment(id);
 
@@ -103,7 +131,6 @@ const deleteApartment = async (id) => {
   return { id: deleted.id };
 };
 
-//AD RESIDENT
 const addResident = async (apartmentId, body) => {
   return await repo.addResident(apartmentId, body);
 };

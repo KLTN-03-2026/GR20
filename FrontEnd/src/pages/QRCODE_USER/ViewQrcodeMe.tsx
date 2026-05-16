@@ -2,9 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { QRCodeApi } from 'src/apis/QrcodeApi/Qr.api'
 import { toast } from 'react-toastify'
 import { useState } from 'react'
-
+import { ChangePinModal } from '../PinReset/ChangePinModal'
+import { useNavigate } from 'react-router-dom'
 export default function ViewQrcodeMe() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [historyPage] = useState(1)
+  const [historyLimit] = useState(10)
+  const [showChangePinModal, setShowChangePinModal] = useState(false)
 
   // Lấy thông tin QR cá nhân
   const {
@@ -24,20 +28,19 @@ export default function ViewQrcodeMe() {
     isLoading: isHistoryLoading,
     refetch: refetchHistory
   } = useQuery({
-    queryKey: ['qrcode-me-history'],
-    queryFn: () => QRCodeApi.getHistoryMe(),
+    queryKey: ['qrcode-me-history', historyPage, historyLimit],
+    queryFn: () => QRCodeApi.getHistoryMe({ page: historyPage, limit: historyLimit }),
     retry: 1
   })
 
   const qrInfo = qrData?.data?.data
   const isSuccess = qrData?.data?.code === 'OK'
-
-  // Lấy dữ liệu lịch sử
+  const navigate = useNavigate()
   const historyList = historyData?.data?.data || []
   const totalElements = historyData?.data?.totalElements || 0
+  const totalPages = historyData?.data?.totalPages || 0
   const recentHistory = historyList.slice(0, 5)
 
-  // Format date function
   const formatDate = (dateString: string) => {
     if (!dateString) return '---'
     const date = new Date(dateString)
@@ -67,13 +70,11 @@ export default function ViewQrcodeMe() {
     return `${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
   }
 
-  // Xử lý tải QR
   const handleDownloadQR = () => {
     if (!qrInfo?.qrImage) {
       toast.error('Không có ảnh QR để tải')
       return
     }
-
     const link = document.createElement('a')
     link.href = qrInfo.qrImage
     link.download = `QR_${qrInfo.qr_code?.slice(-12) || 'personal'}.png`
@@ -83,18 +84,15 @@ export default function ViewQrcodeMe() {
     toast.success('Đã tải mã QR thành công')
   }
 
-  // Xử lý chia sẻ QR
   const handleShareQR = async () => {
     if (!qrInfo?.qrImage) {
       toast.error('Không có ảnh QR để chia sẻ')
       return
     }
-
     try {
       const response = await fetch(qrInfo.qrImage)
       const blob = await response.blob()
       const file = new File([blob], `QR_${qrInfo.qr_code?.slice(-12) || 'personal'}.png`, { type: 'image/png' })
-
       if (navigator.share) {
         await navigator.share({
           title: 'Mã QR Cư dân Homelink',
@@ -110,14 +108,12 @@ export default function ViewQrcodeMe() {
     }
   }
 
-  // Xử lý refresh
   const handleRefresh = () => {
     refetch()
     refetchHistory()
     toast.info('Đang làm mới dữ liệu...')
   }
 
-  // Helper cho badge
   const getResultBadge = (result: string) => {
     if (result === 'SUCCESS') {
       return { text: 'THÀNH CÔNG', bg: 'bg-green-100', textColor: 'text-green-700', dot: 'bg-green-500' }
@@ -196,6 +192,16 @@ export default function ViewQrcodeMe() {
       <div className='max-w-6xl mx-auto p-8 md:p-12'>
         {/* Hero Title Section */}
         <header className='mb-8'>
+          <div className='flex items-center justify-between mb-4'>
+            <button
+              onClick={() => navigate(-1)}
+              className='flex items-center gap-2 px-4 py-2 bg-surface-container-low rounded-xl text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors'
+            >
+              <span className='material-symbols-outlined text-base'>arrow_back</span>
+              Quay lại
+            </button>
+            {/* Có thể thêm nút khác ở đây nếu cần */}
+          </div>
           <div className='flex flex-col md:flex-row md:items-end justify-between gap-4'>
             <div className='space-y-1'>
               <h1 className='text-3xl md:text-4xl font-extrabold text-on-surface tracking-tight'>Mã QR Cá nhân</h1>
@@ -218,7 +224,6 @@ export default function ViewQrcodeMe() {
           <div className='lg:col-span-1'>
             <div className='bg-surface-container-lowest rounded-2xl p-6 shadow-sm relative overflow-hidden'>
               <div className='flex flex-col items-center'>
-                {/* QR Code - Smaller */}
                 <div className='bg-white p-4 rounded-xl shadow-md mb-4'>
                   <img
                     alt='Resident Access QR Code'
@@ -266,6 +271,29 @@ export default function ViewQrcodeMe() {
               </div>
             </div>
 
+            {/* Card Đổi mã PIN */}
+            <div className='bg-surface-container-lowest rounded-xl p-5 shadow-sm'>
+              <div className='flex items-center gap-2 mb-4'>
+                <span className='material-symbols-outlined text-primary'>pin</span>
+                <h3 className='font-bold text-on-surface'>Mã PIN bảo mật</h3>
+              </div>
+              <div className='flex justify-between items-center mb-4'>
+                <p className='text-sm text-on-surface-variant'>Trạng thái PIN</p>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold ${qrInfo.qr_code ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}
+                >
+                  {qrInfo.qr_code ? 'ĐÃ CÀI ĐẶT' : 'CHƯA CÀI ĐẶT'}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowChangePinModal(true)}
+                className='w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl font-semibold transition-colors flex items-center justify-center gap-2'
+              >
+                <span className='material-symbols-outlined text-base'>lock_reset</span>
+                Đổi mã PIN
+              </button>
+            </div>
+
             {/* Lịch sử quét gần đây */}
             <div className='bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden'>
               <div className='px-5 py-3 border-b border-outline-variant/10 flex justify-between items-center'>
@@ -283,7 +311,7 @@ export default function ViewQrcodeMe() {
                     onClick={() => setIsHistoryModalOpen(true)}
                     className='text-xs font-medium text-primary hover:underline'
                   >
-                    Xem tất cả
+                    Xem tất cả ({totalPages} trang)
                   </button>
                 )}
               </div>
@@ -298,7 +326,7 @@ export default function ViewQrcodeMe() {
                     <p className='text-sm'>Chưa có lịch sử quét</p>
                   </div>
                 ) : (
-                  recentHistory.map((item: any) => {
+                  recentHistory.map((item) => {
                     const resultBadge = getResultBadge(item.result)
                     const directionIcon = getDirectionIcon(item.direction)
                     const dateTime = formatDateTime(item.scan_time)
@@ -337,7 +365,7 @@ export default function ViewQrcodeMe() {
           </div>
         </div>
 
-        {/* Hướng dẫn sử dụng - Nằm dưới cùng */}
+        {/* Hướng dẫn sử dụng */}
         <div className='mt-8'>
           <div className='bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/10'>
             <div className='flex items-center gap-2 mb-4'>
@@ -377,49 +405,62 @@ export default function ViewQrcodeMe() {
         </div>
       </div>
 
-      {/* History Modal */}
-      {isHistoryModalOpen && (
-        <HistoryModal
-          isOpen={isHistoryModalOpen}
-          onClose={() => setIsHistoryModalOpen(false)}
-          historyData={historyList}
-          formatDateTime={formatDateTime}
-          getResultBadge={getResultBadge}
-          getDirectionIcon={getDirectionIcon}
+      {/* Change PIN Modal */}
+      {showChangePinModal && (
+        <ChangePinModal
+          onClose={() => setShowChangePinModal(false)}
+          qrCode={qrInfo.qr_code}
+          qrType='personal'
+          onSuccess={() => {
+            setShowChangePinModal(false)
+            refetch()
+          }}
         />
       )}
+
+      {/* History Modal */}
+      <HistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        formatDateTime={formatDateTime}
+        getResultBadge={getResultBadge}
+        getDirectionIcon={getDirectionIcon}
+      />
     </main>
   )
 }
 
-// Modal Component để xem tất cả lịch sử
-function HistoryModal({ isOpen, onClose, historyData, formatDateTime, getResultBadge, getDirectionIcon }: any) {
+// Modal Component (giữ nguyên code cũ)
+function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDirectionIcon }: any) {
+  const [currentPage, setCurrentPage] = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [resultFilter, setResultFilter] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
-  // Filter dữ liệu
-  const filteredData = historyData.filter((item: any) => {
-    const matchesSearch =
-      !searchInput ||
-      item.gate?.toLowerCase().includes(searchInput.toLowerCase()) ||
-      item.scanned_by_name?.toLowerCase().includes(searchInput.toLowerCase()) ||
-      item.building_name?.toLowerCase().includes(searchInput.toLowerCase())
-
-    const matchesResult = !resultFilter || item.result === resultFilter
-
-    const itemDate = item.scan_time ? new Date(item.scan_time).toISOString().split('T')[0] : ''
-    const matchesFromDate = !fromDate || itemDate >= fromDate
-    const matchesToDate = !toDate || itemDate <= toDate
-
-    return matchesSearch && matchesResult && matchesFromDate && matchesToDate
+  const { data: historyData, isLoading } = useQuery({
+    queryKey: ['personal-history-modal', currentPage, resultFilter, fromDate, toDate, searchInput],
+    queryFn: () =>
+      QRCodeApi.getHistoryMe({
+        page: currentPage,
+        limit: pageSize,
+        result: resultFilter || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        search: searchInput || undefined
+      }),
+    enabled: isOpen
   })
 
-  const totalPages = Math.ceil(filteredData.length / pageSize)
-  const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const historyList = historyData?.data?.data || []
+  const totalElements = historyData?.data?.totalElements || 0
+  const totalPages = historyData?.data?.totalPages || 0
+
+  const handleFilterChange = (setter: any, value: any) => {
+    setter(value)
+    setCurrentPage(1)
+  }
 
   const handleResetFilters = () => {
     setSearchInput('')
@@ -439,7 +480,7 @@ function HistoryModal({ isOpen, onClose, historyData, formatDateTime, getResultB
           <div>
             <h2 className='text-2xl font-bold text-on-surface'>Lịch sử quét QR Cá nhân</h2>
             <p className='text-sm mt-1 text-on-surface-variant'>
-              Tổng số lần quét: <span className='font-semibold text-primary'>{historyData.length}</span>
+              Tổng số lần quét: <span className='font-semibold text-primary'>{totalElements}</span>
             </p>
           </div>
           <button onClick={onClose} className='p-2 hover:bg-surface-container rounded-full transition-colors'>
@@ -454,41 +495,33 @@ function HistoryModal({ isOpen, onClose, historyData, formatDateTime, getResultB
             placeholder='Tìm kiếm cổng, người quét, tòa nhà...'
             className='flex-1 min-w-[200px] px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={(e) => handleFilterChange(setSearchInput, e.target.value)}
           />
           <select
             className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={resultFilter}
             onChange={(e) => {
-              setResultFilter(e.target.value)
+              const value = e.target.value
+              setResultFilter(value)
               setCurrentPage(1)
             }}
           >
             <option value=''>Tất cả kết quả</option>
             <option value='SUCCESS'>Thành công</option>
-            <option value='DENIED'>Từ chối</option>
+            <option value='FAILED'>Thất bại</option>
           </select>
           <input
             type='date'
             className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={(e) => handleFilterChange(setFromDate, e.target.value)}
           />
           <span className='material-symbols-outlined text-on-surface-variant/60 text-base self-center'>east</span>
           <input
             type='date'
             className='px-3 py-2 border border-outline-variant/30 rounded-lg text-sm bg-surface focus:outline-none focus:border-primary transition-colors'
             value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={(e) => handleFilterChange(setToDate, e.target.value)}
           />
           <button
             onClick={handleResetFilters}
@@ -498,81 +531,88 @@ function HistoryModal({ isOpen, onClose, historyData, formatDateTime, getResultB
           </button>
         </div>
 
-        {/* Table Content */}
+        {/* Content */}
         <div className='p-6 overflow-y-auto max-h-[calc(85vh-250px)]'>
-          {filteredData.length === 0 ? (
+          {isLoading ? (
+            <div className='flex justify-center py-12'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+            </div>
+          ) : historyList.length === 0 ? (
             <div className='text-center py-12'>
               <span className='material-symbols-outlined text-5xl text-on-surface-variant/30'>history</span>
               <p className='mt-3 text-on-surface-variant'>Không có dữ liệu phù hợp</p>
             </div>
           ) : (
-            <table className='w-full text-left border-collapse'>
-              <thead>
-                <tr className='border-b border-outline-variant/10'>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>STT</th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Thời gian
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Hướng
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Tòa nhà
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Kết quả
-                  </th>
-                  <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
-                    Người quét
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedData.map((item: any, index: number) => {
-                  const dateTime = formatDateTime(item.scan_time)
-                  const resultBadge = getResultBadge(item.result)
-                  const directionIcon = getDirectionIcon(item.direction)
-                  const rowNumber = (currentPage - 1) * pageSize + index + 1
-                  return (
-                    <tr
-                      key={item.id}
-                      className='border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors'
-                    >
-                      <td className='px-4 py-3 text-sm'>{rowNumber}</td>
-                      <td className='px-4 py-3 text-sm'>
-                        <div className='font-medium'>{dateTime.split(' ')[0]}</div>
-                        <div className='text-xs text-on-surface-variant'>{dateTime.split(' ')[1]}</div>
-                      </td>
-                      <td className='px-4 py-3'>
-                        <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
-                          {directionIcon.icon}
-                        </span>{' '}
-                        <span className='text-sm'>{directionIcon.text}</span>
-                      </td>
-                      <td className='px-4 py-3 text-sm'>{item.building_name || '---'}</td>
-                      <td className='px-4 py-3'>
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${resultBadge.bg} ${resultBadge.textColor}`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${resultBadge.dot}`}></span>
-                          {resultBadge.text}
-                        </span>
-                      </td>
-                      <td className='px-4 py-3 text-sm'>{item.scanned_by_name || '---'}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className='overflow-x-auto'>
+              <table className='w-full text-left border-collapse min-w-[800px]'>
+                <thead>
+                  <tr className='border-b border-outline-variant/10'>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      STT
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Thời gian
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Hướng
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Tòa nhà
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Kết quả
+                    </th>
+                    <th className='px-4 py-3 text-xs font-bold text-on-surface-variant uppercase tracking-wider'>
+                      Người quét
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyList.map((item: any, index: number) => {
+                    const dateTime = formatDateTime(item.scan_time)
+                    const resultBadge = getResultBadge(item.result)
+                    const directionIcon = getDirectionIcon(item.direction)
+                    const rowNumber = (currentPage - 1) * pageSize + index + 1
+                    return (
+                      <tr
+                        key={item.id}
+                        className='border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors'
+                      >
+                        <td className='px-4 py-3 text-sm'>{rowNumber}</td>
+                        <td className='px-4 py-3 text-sm'>
+                          <div className='font-medium'>{dateTime.split(' ')[0]}</div>
+                          <div className='text-xs text-on-surface-variant'>{dateTime.split(' ')[1]}</div>
+                        </td>
+                        <td className='px-4 py-3'>
+                          <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
+                            {directionIcon.icon}
+                          </span>
+                          <span className='text-sm ml-1'>{directionIcon.text}</span>
+                        </td>
+                        <td className='px-4 py-3 text-sm'>{item.building_name || '---'}</td>
+                        <td className='px-4 py-3'>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${resultBadge.bg} ${resultBadge.textColor}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${resultBadge.dot}`}></span>
+                            {resultBadge.text}
+                          </span>
+                        </td>
+                        <td className='px-4 py-3 text-sm'>{item.scanned_by_name || '---'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
         {/* Pagination */}
-        {filteredData.length > 0 && (
-          <div className='px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low flex justify-between items-center'>
+        {totalPages > 1 && (
+          <div className='px-6 py-4 border-t border-outline-variant/10 bg-surface-container-low flex justify-between items-center flex-wrap gap-3'>
             <p className='text-xs text-on-surface-variant'>
-              Hiển thị {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredData.length)} trên{' '}
-              {filteredData.length}
+              Trang {currentPage} / {totalPages}
             </p>
             <div className='flex gap-2'>
               <button
@@ -582,9 +622,6 @@ function HistoryModal({ isOpen, onClose, historyData, formatDateTime, getResultB
               >
                 Trước
               </button>
-              <span className='px-4 py-2 text-sm font-medium text-on-surface-variant'>
-                {currentPage} / {totalPages}
-              </span>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}

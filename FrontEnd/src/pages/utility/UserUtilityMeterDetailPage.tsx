@@ -82,7 +82,7 @@ export default function UserUtilityMeterDetailPage() {
             Trang chủ
           </Link>
           <span className='material-symbols-outlined text-xs'>chevron_right</span>
-          <Link to='/my-utility-meters' className='hover:text-blue-500'>
+          <Link to='/invoices' className='hover:text-blue-500'>
             Đồng hồ của tôi
           </Link>
           <span className='material-symbols-outlined text-xs'>chevron_right</span>
@@ -117,7 +117,7 @@ export default function UserUtilityMeterDetailPage() {
           Trang chủ
         </Link>
         <span className='material-symbols-outlined text-xs'>chevron_right</span>
-        <Link to='/my-utility-meters' className='hover:text-blue-500'>
+        <Link to='/invoices' className='hover:text-blue-500'>
           Đồng hồ của tôi
         </Link>
         <span className='material-symbols-outlined text-xs'>chevron_right</span>
@@ -250,7 +250,7 @@ export default function UserUtilityMeterDetailPage() {
       </div>
 
       <Link
-        to='/my-utility-meters'
+        to='/invoices'
         className='mt-8 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50'
       >
         <span className='material-symbols-outlined text-lg'>arrow_back</span>

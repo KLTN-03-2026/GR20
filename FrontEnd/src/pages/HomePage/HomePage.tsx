@@ -43,7 +43,7 @@ export default function HomePage() {
 
             <span className='text-[10px] text-slate-500 mt-1 uppercase tracking-wider'>An ninh vào cổng</span>
           </Link>
-          <button className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'>
+          {/* <button className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'>
             <div className='w-12 h-12 rounded-xl bg-secondary-container/20 flex items-center justify-center text-secondary mb-4 group-hover:bg-secondary group-hover:text-white transition-colors'>
               <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
                 engineering
@@ -51,14 +51,30 @@ export default function HomePage() {
             </div>
             <span className='font-manrope font-bold text-sm text-primary'>Gửi Yêu Cầu</span>
             <span className='text-[10px] text-slate-500 mt-1 uppercase tracking-wider'>Bảo trì &amp; Sửa chữa</span>
-          </button>
+          </button> */}
+          <Link
+            to={'/resident/GetMaintenanceRequestList'}
+            className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'
+          >
+            <div className='w-12 h-12 rounded-xl bg-secondary-container/20 flex items-center justify-center text-secondary mb-4 group-hover:bg-secondary group-hover:text-white transition-colors'>
+              <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
+                engineering
+              </span>
+            </div>
+            {/* <Link to={'/viewQrcodeMe'}> */}
+            <span className='font-manrope font-bold text-sm text-primary'>Gửi Yêu Cầu</span>
+            {/* </Link> */}
+
+            <span className='text-[10px] text-slate-500 mt-1 uppercase tracking-wider'>Bảo trì &amp; Sửa chữa</span>
+          </Link>
+          
           <button className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'>
             <div className='w-12 h-12 rounded-xl bg-secondary-container/20 flex items-center justify-center text-secondary mb-4 group-hover:bg-secondary group-hover:text-white transition-colors'>
               <span className='material-symbols-outlined' style={{ fontVariationSettings: "'FILL' 1" }}>
                 pool
               </span>
             </div>
-            <span className='font-manrope font-bold text-sm text-primary'>Đặt Tiện Ích</span>
+            <span className='font-manrope font-bold text-sm text-primary'>Xem Tiện Ích</span>
             <span className='text-[10px] text-slate-500 mt-1 uppercase tracking-wider'>Hồ bơi, Gym, BBQ</span>
           </button>
           <button className='flex flex-col items-start p-5 bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95 text-left group'>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { buildingAssignmentsApi } from 'src/apis/building_api/building-assignments.api'
 import { buildingImagesApi } from 'src/apis/building_api/building-images.api'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
@@ -10,6 +10,10 @@ import config from 'src/contexts/config'
 import type { BuildingAssignment } from 'src/types/building-assignment.type'
 import type { BuildingImage } from 'src/types/building-image.type'
 import type { Floor } from 'src/types/floor.type'
+import {
+  buildingStatusBadgeClass,
+  buildingStatusLabel
+} from './building-admin-ui'
 
 type TabKey = 'images' | 'staff' | 'floors'
 
@@ -29,7 +33,8 @@ const getApiErrorMessage = (error: any, fallbackMessage: string) => {
     ['Floor not found', 'Không tìm thấy tầng'],
     ['Invalid building_id (building does not exist)', 'Tòa nhà không tồn tại'],
     ['No fields to update', 'Cần ít nhất một trường để cập nhật'],
-    ['At least one field is required for update', 'Cần ít nhất một trường để cập nhật']
+    ['At least one field is required for update', 'Cần ít nhất một trường để cập nhật'],
+    ['Cannot close building while it still has floors or active apartments. Remove them first.', 'Không thể đóng tòa nhà khi còn tầng hoặc căn hộ đang dùng. Hãy gỡ hết tầng và căn trước.']
   ]
 
   const matched = translatedMessages.find(([en]) => rawMessage.includes(en))
@@ -57,8 +62,10 @@ const logApiError = (scope: string, action: string, error: any) => {
 
 export default function BuildingDetailManagement() {
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { id = '' } = useParams()
+  const buildingsListPath = location.pathname.includes('/admin/buildings') ? '/admin/buildings' : '/buildings'
   const [activeTab, setActiveTab] = useState<TabKey>('images')
   const [screenError, setScreenError] = useState<string | null>(null)
   const [includeDeletedImages, setIncludeDeletedImages] = useState(false)
@@ -227,57 +234,120 @@ export default function BuildingDetailManagement() {
 
   const previewUrl = previewFile ? URL.createObjectURL(previewFile) : null
 
+  if (buildingQuery.isError) {
+    return (
+      <div className='min-h-screen bg-slate-50 px-6 py-8 font-sans md:px-8'>
+        <div className='mx-auto max-w-6xl'>
+          <button
+            type='button'
+            onClick={() => navigate(buildingsListPath)}
+            className='mb-4 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800'
+          >
+            ← Danh sách tòa nhà
+          </button>
+          <div className='rounded-2xl border border-red-100 bg-red-50 px-6 py-5 text-red-800 shadow-sm'>
+            <p className='text-lg font-semibold'>Không tải được tòa nhà</p>
+            <p className='mt-2 text-sm leading-relaxed'>
+              {getApiErrorMessage(buildingQuery.error, 'Tòa nhà không tồn tại hoặc bạn không có quyền xem.')}
+            </p>
+            <p className='mt-3 inline-block rounded-full bg-white/80 px-3 py-1 text-xs font-mono text-red-700'>ID: {id || '—'}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className='min-h-screen bg-[#F8F9FA] p-8 font-sans'>
+    <div className='min-h-screen bg-slate-50 px-6 py-8 font-sans text-slate-900 md:px-8'>
       <div className='mx-auto max-w-6xl'>
-        <div className='mb-8 flex items-start justify-between gap-4'>
+        <div className='mb-8 flex flex-col gap-6 border-b border-slate-200/80 pb-8 md:flex-row md:items-end md:justify-between'>
           <div>
             <button
               type='button'
-              onClick={() => navigate('/buildings')}
-              className='mb-3 text-sm font-medium text-[#0052CC] hover:underline'
+              onClick={() => navigate(buildingsListPath)}
+              className='mb-3 text-sm font-medium text-blue-600 hover:text-blue-800'
             >
-              Quay lại danh sách tòa nhà
+              ← Danh sách tòa nhà
             </button>
-            <span className='rounded bg-[#DDE7FF] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0052CC]'>
-              Building Detail
-            </span>
-            <h1 className='mt-4 text-3xl font-bold text-gray-900'>{building?.name || 'Chi tiết tòa nhà'}</h1>
-            <p className='mt-2 text-sm text-gray-500'>
-              {building ? `${building.code} • ${building.address}` : 'Đang tải thông tin tòa nhà...'}
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800 ring-1 ring-blue-100'>
+                Chi tiết tòa nhà
+              </span>
+              {id ? (
+                <span className='rounded-full bg-slate-100 px-2.5 py-1 font-mono text-xs text-slate-600'>#{id}</span>
+              ) : null}
+            </div>
+            <h1 className='mt-3 text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl'>
+              {buildingQuery.isLoading ? 'Đang tải…' : building?.name || 'Tòa nhà'}
+            </h1>
+            <p className='mt-2 max-w-2xl text-sm leading-relaxed text-slate-600'>
+              {buildingQuery.isLoading
+                ? 'Đang tải thông tin tòa nhà…'
+                : building
+                  ? `${building.code} · ${building.address}`
+                  : 'Không có dữ liệu tòa nhà.'}
             </p>
           </div>
         </div>
 
-        {screenError && <div className='mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600'>{screenError}</div>}
+        {screenError && (
+          <div className='mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm'>{screenError}</div>
+        )}
 
-        <div className='mb-6 grid grid-cols-1 gap-4 md:grid-cols-3'>
-          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
-            <div className='text-sm text-gray-500'>Số tầng</div>
-            <div className='mt-2 text-3xl font-bold text-gray-900'>{building?.totalFloors ?? '--'}</div>
+        <div className='mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3'>
+          <div className='rounded-2xl border border-slate-100 bg-white p-5 shadow-sm'>
+            <div className='text-xs font-semibold uppercase tracking-wide text-slate-500'>Số tầng</div>
+            <div className='mt-2 text-3xl font-bold tabular-nums text-slate-900'>
+              {buildingQuery.isLoading ? '…' : building?.totalFloors ?? '—'}
+            </div>
           </div>
-          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
-            <div className='text-sm text-gray-500'>Số căn hộ</div>
-            <div className='mt-2 text-3xl font-bold text-gray-900'>{building?.totalApartments ?? '--'}</div>
+          <div className='rounded-2xl border border-slate-100 bg-white p-5 shadow-sm'>
+            <div className='text-xs font-semibold uppercase tracking-wide text-slate-500'>Số căn hộ</div>
+            <div className='mt-2 text-3xl font-bold tabular-nums text-slate-900'>
+              {buildingQuery.isLoading ? '…' : building?.totalApartments ?? '—'}
+            </div>
           </div>
-          <div className='rounded-2xl border border-gray-100 bg-white p-5 shadow-sm'>
-            <div className='text-sm text-gray-500'>Trạng thái</div>
-            <div className='mt-2 text-3xl font-bold text-gray-900'>{building?.status ?? '--'}</div>
+          <div className='rounded-2xl border border-slate-100 bg-white p-5 shadow-sm'>
+            <div className='text-xs font-semibold uppercase tracking-wide text-slate-500'>Trạng thái</div>
+            <div className='mt-3'>
+              {buildingQuery.isLoading ? (
+                <span className='text-2xl font-bold text-slate-300'>…</span>
+              ) : (
+                <span
+                  className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${buildingStatusBadgeClass(building?.status)}`}
+                >
+                  {buildingStatusLabel[(building?.status || '').toUpperCase()] || building?.status || '—'}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className='mb-6 flex gap-2'>
+        {building && (Number(building.linkedFloorCount ?? 0) > 0 || Number(building.linkedApartmentCount ?? 0) > 0) && (
+          <div className='mb-8 rounded-xl border border-amber-200/90 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm'>
+            <p className='font-semibold'>Ràng buộc đóng tòa</p>
+            <p className='mt-1 leading-relaxed text-amber-900/95'>
+              Tòa đang có <strong className='tabular-nums'>{building.linkedFloorCount ?? 0}</strong> tầng và{' '}
+              <strong className='tabular-nums'>{building.linkedApartmentCount ?? 0}</strong> căn hộ (không tính căn bảo trì). Chỉ
+              khi không còn tầng và không còn căn hoạt động, bạn mới đóng tòa được từ danh sách tòa nhà.
+            </p>
+          </div>
+        )}
+
+        <div className='mb-8 flex flex-wrap gap-1 rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm'>
           {[
-            { key: 'images', label: 'Images' },
-            { key: 'floors', label: 'Floors' },
-            { key: 'staff', label: 'Staff' }
+            { key: 'images' as const, label: 'Ảnh tòa nhà' },
+            { key: 'floors' as const, label: 'Tầng' },
+            { key: 'staff' as const, label: 'Nhân sự' }
           ].map((tab) => (
             <button
               key={tab.key}
               type='button'
-              onClick={() => setActiveTab(tab.key as TabKey)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                activeTab === tab.key ? 'bg-[#0052CC] text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
+              onClick={() => setActiveTab(tab.key)}
+              className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                activeTab === tab.key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               {tab.label}
@@ -290,8 +360,8 @@ export default function BuildingDetailManagement() {
             <div className='rounded-2xl border border-gray-100 bg-white p-6 shadow-sm'>
               <div className='mb-4 flex items-center justify-between'>
                 <div>
-                  <h2 className='text-xl font-bold text-slate-900'>Upload image</h2>
-                  <p className='mt-1 text-sm text-slate-500'>Chọn ảnh, xem trước rồi mới lưu vào database.</p>
+                  <h2 className='text-xl font-bold text-slate-900'>Ảnh & tải lên</h2>
+                  <p className='mt-1 text-sm text-slate-500'>Chọn ảnh, xem trước rồi lưu vào hệ thống.</p>
                 </div>
                 <label className='flex items-center gap-2 text-sm text-slate-600'>
                   <input
@@ -329,9 +399,9 @@ export default function BuildingDetailManagement() {
                       type='button'
                       disabled={!previewFile || uploadMutation.isPending}
                       onClick={() => previewFile && uploadMutation.mutate(previewFile)}
-                      className='rounded-lg bg-[#0052CC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60'
+                      className='rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60'
                     >
-                      {uploadMutation.isPending ? 'Đang lưu...' : 'Lưu vào DB'}
+                      {uploadMutation.isPending ? 'Đang lưu…' : 'Lưu ảnh'}
                     </button>
                     <button
                       type='button'
@@ -354,17 +424,18 @@ export default function BuildingDetailManagement() {
                       <div className='text-sm text-slate-500'>Chưa có ảnh nào cho tòa nhà này.</div>
                     )}
                     {images.map((image) => {
-                      const src = image.imageUrl.startsWith('http') ? image.imageUrl : `${config.BASEURL}${image.imageUrl}`
+                      const url = image.imageUrl || ''
+                      const src = url.startsWith('http') ? url : `${config.BASEURL}${url}`
                       return (
                         <div key={image.id} className='overflow-hidden rounded-xl border border-slate-200 bg-slate-50'>
                           <img src={src} alt='building' className='h-48 w-full object-cover' />
                           <div className='space-y-3 p-4'>
-                            <div className='truncate text-xs text-slate-500'>{image.imageUrl}</div>
+                            <div className='truncate text-xs text-slate-500'>{url || '—'}</div>
                             <div className={`text-xs font-semibold ${image.deletedAt ? 'text-red-500' : 'text-emerald-600'}`}>
                               {image.deletedAt ? 'Đã xóa' : 'Đang hiển thị'}
                             </div>
                             <div className='flex gap-3 text-sm font-medium'>
-                              <a href={src} target='_blank' rel='noreferrer' className='text-[#0052CC] hover:underline'>
+                              <a href={src} target='_blank' rel='noreferrer' className='text-blue-600 hover:underline'>
                                 Xem ảnh
                               </a>
                               <button
@@ -391,8 +462,8 @@ export default function BuildingDetailManagement() {
           <div className='space-y-6'>
             <div className='rounded-2xl border border-gray-100 bg-white p-6 shadow-sm'>
               <div className='mb-4'>
-                <h2 className='text-xl font-bold text-slate-900'>Assign staff</h2>
-                <p className='mt-1 text-sm text-slate-500'>Chọn nhân sự, gán vào tòa nhà rồi tải lại danh sách ngay trong tab này.</p>
+                <h2 className='text-xl font-bold text-slate-900'>Phân công nhân sự</h2>
+                <p className='mt-1 text-sm text-slate-500'>Gán nhân viên quản lý tòa nhà và vai trò tại đây.</p>
               </div>
 
               <form
@@ -413,7 +484,7 @@ export default function BuildingDetailManagement() {
                   className='rounded-lg border border-slate-200 px-4 py-2.5 text-sm outline-none'
                   required
                 >
-                  <option value=''>{selectedAssignment ? 'Chọn lại nhân sự' : 'Chọn staff'}</option>
+                  <option value=''>{selectedAssignment ? 'Chọn lại nhân sự' : 'Chọn nhân viên'}</option>
                   {(selectedAssignment ? users : availableUsers).map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.fullName || user.username}
@@ -431,9 +502,9 @@ export default function BuildingDetailManagement() {
                   <button
                     type='submit'
                     disabled={saveAssignmentMutation.isPending}
-                    className='rounded-lg bg-[#0052CC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60'
+                    className='rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60'
                   >
-                    {saveAssignmentMutation.isPending ? 'Đang lưu...' : selectedAssignment ? 'Cập nhật' : 'Assign'}
+                    {saveAssignmentMutation.isPending ? 'Đang lưu…' : selectedAssignment ? 'Cập nhật' : 'Gán'}
                   </button>
                   {selectedAssignment && (
                     <button
@@ -490,7 +561,7 @@ export default function BuildingDetailManagement() {
                         <td className='px-6 py-4'>{new Date(assignment.assignedAt).toLocaleDateString('vi-VN')}</td>
                         <td className='px-6 py-4 text-right'>
                           <div className='inline-flex gap-3 text-sm font-medium'>
-                            <button type='button' onClick={() => setSelectedAssignment(assignment)} className='text-[#0052CC] hover:underline'>
+                            <button type='button' onClick={() => setSelectedAssignment(assignment)} className='text-blue-600 hover:underline'>
                               Sửa
                             </button>
                             <button
@@ -535,7 +606,7 @@ export default function BuildingDetailManagement() {
                       setSelectedFloor(null)
                       setIsFloorModalOpen(true)
                     }}
-                    className='rounded-lg bg-[#0052CC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700'
+                    className='rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700'
                   >
                     + Thêm tầng
                   </button>
@@ -595,7 +666,7 @@ export default function BuildingDetailManagement() {
                                   setSelectedFloor(floor)
                                   setIsFloorModalOpen(true)
                                 }}
-                                className='text-[#0052CC] hover:underline'
+                                className='text-blue-600 hover:underline'
                               >
                                 Sửa
                               </button>
@@ -654,7 +725,7 @@ export default function BuildingDetailManagement() {
                             type='number'
                             required
                             defaultValue={selectedFloor?.floorNumber ?? ''}
-                            className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+                            className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
                           />
                         </div>
                         <div>
@@ -662,7 +733,7 @@ export default function BuildingDetailManagement() {
                           <input
                             name='name'
                             defaultValue={selectedFloor?.name ?? ''}
-                            className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+                            className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
                           />
                         </div>
                       </div>
@@ -682,7 +753,7 @@ export default function BuildingDetailManagement() {
                         <button
                           type='submit'
                           disabled={saveFloorMutation.isPending}
-                          className='rounded-lg bg-[#0052CC] px-5 py-2.5 font-bold text-white shadow-md transition hover:bg-blue-700 disabled:opacity-60'
+                          className='rounded-lg bg-blue-600 px-5 py-2.5 font-bold text-white shadow-md transition hover:bg-blue-700 disabled:opacity-60'
                         >
                           {saveFloorMutation.isPending ? 'Đang lưu...' : selectedFloor ? 'Cập nhật' : 'Tạo mới'}
                         </button>

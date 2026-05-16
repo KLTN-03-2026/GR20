@@ -29,19 +29,49 @@ const menuGroups: MenuGroup[] = [
     icon: 'groups',
     items: [
       {
-        path: '/owner/management/residents',
+        path: '/Getresidentlist',
         label: 'Quản lý cư dân',
         icon: 'people'
       },
       {
-        path: '/owner/management/apartments',
+        path: '/Apartment',
         label: 'Quản lý căn hộ',
         icon: 'apartment'
-      },
+      },     
       {
         path: '/residents',
         label: 'Tra cứu thông tin cư dân',
         icon: 'person_search'
+      },
+      {
+        path: '/admin/buildings',
+        label: 'Quản lý tòa nhà',
+        icon: 'location_city'
+      },
+      {
+        path: '/admin/contracts',
+        label: 'Quản lý hợp đồng',
+        icon: 'description'
+      },
+      {
+        path: '/admin/invoices',
+        label: 'Quản lý hóa đơn',
+        icon: 'receipt_long'
+      },
+      {
+        path: '/admin/payments',
+        label: 'Quản lý thanh toán',
+        icon: 'payments'
+      },
+      {
+        path: '/admin/utility-meters',
+        label: 'Quản lý đồng hồ',
+        icon: 'speed'
+      },
+      {
+        path: '/admin/utility-pricing',
+        label: 'Quản lý giá tiện ích',
+        icon: 'sell'
       }
     ]
   },
@@ -66,14 +96,34 @@ const menuGroups: MenuGroup[] = [
         icon: 'receipt_long'
       },
       {
-        path: '/owner/management/services',
+        path: '/admin/amenities',
         label: 'Quản lý tiện ích',
-        icon: 'home_repair_service'
+        icon: 'home_repair_service' 
       },
       {
-        path: '/owner/management/contracts',
+        path: '/admin/contractList',
         label: 'Quản lý hợp đồng',
         icon: 'description'
+      },
+      {
+        path: '/admin/utility-pricing',
+        label: 'Quản lí Giá',
+        icon: 'price_change'
+      },
+      {
+        path: '/admin/utility-meters',
+        label: 'Quản lí Đồng Hồ',
+        icon: 'electric_meter'
+      },
+      {
+        path: '/admin/invoices',
+        label: 'Quản lí Hóa Đơn',
+        icon: 'receipt_long'
+      },
+      {
+        path: '/admin/payments',
+        label: 'Quản lí Thanh Toán',
+        icon: 'payments'
       }
     ]
   },
@@ -83,7 +133,7 @@ const menuGroups: MenuGroup[] = [
     icon: 'bar_chart',
     items: [
       {
-        path: '/owner/management/reports',
+        path: '/statisticsreportpage',
         label: 'Báo cáo thống kê',
         icon: 'analytics'
       },
@@ -108,16 +158,6 @@ const menuGroups: MenuGroup[] = [
         path: '/scanqr',
         label: 'Quét QR',
         icon: 'qr_code_scanner'
-      },
-      {
-        path: '/owner/buildings',
-        label: 'Quản lý tòa nhà',
-        icon: 'business_center'
-      },
-      {
-        path: '/owner/system-monitor',
-        label: 'Theo dõi hệ thống',
-        icon: 'monitor_heart'
       }
     ]
   }
@@ -205,7 +245,7 @@ export default function SidebarOwnerOptimized() {
                 <button
                   onClick={() => toggleGroup(group.label)}
                   className={`w-full flex items-center justify-between px-3 py-3 rounded-2xl
-    transition-all duration-300 border
+transition-all duration-300 border
     ${
       isExpanded
         ? 'bg-blue-100   border-blue-300 text-blue-500 shadow-md'
@@ -276,7 +316,6 @@ export default function SidebarOwnerOptimized() {
           }
         >
           <span className='material-symbols-outlined text-xl flex-shrink-0'>forum</span>
-
           {!isCollapsed && <span className='text-sm truncate flex-1'>Chat cộng đồng</span>}
         </NavLink>
 

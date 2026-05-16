@@ -1,8 +1,25 @@
 const { pool } = require("../../configs/database.config");
 const { AppError } = require("../../common/app-error");
+const ERROR_CODES = require("./utility-meter-errors");
 
 const isUniqueViolation = (err) => err && err.code === "23505";
 const isForeignKeyViolation = (err) => err && err.code === "23503";
+
+/** Số đồng hồ ACTIVE cùng căn + loại (dùng để chặn trùng). excludeId: bỏ qua khi đang cập nhật một bản ghi. */
+const countActiveMetersByApartmentAndType = async ({ apartmentId, meterType, excludeMeterId = null }, client = pool) => {
+  const result = await client.query(
+    `
+      SELECT COUNT(*)::int AS c
+      FROM utility_meters
+      WHERE apartment_id = $1
+        AND meter_type = $2
+        AND status = 'ACTIVE'
+        AND ($3::bigint IS NULL OR id <> $3::bigint)
+    `,
+    [apartmentId, meterType, excludeMeterId]
+  );
+  return result.rows[0]?.c ?? 0;
+};
 
 const createUtilityMeter = async (entity) => {
   const query = `
@@ -15,8 +32,10 @@ const createUtilityMeter = async (entity) => {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
-    if (isUniqueViolation(err)) throw new AppError(409, "meterCode already exists");
-    if (isForeignKeyViolation(err)) throw new AppError(400, "Invalid apartmentId");
+    if (isUniqueViolation(err))
+      throw new AppError(409, "meterCode already exists", undefined, ERROR_CODES.METER_CODE_CONFLICT);
+    if (isForeignKeyViolation(err))
+      throw new AppError(400, "Invalid apartmentId", undefined, ERROR_CODES.INVALID_APARTMENT_ID);
     throw err;
   }
 };
@@ -53,6 +72,15 @@ const getAllUtilityMeters = async ({ meterType, apartmentId, status, page = 0, s
 
 const getUtilityMeterById = async (id) => {
   const result = await pool.query(`SELECT * FROM utility_meters WHERE id = $1 AND status <> 'INACTIVE'`, [id]);
+  return result.rows[0];
+};
+
+/** Bất kỳ trạng thái (dùng khi khôi phục). */
+const getUtilityMeterByIdAnyStatus = async (id) => {
+  const result = await pool.query(
+    `SELECT id, apartment_id, meter_type, status FROM utility_meters WHERE id = $1`,
+    [id]
+  );
   return result.rows[0];
 };
 
@@ -143,18 +171,63 @@ const updateUtilityMeter = async (id, entity) => {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (err) {
-    if (isUniqueViolation(err)) throw new AppError(409, "meterCode already exists");
-    if (isForeignKeyViolation(err)) throw new AppError(400, "Invalid apartmentId");
+    if (isUniqueViolation(err))
+      throw new AppError(409, "meterCode already exists", undefined, ERROR_CODES.METER_CODE_CONFLICT);
+    if (isForeignKeyViolation(err))
+      throw new AppError(400, "Invalid apartmentId", undefined, ERROR_CODES.INVALID_APARTMENT_ID);
     throw err;
   }
 };
 
+/**
+ * Xóa cứng đồng hồ + chỉ số. Không cho phép nếu căn hộ còn cư dân ACTIVE (đang cư trú).
+ */
 const deleteUtilityMeter = async (id) => {
-  const result = await pool.query(
-    `UPDATE utility_meters SET status = 'INACTIVE' WHERE id = $1 AND status <> 'INACTIVE' RETURNING id`,
-    [id]
-  );
-  return result.rows[0];
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const mRes = await client.query(
+      `SELECT id, apartment_id FROM utility_meters WHERE id = $1`,
+      [id],
+    );
+    const meter = mRes.rows[0];
+    if (!meter) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    if (meter.apartment_id != null) {
+      const cRes = await client.query(
+        `SELECT COUNT(*)::int AS c FROM resident_profiles
+         WHERE apartment_id = $1 AND move_out_date IS NULL AND status = 'ACTIVE'`,
+        [meter.apartment_id],
+      );
+      const cnt = cRes.rows[0]?.c ?? 0;
+      if (cnt > 0) {
+        await client.query("ROLLBACK");
+        throw new AppError(
+          400,
+          "Căn hộ đang có cư dân, không được xóa đồng hồ tiện ích.",
+          undefined,
+          ERROR_CODES.UTILITY_METER_DELETE_BLOCKED_RESIDENTS,
+        );
+      }
+    }
+
+    await client.query(`DELETE FROM meter_readings WHERE meter_id = $1`, [id]);
+    await client.query(`DELETE FROM utility_meters WHERE id = $1`, [id]);
+    await client.query("COMMIT");
+    return { id: meter.id };
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_) {
+      /* ignore */
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 const restoreUtilityMeter = async (id) => {
@@ -167,8 +240,10 @@ const restoreUtilityMeter = async (id) => {
 
 module.exports = {
   createUtilityMeter,
+  countActiveMetersByApartmentAndType,
   getAllUtilityMeters,
   getUtilityMeterById,
+  getUtilityMeterByIdAnyStatus,
   getUtilityMetersByUserId,
   getUtilityMeterByUserAndId,
   updateUtilityMeter,

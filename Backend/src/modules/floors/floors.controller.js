@@ -1,5 +1,6 @@
 const { ZodError } = require("zod");
 const { AppError } = require("../../common/app-error");
+const { userMayAccessBuilding } = require("../../common/building-scope");
 const service = require("./floor.service");
 
 // ================= ERROR HANDLER =================
@@ -44,7 +45,7 @@ const createFloor = async (req, res) => {
 // ================= GET ALL =================
 const getAllFloors = async (req, res) => {
   try {
-    const result = await service.getAllFloors(req.query);
+    const result = await service.getAllFloors(req.query, req.user);
 
     res.json({
       operationType: "Success",
@@ -113,6 +114,11 @@ const { pool } = require("../../configs/database.config");
 const getFloorsByBuilding = async (req, res) => {
   try {
     const buildingId = req.params.buildingId;
+    if (!userMayAccessBuilding(req.user, buildingId)) {
+      return res.status(403).json({
+        message: "Forbidden: bạn không có quyền xem tầng của tòa này",
+      });
+    }
     const query = `
       SELECT * FROM floors 
       WHERE building_id = $1 AND deleted_at IS NULL 

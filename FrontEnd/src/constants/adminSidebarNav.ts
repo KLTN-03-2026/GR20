@@ -18,6 +18,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     icon: 'dashboard'
   },
   {
+    label: 'Báo cáo thống kê',
+    description: 'Dân cư, căn hộ, tài chính, yêu cầu dịch vụ',
+    to: '/statistics',
+    icon: 'bar_chart'
+  },
+  {
     label: 'Quản lý vai trò',
     description: 'Tạo/sửa/xóa vai trò',
     to: '/admin/roles',
@@ -106,14 +112,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     group: 'utility'
   },
   {
-    label: 'Quản lý chỉ số',
-    description: 'Meter readings',
-    to: '/admin/meter-readings',
-    icon: 'insights',
-    group: 'utility'
-  },
-  {
-    label: 'Quản lý giá',
+    label: 'Quản lý giá tiện ích',
     description: 'Bảng giá tiện ích',
     to: '/admin/utility-pricing',
     icon: 'sell',

@@ -1,7 +1,6 @@
 const { pool } = require("../../../src/configs/database.config");
 
 
-// src/modules/security/security.resident.repository.js
 const getResidentList = async (options = {}) => {
   const {
     page = 0,
