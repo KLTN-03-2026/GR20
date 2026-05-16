@@ -1,6 +1,6 @@
 import http from '../../utils/http'
 
-// 1. Mang định nghĩa INotification vào đây luôn
+// 1. Mang định nghĩa INotification
 export interface INotification {
   receiverId: number
   notificationId: number
@@ -10,6 +10,8 @@ export interface INotification {
   isRead: boolean
   readAt: string | null
   createdAt: string
+  buildingId?: number | null
+  targetType: 'ALL' | 'BUILDING' | 'INDIVIDUAL'
 }
 
 // 2. Khuôn mẫu trả về của Backend

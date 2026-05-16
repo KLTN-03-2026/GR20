@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { buildingApi } from 'src/apis/building_api/buildings.api'
+import type { Buildings } from 'src/types/buildings.type'
 import { toast } from 'react-toastify'
-import { notificationAdminApi, type INotificationAdmin } from 'src/apis/notification/notificationADMIN.api'
+import {
+  notificationAdminApi,
+  type INotificationAdmin,
+  type IResident
+} from 'src/apis/notification/notificationADMIN.api'
 
-function TypeIcon({ type }: { type: string }) {
-  const cls = 'material-symbols-outlined shrink-0 text-2xl leading-none'
-  switch (type) {
-    case 'PAYMENT':
-      return <span className={`${cls} text-blue-600`}>receipt_long</span>
-    case 'MAINTENANCE':
-      return <span className={`${cls} text-slate-600`}>handyman</span>
-    case 'EMERGENCY':
-      return <span className={`${cls} text-red-600`}>warning</span>
-    default:
-      return <span className={`${cls} text-emerald-600`}>campaign</span>
-  }
+// Giả sử bạn có API lấy danh sách tòa nhà, nếu không thì hardcode tạm
+// import { buildingApi } from 'src/apis/building.api'
+
+interface IBuilding {
+  id: number
+  name: string
 }
 
 export default function AdminNotifications() {
@@ -21,23 +21,41 @@ export default function AdminNotifications() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    type: 'NORMAL',
-    targetType: 'ALL',
-    targetId: ''
-  })
+  // Form
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [targetType, setTargetType] = useState<'ALL' | 'BUILDING' | 'INDIVIDUAL'>('ALL')
+
+  // Tòa nhà
+  const [buildings, setBuildings] = useState<Buildings[]>([])
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | ''>('')
+
+  // Chọn cư dân
+  const [showResidentPicker, setShowResidentPicker] = useState(false)
+  const [residentSearch, setResidentSearch] = useState('')
+  const [residents, setResidents] = useState<IResident[]>([])
+  const [isLoadingResidents, setIsLoadingResidents] = useState(false)
+  const [selectedResident, setSelectedResident] = useState<IResident | null>(null)
+
+  // Load tòa nhà (thay bằng API thật của bạn)
+  // Thay useEffect load buildings — xóa hardcode đi, thay bằng:
+  useEffect(() => {
+    buildingApi
+      .getAllBuildings({ status: 'ACTIVE' })
+      .then((res) => {
+        setBuildings(res.data.data)
+      })
+      .catch(() => {
+        toast.error('Không tải được danh sách tòa nhà')
+      })
+  }, [])
 
   const fetchHistory = async () => {
     try {
       setIsLoading(true)
       const res = await notificationAdminApi.getHistory()
-      if (res.data.success) {
-        setHistory(res.data.data)
-      }
-    } catch (error) {
-      console.error(error)
+      if (res.data.success) setHistory(res.data.data)
+    } catch {
       toast.error('Không tải được lịch sử thông báo')
     } finally {
       setIsLoading(false)
@@ -48,50 +66,90 @@ export default function AdminNotifications() {
     fetchHistory()
   }, [])
 
+  // Khi bấm "Chọn cư dân" — load danh sách theo tòa nhà đã chọn
+  const handleOpenPicker = async () => {
+    if (!selectedBuildingId) {
+      toast.warning('Vui lòng chọn tòa nhà trước')
+      return
+    }
+    setShowResidentPicker(true)
+    setResidentSearch('')
+    setIsLoadingResidents(true)
+    try {
+      const res = await notificationAdminApi.getResidentsByBuilding(Number(selectedBuildingId))
+      if (res.data.success) setResidents(res.data.data)
+    } catch {
+      toast.error('Không tải được danh sách cư dân')
+    } finally {
+      setIsLoadingResidents(false)
+    }
+  }
+
+  // Tìm kiếm realtime trên client (đã có sẵn danh sách)
+  const filteredResidents = residents.filter((r) => r.fullName?.toLowerCase().includes(residentSearch.toLowerCase()))
+
+  const handleSelectResident = (r: IResident) => {
+    setSelectedResident(r)
+    setShowResidentPicker(false)
+  }
+
+  // Reset khi đổi targetType
+  const handleChangeTargetType = (val: 'ALL' | 'BUILDING' | 'INDIVIDUAL') => {
+    setTargetType(val)
+    setSelectedBuildingId('')
+    setSelectedResident(null)
+    setShowResidentPicker(false)
+  }
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.title || !formData.content) {
+    if (!title.trim() || !content.trim()) {
       toast.error('Vui lòng nhập đầy đủ Tiêu đề và Nội dung')
+      return
+    }
+    if (targetType === 'BUILDING' && !selectedBuildingId) {
+      toast.error('Vui lòng chọn tòa nhà')
+      return
+    }
+    if (targetType === 'INDIVIDUAL' && !selectedResident) {
+      toast.error('Vui lòng chọn cư dân')
       return
     }
 
     try {
       setIsSubmitting(true)
-      const payload = {
-        ...formData,
-        targetId: formData.targetId ? Number(formData.targetId) : undefined
-      }
-
-      const res = await notificationAdminApi.sendNotification(payload)
+      const res = await notificationAdminApi.sendNotification({
+        title,
+        content,
+        targetType,
+        buildingId: targetType === 'BUILDING' || targetType === 'INDIVIDUAL' ? Number(selectedBuildingId) : undefined,
+        targetUserId: targetType === 'INDIVIDUAL' ? Number(selectedResident!.userId) : undefined
+      })
       if (res.data.success) {
-        toast.success(res.data.message || 'Gửi thông báo thành công!')
-        setFormData({ title: '', content: '', type: 'NORMAL', targetType: 'ALL', targetId: '' })
+        toast.success('Gửi thông báo thành công!')
+        setTitle('')
+        setContent('')
+        setTargetType('ALL')
+        setSelectedBuildingId('')
+        setSelectedResident(null)
         fetchHistory()
       }
     } catch (error: any) {
-      console.error(error)
-      const msg = error?.response?.data?.message || 'Gửi thông báo thất bại'
-      toast.error(msg)
+      toast.error(error?.response?.data?.message || 'Gửi thông báo thất bại')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleRecall = async (id: number) => {
-    if (
-      !window.confirm('CẢNH BÁO: Bạn có chắc chắn muốn thu hồi thông báo này? Nó sẽ bị xóa khỏi máy của tất cả cư dân.')
-    ) {
-      return
-    }
-
+    if (!window.confirm('Bạn có chắc muốn thu hồi thông báo này?')) return
     try {
       const res = await notificationAdminApi.recallNotification(id)
       if (res.data.success) {
-        toast.success(res.data.message || 'Đã thu hồi thành công')
+        toast.success('Đã thu hồi thành công')
         setHistory((prev) => prev.filter((item) => item.id !== id))
       }
     } catch (error: any) {
-      console.error(error)
       toast.error(error?.response?.data?.message || 'Thu hồi thất bại')
     }
   }
@@ -113,75 +171,156 @@ export default function AdminNotifications() {
         </div>
 
         <div className='grid grid-cols-1 gap-6 lg:grid-cols-12'>
+          {/* ===== FORM GỬI ===== */}
           <div className='lg:col-span-4'>
             <div className='sticky top-24 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm'>
               <h2 className='mb-6 flex items-center gap-2 text-xl font-bold text-gray-900'>
-                <span className='material-symbols-outlined text-[#0052CC]' style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span
+                  className='material-symbols-outlined text-[#0052CC]'
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
                   send
                 </span>
                 Phát thông báo mới
               </h2>
 
               <form onSubmit={handleSend} className='space-y-4'>
+                {/* Tiêu đề */}
                 <div>
                   <label className='mb-1 block text-sm font-semibold text-gray-700'>Tiêu đề</label>
                   <input
                     type='text'
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
                     placeholder='Nhập tiêu đề thông báo...'
                     className={inputCls}
                   />
                 </div>
 
+                {/* Đối tượng nhận */}
                 <div>
-                  <label className='mb-1 block text-sm font-semibold text-gray-700'>Loại thông báo</label>
+                  <label className='mb-1 block text-sm font-semibold text-gray-700'>Đối tượng nhận</label>
                   <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    value={targetType}
+                    onChange={(e) => handleChangeTargetType(e.target.value as any)}
                     className={inputCls}
                   >
-                    <option value='NORMAL'>Thông thường (Tin tức)</option>
-                    <option value='PAYMENT'>Hóa đơn & Biểu phí</option>
-                    <option value='MAINTENANCE'>Bảo trì hệ thống</option>
-                    <option value='EMERGENCY'>Khẩn cấp</option>
+                    <option value='ALL'>Toàn thể cư dân</option>
+                    <option value='BUILDING'>Theo tòa nhà</option>
+                    <option value='INDIVIDUAL'>Gửi cá nhân</option>
                   </select>
                 </div>
 
-                <div className='flex flex-col gap-4 sm:flex-row'>
-                  <div className='min-w-0 flex-1'>
-                    <label className='mb-1 block text-sm font-semibold text-gray-700'>Đối tượng nhận</label>
+                {/* Chọn tòa nhà (hiện khi BUILDING hoặc INDIVIDUAL) */}
+                {(targetType === 'BUILDING' || targetType === 'INDIVIDUAL') && (
+                  <div>
+                    <label className='mb-1 block text-sm font-semibold text-gray-700'>Chọn tòa nhà</label>
                     <select
-                      value={formData.targetType}
-                      onChange={(e) => setFormData({ ...formData, targetType: e.target.value, targetId: '' })}
+                      value={selectedBuildingId}
+                      onChange={(e) => {
+                        setSelectedBuildingId(Number(e.target.value))
+                        setSelectedResident(null) // reset cư dân khi đổi tòa
+                      }}
                       className={inputCls}
                     >
-                      <option value='ALL'>Toàn thể cư dân</option>
-                      <option value='BUILDING'>Theo Tòa nhà</option>
-                      <option value='FLOOR'>Theo Tầng</option>
-                      <option value='INDIVIDUAL'>Gửi cá nhân</option>
+                      <option value=''>-- Chọn tòa nhà --</option>
+                      {buildings.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
+                )}
 
-                  {formData.targetType !== 'ALL' && (
-                    <div className='min-w-0 flex-1'>
-                      <label className='mb-1 block text-sm font-semibold text-gray-700'>Mã (ID) đối tượng</label>
-                      <input
-                        type='number'
-                        value={formData.targetId}
-                        onChange={(e) => setFormData({ ...formData, targetId: e.target.value })}
-                        placeholder={`ID ${formData.targetType}`}
-                        className={inputCls}
-                      />
-                    </div>
-                  )}
-                </div>
+                {/* Chọn cư dân (chỉ INDIVIDUAL) */}
+                {targetType === 'INDIVIDUAL' && (
+                  <div>
+                    <label className='mb-1 block text-sm font-semibold text-gray-700'>Cư dân nhận</label>
 
+                    {/* Hiển thị người đã chọn */}
+                    {selectedResident ? (
+                      <div className='flex items-center justify-between rounded-xl border border-[#0052CC] bg-[#DDE7FF]/40 px-4 py-2.5'>
+                        <div>
+                          <p className='font-semibold text-gray-900'>{selectedResident.fullName}</p>
+                          <p className='text-xs text-gray-500'>{selectedResident.phone}</p>
+                        </div>
+                        <button
+                          type='button'
+                          onClick={() => setSelectedResident(null)}
+                          className='text-gray-400 hover:text-red-500'
+                        >
+                          <span className='material-symbols-outlined text-lg'>close</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type='button'
+                        onClick={handleOpenPicker}
+                        className='w-full rounded-xl border border-dashed border-[#0052CC] py-2.5 text-sm font-semibold text-[#0052CC] hover:bg-[#DDE7FF]/40 transition'
+                      >
+                        + Chọn cư dân
+                      </button>
+                    )}
+
+                    {/* Modal chọn cư dân */}
+                    {showResidentPicker && (
+                      <div className='mt-2 rounded-xl border border-gray-200 bg-white shadow-lg'>
+                        <div className='border-b border-gray-100 p-3'>
+                          <input
+                            autoFocus
+                            type='text'
+                            value={residentSearch}
+                            onChange={(e) => setResidentSearch(e.target.value)}
+                            placeholder='Gõ tên để tìm (vd: nh)...'
+                            className='w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#0052CC]'
+                          />
+                        </div>
+                        <ul className='max-h-52 overflow-y-auto'>
+                          {isLoadingResidents ? (
+                            <li className='py-6 text-center text-sm text-gray-500'>Đang tải...</li>
+                          ) : filteredResidents.length === 0 ? (
+                            <li className='py-6 text-center text-sm text-gray-500'>Không tìm thấy cư dân</li>
+                          ) : (
+                            filteredResidents.map((r) => (
+                              <li key={r.userId}>
+                                <button
+                                  type='button'
+                                  onClick={() => handleSelectResident(r)}
+                                  className='flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50'
+                                >
+                                  <div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DDE7FF] text-sm font-bold text-[#0052CC]'>
+                                    {r.fullName?.charAt(0) ?? '?'}
+                                  </div>
+                                  <div>
+                                    <p className='text-sm font-semibold text-gray-900'>{r.fullName}</p>
+                                    <p className='text-xs text-gray-400'>{r.phone}</p>
+                                  </div>
+                                </button>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                        <div className='border-t border-gray-100 p-2 text-right'>
+                          <button
+                            type='button'
+                            onClick={() => setShowResidentPicker(false)}
+                            className='text-xs text-gray-400 hover:text-gray-700'
+                          >
+                            Đóng
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Nội dung */}
                 <div>
                   <label className='mb-1 block text-sm font-semibold text-gray-700'>Nội dung</label>
                   <textarea
-                    value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
                     placeholder='Nhập nội dung chi tiết...'
                     rows={5}
                     className={`${inputCls} resize-none`}
@@ -201,6 +340,7 @@ export default function AdminNotifications() {
             </div>
           </div>
 
+          {/* ===== LỊCH SỬ ===== */}
           <div className='lg:col-span-8'>
             <div className='rounded-2xl border border-gray-100 bg-white p-6 shadow-sm md:p-8'>
               <div className='mb-8 flex items-start gap-3'>
@@ -223,9 +363,8 @@ export default function AdminNotifications() {
                       className='group relative flex items-start gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-[#0052CC]/30 hover:shadow-md'
                     >
                       <div className='flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gray-50'>
-                        <TypeIcon type={noti.type} />
+                        <span className='material-symbols-outlined text-2xl text-emerald-600'>campaign</span>
                       </div>
-
                       <div className='min-w-0 flex-1 pr-20'>
                         <div className='flex flex-wrap items-center gap-3'>
                           <h3 className='text-lg font-bold text-gray-900'>{noti.title}</h3>
@@ -233,25 +372,13 @@ export default function AdminNotifications() {
                             {new Date(noti.createdAt).toLocaleString('vi-VN')}
                           </span>
                         </div>
-
                         <p className='mt-2 whitespace-pre-wrap text-sm leading-relaxed text-gray-600'>{noti.content}</p>
-
-                        <div className='mt-3 flex flex-wrap gap-2'>
-                          <span className='rounded-full bg-[#DDE7FF] px-3 py-1 text-xs font-bold text-[#0052CC]'>
-                            Loại: {noti.type}
-                          </span>
-                          <span className='rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700'>
-                            Đối tượng: {noti.targetType} {noti.targetId != null && `(ID: ${noti.targetId})`}
-                          </span>
-                        </div>
                       </div>
-
                       <div className='absolute right-4 top-4 opacity-0 transition-opacity group-hover:opacity-100'>
                         <button
                           type='button'
                           onClick={() => handleRecall(noti.id)}
-                          title='Thu hồi thông báo'
-                          className='flex items-center gap-1 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100'
+                          className='flex items-center gap-1 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-100'
                         >
                           <span className='material-symbols-outlined text-lg'>delete</span>
                           Thu hồi

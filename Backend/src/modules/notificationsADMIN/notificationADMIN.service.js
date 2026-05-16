@@ -1,38 +1,56 @@
 const notificationAdminRepository = require("./notificationADMIN.repository");
 const AppError = require("../../common/app-error");
-const {
-  users,
-  residentProfiles,
-  apartments,
-  notificationReceivers,
-} = require("../../db/schema");
+const { users, residentProfiles, apartments } = require("../../db/schema");
 const { db } = require("../../configs/database.config");
-const { eq, inArray } = require("drizzle-orm");
+const { eq, ilike } = require("drizzle-orm");
+
 class NotificationAdminService {
+  // Lấy danh sách cư dân theo tòa nhà (để admin chọn khi gửi cá nhân)
+  async getResidentsByBuilding(buildingId, search = "") {
+    const query = db
+      .selectDistinct({
+        userId: users.id,
+        fullName: users.fullName,
+        phone: users.phone,
+        email: users.email,
+      })
+      .from(residentProfiles)
+      .innerJoin(apartments, eq(residentProfiles.apartmentId, apartments.id))
+      .innerJoin(users, eq(residentProfiles.userId, users.id))
+      .where(eq(apartments.buildingId, buildingId));
+
+    const rows = await query;
+
+    // Lọc theo tên nếu có search
+    if (search.trim()) {
+      const keyword = search.trim().toLowerCase();
+      return rows.filter((r) => r.fullName?.toLowerCase().includes(keyword));
+    }
+
+    return rows;
+  }
+
   async sendNotification(senderId, data) {
-    // 1. Lưu thông báo gốc vào bảng notifications
+    // Lưu thông báo gốc — không còn field type
     const newNotification =
       await notificationAdminRepository.createNotification({
         title: data.title,
         content: data.content,
-        type: data.type,
-        targetType: data.targetType,
-        targetId: data.targetId,
         senderId: senderId,
+        buildingId: data.buildingId ?? null,
+        isBanner: data.isBanner ?? false,
       });
 
     let targetUserIds = [];
 
-    // 2. Logic lọc ID người nhận dựa trên targetType
     switch (data.targetType) {
-      case "ALL":
-        // Lấy tất cả user (hoặc chỉ những user là Cư dân)
+      case "ALL": {
         const all = await db.select({ id: users.id }).from(users);
         targetUserIds = all.map((u) => Number(u.id));
         break;
+      }
 
-      case "BUILDING":
-        // Lọc cư dân thuộc tòa nhà targetId
+      case "BUILDING": {
         const buildingUsers = await db
           .selectDistinct({ id: residentProfiles.userId })
           .from(residentProfiles)
@@ -40,41 +58,24 @@ class NotificationAdminService {
             apartments,
             eq(residentProfiles.apartmentId, apartments.id),
           )
-          .where(eq(apartments.buildingId, data.targetId));
+          .where(eq(apartments.buildingId, data.buildingId));
         targetUserIds = buildingUsers.map((u) => Number(u.id));
         break;
+      }
 
-      case "FLOOR":
-        // Lọc cư dân thuộc tầng targetId
-        const floorUsers = await db
-          .selectDistinct({ id: residentProfiles.userId })
-          .from(residentProfiles)
-          .innerJoin(
-            apartments,
-            eq(residentProfiles.apartmentId, apartments.id),
-          )
-          .where(eq(apartments.floorId, data.targetId));
-        targetUserIds = floorUsers.map((u) => Number(u.id));
+      case "INDIVIDUAL": {
+        targetUserIds = [Number(data.targetUserId)];
         break;
-
-      case "INDIVIDUAL":
-        // Gửi đích danh cho 1 người (targetId chính là userId)
-        targetUserIds = [Number(data.targetId)];
-        break;
+      }
 
       default:
         throw new AppError(400, "Loại đối tượng nhận không hợp lệ");
     }
 
-    // 3. Nếu không tìm thấy ai thỏa điều kiện thì báo lỗi hoặc dừng lại
     if (targetUserIds.length === 0) {
-      throw new AppError(
-        404,
-        "Không tìm thấy cư dân nào thuộc đối tượng này để gửi",
-      );
+      throw new AppError(404, "Không tìm thấy cư dân nào để gửi");
     }
 
-    // 4. Chuẩn bị data và chèn hàng loạt vào notification_receivers
     const receiversData = targetUserIds.map((uId) => ({
       notificationId: Number(newNotification.id),
       userId: uId,
@@ -82,7 +83,6 @@ class NotificationAdminService {
     }));
 
     await notificationAdminRepository.insertReceivers(receiversData);
-
     return newNotification;
   }
 

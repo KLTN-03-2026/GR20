@@ -82,7 +82,7 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>Tiện ích tòa nhà</span>
           </NavLink>
 
-          <NavLink to='/resident/community-chat' className={getNavClass}>
+          <NavLink to='/chat' className={getNavClass}>
             <span className='material-symbols-outlined'>forum</span>
             <span className='text-sm font-manrope'>Chat cộng đồng</span>
           </NavLink>
@@ -92,7 +92,7 @@ export default function SidebarResident() {
       {/* Menu cuối */}
       <div className='mt-auto space-y-1 pt-[50px] border-t border-gray-200'>
         <NavLink
-          to='/resident/notifications'
+          to='/notifications'
           className={({ isActive }) =>
             `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''

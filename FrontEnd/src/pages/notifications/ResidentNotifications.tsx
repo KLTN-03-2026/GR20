@@ -3,11 +3,9 @@ import { toast } from 'react-toastify'
 import { notificationApi, type INotification } from 'src/apis/notification/notification.api'
 
 const TABS: { id: string; label: string; icon: string }[] = [
-  { id: 'ALL', label: 'Tất cả thông báo', icon: 'notifications' },
-  { id: 'PAYMENT', label: 'Hóa đơn & Phí', icon: 'receipt_long' },
-  { id: 'NORMAL', label: 'Tin tức tòa nhà', icon: 'campaign' },
-  { id: 'MAINTENANCE', label: 'Hệ thống', icon: 'handyman' },
-  { id: 'EMERGENCY', label: 'Khẩn cấp', icon: 'warning' }
+  { id: 'ALL', label: 'Thông báo chung', icon: 'notifications' },
+  { id: 'BUILDING', label: 'Thông báo tòa nhà', icon: 'apartment' },
+  { id: 'PERSONAL', label: 'Thông báo cá nhân', icon: 'person' }
 ]
 
 function TypeIcon({ type }: { type: string }) {
@@ -76,8 +74,10 @@ export default function ResidentNotifications() {
   }
 
   const filteredNotifications = notifications.filter((noti) => {
-    if (activeTab === 'ALL') return true
-    return noti.type === activeTab
+    if (activeTab === 'ALL') return noti.targetType === 'ALL'
+    if (activeTab === 'BUILDING') return noti.targetType === 'BUILDING'
+    if (activeTab === 'PERSONAL') return noti.targetType === 'INDIVIDUAL'
+    return true
   })
 
   return (
@@ -93,9 +93,7 @@ export default function ResidentNotifications() {
                     type='button'
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition-all ${
-                      activeTab === tab.id
-                        ? 'bg-[#0052CC] text-white shadow-md'
-                        : 'text-gray-600 hover:bg-gray-50'
+                      activeTab === tab.id ? 'bg-[#0052CC] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
                     <span className='material-symbols-outlined text-xl'>{tab.icon}</span>
