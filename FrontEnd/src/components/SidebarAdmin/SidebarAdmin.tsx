@@ -17,7 +17,7 @@ const menuGroups: MenuGroup[] = [
     icon: 'dashboard',
     items: [
       {
-        path: '/admin/',
+        path: '/admin',
         label: 'Tổng quan hệ thống',
         icon: 'analytics'
       }
@@ -37,7 +37,7 @@ const menuGroups: MenuGroup[] = [
         path: '/Apartment',
         label: 'Quản lý căn hộ',
         icon: 'apartment'
-      },     
+      },
       {
         path: '/residents',
         label: 'Tra cứu thông tin cư dân',
@@ -86,7 +86,7 @@ const menuGroups: MenuGroup[] = [
         icon: 'assignment'
       },
       {
-        path: '/owner/management/staff',
+        path: '/employees',
         label: 'Quản lý nhân viên',
         icon: 'badge'
       },
@@ -98,7 +98,7 @@ const menuGroups: MenuGroup[] = [
       {
         path: '/admin/amenities',
         label: 'Quản lý tiện ích',
-        icon: 'home_repair_service' 
+        icon: 'home_repair_service'
       },
       {
         path: '/admin/contractList',
@@ -166,12 +166,12 @@ const menuGroups: MenuGroup[] = [
 export default function SidebarOwnerOptimized() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(['Tổng quan'])
+  // Chỉ mở một nhóm duy nhất, mặc định mở 'Tổng quan'
+  const [expandedGroup, setExpandedGroup] = useState<string>('Tổng quan')
 
   const toggleGroup = (groupLabel: string) => {
-    setExpandedGroups((prev) =>
-      prev.includes(groupLabel) ? prev.filter((g) => g !== groupLabel) : [...prev, groupLabel]
-    )
+    // Nếu click vào nhóm đang mở thì đóng lại, nếu không thì mở nhóm mới và đóng nhóm cũ
+    setExpandedGroup((prev) => (prev === groupLabel ? '' : groupLabel))
   }
 
   const handleLogout = () => {
@@ -236,7 +236,7 @@ export default function SidebarOwnerOptimized() {
 
       <nav className='flex-1 px-3 py-4 space-y-2 overflow-y-auto overflow-x-hidden'>
         {menuGroups.map((group) => {
-          const isExpanded = expandedGroups.includes(group.label)
+          const isExpanded = expandedGroup === group.label
 
           return (
             <div key={group.label}>
@@ -248,7 +248,7 @@ export default function SidebarOwnerOptimized() {
 transition-all duration-300 border
     ${
       isExpanded
-        ? 'bg-blue-100   border-blue-300 text-blue-500 shadow-md'
+        ? 'bg-blue-100 border-blue-300 text-blue-500 shadow-md'
         : 'border-transparent text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20'
     }`}
                 >
@@ -276,8 +276,9 @@ transition-all duration-300 border
                 </button>
               )}
 
-              {(isCollapsed || isExpanded) && (
-                <div className={`space-y-1 ${!isCollapsed ? 'mt-2' : ''}`}>
+              {/* Chỉ hiển thị items khi đang mở nhóm này */}
+              {!isCollapsed && isExpanded && (
+                <div className='mt-2 space-y-1'>
                   {group.items.map((item) => (
                     <NavLink
                       key={item.path}
@@ -290,12 +291,31 @@ transition-all duration-300 border
                       {!isCollapsed && (
                         <span className='text-sm font-medium truncate flex-1 min-w-0'>{item.label}</span>
                       )}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
 
-                      {isCollapsed && (
-                        <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
-                          {item.label}
-                        </div>
-                      )}
+              {/* Khi sidebar thu nhỏ, vẫn hiển thị items dạng tooltip */}
+              {isCollapsed && (
+                <div className='space-y-1'>
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        `flex items-center justify-center px-2 py-3 rounded-lg transition-colors text-slate-500 hover:text-blue-900 hover:bg-secondary-container/20 relative group ${
+                          isActive ? 'text-blue-900 bg-secondary-container/20' : ''
+                        }`
+                      }
+                      title={item.label}
+                    >
+                      <span className='material-symbols-outlined text-xl flex-shrink-0'>{item.icon}</span>
+
+                      {/* Tooltip khi hover */}
+                      <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+                        {item.label}
+                      </div>
                     </NavLink>
                   ))}
                 </div>
@@ -314,9 +334,15 @@ transition-all duration-300 border
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
             }`
           }
+          title={isCollapsed ? 'Chat cộng đồng' : ''}
         >
           <span className='material-symbols-outlined text-xl flex-shrink-0'>forum</span>
           {!isCollapsed && <span className='text-sm truncate flex-1'>Chat cộng đồng</span>}
+          {isCollapsed && (
+            <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+              Chat cộng đồng
+            </div>
+          )}
         </NavLink>
 
         <NavLink
@@ -326,10 +352,15 @@ transition-all duration-300 border
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
             }`
           }
+          title={isCollapsed ? 'Thông tin cá nhân' : ''}
         >
           <span className='material-symbols-outlined text-xl flex-shrink-0'>account_circle</span>
-
           {!isCollapsed && <span className='text-sm truncate flex-1'>Thông tin cá nhân</span>}
+          {isCollapsed && (
+            <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+              Thông tin cá nhân
+            </div>
+          )}
         </NavLink>
 
         <NavLink
@@ -339,19 +370,28 @@ transition-all duration-300 border
               isActive ? 'text-blue-900 bg-secondary-container/20' : ''
             }`
           }
+          title={isCollapsed ? 'Cài đặt' : ''}
         >
           <span className='material-symbols-outlined text-xl flex-shrink-0'>settings</span>
-
           {!isCollapsed && <span className='text-sm truncate flex-1'>Cài đặt</span>}
+          {isCollapsed && (
+            <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+              Cài đặt
+            </div>
+          )}
         </NavLink>
 
         <button
           onClick={handleLogout}
-          className='w-full flex items-center gap-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
+          className='w-full flex items-center gap-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors relative group'
         >
           <span className='material-symbols-outlined text-xl flex-shrink-0'>logout</span>
-
           {!isCollapsed && <span className='text-sm truncate flex-1'>Đăng xuất</span>}
+          {isCollapsed && (
+            <div className='absolute left-full ml-3 px-2 py-1 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50'>
+              Đăng xuất
+            </div>
+          )}
         </button>
       </div>
     </aside>

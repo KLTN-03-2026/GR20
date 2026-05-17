@@ -44,7 +44,7 @@ import HomePageStaff from './pages/HomePageStaff/HomePageStaff'
 import HomePageManager from './pages/HomePageManager/HomePageManager'
 
 import Apartment from './pages/Apartments/Apartment'
-import ApartmentDetail from './pages/Apartments/ApartmentDetail'
+// import ApartmentDetail from './pages/Apartments/ApartmentDetail'
 import ApartmentForm from './pages/Apartments/ApartmentForm'
 
 import MyApartment from './pages/MyApartment/MyApartment'
@@ -91,6 +91,7 @@ import DashboaedLayoutAdminOrManager from './layout/DashboaedLayoutAdminOrManage
 
 import { ProtectedRoute } from './components/ProtectedRoute/ProtectedRoute'
 import RoleRedirect from './components/RoleRedirect/RoleRedirect'
+import ApartmentDetail from './pages/building management/ApartmentDetail'
 
 export default function useRouteElements() {
   const { user } = useContext(AppContext)
@@ -256,7 +257,7 @@ export default function useRouteElements() {
 
     // QR USER
     {
-      path: '/resident/qrcode',
+      path: '/qrcode',
       element: <ProtectedRoute allowedRoles={[ROLES.RESIDENT, ROLES.ADMIN, ROLES.MANAGER]} />,
       children: [
         {
@@ -393,9 +394,9 @@ export default function useRouteElements() {
         {
           index: true,
           element: (
-            <DashboardLayoutProtect>
+            <DashboaedLayoutAdmin>
               <AdminNotifications />
-            </DashboardLayoutProtect>
+            </DashboaedLayoutAdmin>
           )
         }
       ]
@@ -404,11 +405,30 @@ export default function useRouteElements() {
     // CHAT
     {
       path: '/chat',
-      element: (
-        <DashboardLayoutUser>
-          <ChatPage />
-        </DashboardLayoutUser>
-      )
+      element: <ProtectedRoute />,
+      children: [
+        {
+          index: true,
+          element:
+            user?.roles?.[0] === ROLES.ADMIN ? (
+              <DashboaedLayoutAdmin>
+                <ChatPage />
+              </DashboaedLayoutAdmin>
+            ) : user?.roles?.[0] === ROLES.RESIDENT ? (
+              <DashboardLayoutUser>
+                <ChatPage />
+              </DashboardLayoutUser>
+            ) : user?.roles?.[0] === ROLES.SECURITY ? (
+              <DashboardLayoutProtect>
+                <ChatPage />
+              </DashboardLayoutProtect>
+            ) : (
+              <DashboaedLayoutStaff>
+                <ChatPage />
+              </DashboaedLayoutStaff>
+            )
+        }
+      ]
     },
 
     // ADMIN QR

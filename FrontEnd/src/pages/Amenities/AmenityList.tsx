@@ -1,78 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import http from 'src/utils/http';
-import AmenityForm from './AmenityForm.tsx';
+import React, { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import http from 'src/utils/http'
+import AmenityForm from './AmenityForm.tsx'
 
 interface AmenityListProps {
-  isResident?: boolean;
+  isResident?: boolean
 }
 
 export default function AmenityList({ isResident = false }: AmenityListProps) {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
   const toAmenityDetail = (amenityId: number) =>
-    isResident ? `/my-amenities/${amenityId}` : `/admin/amenities/${amenityId}`;
-  const queryClient = useQueryClient();
-  const [selectedBuilding, setSelectedBuilding] = useState('1');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [showNotification, setShowNotification] = useState(false);
+    isResident ? `/my-amenities/${amenityId}` : `/admin/amenities/${amenityId}`
+  const queryClient = useQueryClient()
+  const [selectedBuilding, setSelectedBuilding] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [showNotification, setShowNotification] = useState(false)
 
   // Fetch buildings
   const { data: buildingData } = useQuery({
     queryKey: ['buildings'],
-    queryFn: () => http.get('/api/buildings'),
-  });
-  const buildings = buildingData?.data?.data || [];
+    queryFn: () => http.get('/api/buildings')
+  })
+  const buildings = buildingData?.data?.data || []
+
+  useEffect(() => {
+    if (buildings.length > 0 && !selectedBuilding) {
+      setSelectedBuilding(String(buildings[0].id))
+    }
+  }, [buildings, selectedBuilding])
 
   // Fetch amenities
   const { data } = useQuery({
     queryKey: ['amenities', selectedBuilding, statusFilter],
     queryFn: () => {
-      const params: any = { size: 50 };
-      if (statusFilter) params.status = statusFilter;
-      return http.get(`/api/buildings/${selectedBuilding}/amenities`, { params });
+      const params: any = { size: 50 }
+      if (statusFilter) params.status = statusFilter
+      return http.get(`/api/buildings/${selectedBuilding}/amenities`, { params })
     },
-    enabled: !!selectedBuilding,
-  });
+    enabled: !!selectedBuilding
+  })
 
-  const amenities = data?.data?.data || [];
-  const totalItems = data?.data?.totalElements || 0;
-  const activeCount = amenities.filter((a: any) => a.status === 'OPEN').length;
+  const amenities = data?.data?.data || []
+  const totalItems = data?.data?.totalElements || 0
+  const activeCount = amenities.filter((a: any) => a.status === 'OPEN').length
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: number) => http.delete(`/api/amenities/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['amenities'] });
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 3000);
-    },
-  });
+      queryClient.invalidateQueries({ queryKey: ['amenities'] })
+      setShowNotification(true)
+      setTimeout(() => setShowNotification(false), 3000)
+    }
+  })
 
   const getStatusBadge = (status: string, reason?: string) => {
     switch (status) {
       case 'OPEN':
-        return { label: 'Hoạt động', className: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' };
+        return { label: 'Hoạt động', className: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500' }
       case 'CLOSED':
-        return { label: 'Tạm đóng', className: 'bg-red-100 text-red-700', dot: 'bg-red-500', reason };
+        return { label: 'Tạm đóng', className: 'bg-red-100 text-red-700', dot: 'bg-red-500', reason }
       case 'MAINTENANCE':
-        return { label: 'Bảo trì', className: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500', reason };
+        return { label: 'Bảo trì', className: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500', reason }
       default:
-        return { label: status, className: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' };
+        return { label: status, className: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' }
     }
-  };
+  }
 
   return (
     <div className='min-h-screen pb-10'>
       {/* Header */}
-      <header className='sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center justify-between'>
+      <header className='sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 h-16 flex items-center justify-between'>
         <div className='flex items-center gap-6'>
-          <span className='text-xl font-bold text-slate-900'>
-            {isResident ? 'Tiện ích' : 'Quản lý tiện ích'}
-          </span>
+          <span className='text-xl font-bold text-slate-900'>{isResident ? 'Tiện ích' : 'Quản lý tiện ích'}</span>
           {/* <select
             value={selectedBuilding}
             onChange={(e) => setSelectedBuilding(e.target.value)}

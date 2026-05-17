@@ -1,23 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apartmentApi } from 'src/apis/apartment_api/apartment_api';
-import http from 'src/utils/http';
+import React, { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { apartmentApi } from 'src/apis/apartment_api/apartment_api'
+import http from 'src/utils/http'
 
 interface ApartmentFormProps {
-  apartmentId: number | null; // null = thêm mới, có id = sửa
-  isOpen: boolean;
-  onClose: () => void;
+  apartmentId: number | null // null = thêm mới, có id = sửa
+  isOpen: boolean
+  onClose: () => void
 }
 
 interface FormData {
-  apartmentCode: string;
-  buildingId: string;
-  floorId: string;
-  area: string;
-  bedrooms: number;
-  bathrooms: number;
-  balconyDirection: string;
-  status: string;
+  apartmentCode: string
+  buildingId: string
+  floorId: string
+  area: string
+  bedrooms: number
+  bathrooms: number
+  balconyDirection: string
+  status: string
 }
 
 const initialFormData: FormData = {
@@ -28,49 +28,49 @@ const initialFormData: FormData = {
   bedrooms: 1,
   bathrooms: 1,
   balconyDirection: '',
-  status: 'AVAILABLE',
-};
+  status: 'AVAILABLE'
+}
 
-const balconyDirections = ['NORTH', 'SOUTH', 'EAST', 'WEST', 'NORTHEAST', 'NORTHWEST', 'SOUTHEAST', 'SOUTHWEST'];
+const balconyDirections = ['NORTH', 'SOUTH', 'EAST', 'WEST', 'NORTHEAST', 'NORTHWEST', 'SOUTHEAST', 'SOUTHWEST']
 const statusOptions = [
   { value: 'AVAILABLE', label: 'Còn trống' },
   { value: 'OCCUPIED', label: 'Đã cho thuê' },
-  { value: 'MAINTENANCE', label: 'Bảo trì' },
-];
+  { value: 'MAINTENANCE', label: 'Bảo trì' }
+]
 
 export default function ApartmentForm({ apartmentId, isOpen, onClose }: ApartmentFormProps) {
-  const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [buildings, setBuildings] = useState<any[]>([]);
-  const [floors, setFloors] = useState<any[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const queryClient = useQueryClient()
+  const [formData, setFormData] = useState<FormData>(initialFormData)
+  const [buildings, setBuildings] = useState<any[]>([])
+  const [floors, setFloors] = useState<any[]>([])
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const isEdit = apartmentId !== null;
+  const isEdit = apartmentId !== null
 
   // Fetch buildings
   useEffect(() => {
-    http.get('/api/buildings').then(res => setBuildings(res.data?.data || []));
-  }, []);
+    http.get('/api/buildings').then((res) => setBuildings(res.data?.data || []))
+  }, [])
 
   // Fetch floors khi chọn building
   useEffect(() => {
     if (formData.buildingId) {
-      http.get(`/api/floors/building/${formData.buildingId}`).then(res => setFloors(res.data?.data || []));
+      http.get(`/api/floors/building/${formData.buildingId}`).then((res) => setFloors(res.data?.data || []))
     } else {
-      setFloors([]);
+      setFloors([])
     }
-  }, [formData.buildingId]);
+  }, [formData.buildingId])
 
   // Fetch apartment detail nếu là edit
   const { data: apartmentDetail } = useQuery({
     queryKey: ['apartment', apartmentId],
     queryFn: () => apartmentApi.getApartmentById(apartmentId!),
-    enabled: isEdit && !!apartmentId,
-  });
+    enabled: isEdit && !!apartmentId
+  })
 
   useEffect(() => {
     if (apartmentDetail && isEdit) {
-      const detail = apartmentDetail?.data?.data || apartmentDetail?.data;
+      const detail = apartmentDetail?.data?.data || apartmentDetail?.data
       setFormData({
         apartmentCode: detail.apartmentCode || '',
         buildingId: detail.buildingId?.toString() || '',
@@ -79,70 +79,90 @@ export default function ApartmentForm({ apartmentId, isOpen, onClose }: Apartmen
         bedrooms: detail.bedrooms || 1,
         bathrooms: detail.bathrooms || 1,
         balconyDirection: detail.balconyDirection || '',
-        status: detail.status || 'AVAILABLE',
-      });
+        status: detail.status || 'AVAILABLE'
+      })
     }
-  }, [apartmentDetail, isEdit]);
+  }, [apartmentDetail, isEdit])
 
   // Reset form khi đóng
   useEffect(() => {
     if (!isOpen) {
-      setFormData(initialFormData);
-      setErrors({});
+      setFormData(initialFormData)
+      setErrors({})
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: any) => apartmentApi.createApartment(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apartments'] });
-      onClose();
+    onError: (err: any) => {
+      const message = err.response?.data?.message
+      if (message?.includes('already exists')) {
+        setErrors({ apartmentCode: 'Mã căn hộ này đã tồn tại' })
+      }
     },
-  });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['apartments'] })
+      onClose()
+    }
+  })
 
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => apartmentApi.updateApartment(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apartments'] });
-      queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId?.toString()] });
-      onClose();
+    onError: (err: any) => {
+      const message = err.response?.data?.message
+      if (message?.includes('đã tồn tại')) {
+        setErrors({ apartmentCode: message })
+      }
     },
-  });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['apartments'] })
+      queryClient.invalidateQueries({ queryKey: ['apartment', apartmentId?.toString()] })
+      onClose()
+    }
+  })
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.apartmentCode.trim()) newErrors.apartmentCode = 'Vui lòng nhập số căn hộ';
-    if (!formData.buildingId) newErrors.buildingId = 'Vui lòng chọn tòa nhà';
-    if (!formData.floorId) newErrors.floorId = 'Vui lòng chọn tầng';
-    if (!formData.area || Number(formData.area) <= 0) newErrors.area = 'Diện tích không hợp lệ';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    const newErrors: Record<string, string> = {}
+    if (!formData.apartmentCode.trim()) newErrors.apartmentCode = 'Vui lòng nhập số căn hộ'
+    if (!formData.buildingId) newErrors.buildingId = 'Vui lòng chọn tòa nhà'
+    if (!formData.floorId) newErrors.floorId = 'Vui lòng chọn tầng'
+    if (!formData.area || Number(formData.area) <= 0) newErrors.area = 'Diện tích không hợp lệ'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
 
-    // 🆕 BẮT LỖI LOGIC
-    const currentStatus = apartmentDetail?.data?.data?.status
-    const currentOwner = apartmentDetail?.data?.data?.owner
+    // Kiểm tra logic trạng thái
+    if (isEdit) {
+      const currentStatus = apartmentDetail?.data?.data?.status
+      const currentOwner = apartmentDetail?.data?.data?.owner
+      const newStatus = formData.status
 
-    // Nếu đang là OCCUPIED và có chủ, không cho chuyển thành AVAILABLE
-    if (formData.status === 'AVAILABLE' && currentOwner && isEdit) {
-      setErrors({
-        status: 'Không thể chuyển thành "Còn trống" vì căn hộ đang có chủ sở hữu. Vui lòng chuyển chủ sở hữu trước.'
-      })
-      return
-    }
+      // 1. Chuyển sang AVAILABLE
+      if (newStatus === 'AVAILABLE') {
+        if (currentStatus === 'OCCUPIED' && currentOwner) {
+          setErrors({
+            status: 'Không thể chuyển thành "Còn trống" vì căn hộ đang có chủ sở hữu. Vui lòng xóa chủ hộ trước.'
+          })
+          return
+        }
+      }
 
-    // Nếu đang là AVAILABLE và chọn OCCUPIED, phải có chủ sở hữu
-    if (formData.status === 'OCCUPIED' && !currentOwner && isEdit) {
-      setErrors({
-        status: 'Không thể chuyển thành "Đã cho thuê" vì căn hộ chưa có chủ sở hữu. Vui lòng tạo hợp đồng trước.'
-      })
-      return
+      // 2. Chuyển sang OCCUPIED
+      if (newStatus === 'OCCUPIED') {
+        // Nếu đang AVAILABLE hoặc MAINTENANCE và KHÔNG có owner → chặn
+        if ((currentStatus === 'AVAILABLE' || currentStatus === 'MAINTENANCE') && !currentOwner) {
+          setErrors({
+            status: 'Không thể chuyển thành "Đã cho thuê" vì căn hộ chưa có chủ sở hữu. Vui lòng thêm chủ hộ trước.'
+          })
+          return
+        }
+      }
     }
 
     const payload = {
@@ -161,14 +181,14 @@ export default function ApartmentForm({ apartmentId, isOpen, onClose }: Apartmen
     } else {
       createMutation.mutate(payload)
     }
-  };
+  }
 
   const handleChange = (field: keyof FormData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
-  };
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }))
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className='fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 md:p-8'>
@@ -345,6 +365,7 @@ export default function ApartmentForm({ apartmentId, isOpen, onClose }: Apartmen
                 handleChange('status', e.target.value)
                 if (errors.status) setErrors((prev) => ({ ...prev, status: '' }))
               }}
+              disabled={!isEdit}
               className={`w-full bg-slate-50 border ${errors.status ? 'border-red-300' : 'border-slate-200'} rounded-lg p-3 text-sm text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all`}
             >
               {statusOptions.map((s) => (
@@ -353,6 +374,7 @@ export default function ApartmentForm({ apartmentId, isOpen, onClose }: Apartmen
                 </option>
               ))}
             </select>
+            {!isEdit && <p className='text-[11px] text-slate-400 mt-1'>Mặc định "Còn trống" khi thêm mới</p>}
             {errors.status && (
               <p className='text-red-500 text-xs mt-1 flex items-center gap-1'>
                 <span className='material-symbols-outlined text-sm'>warning</span>

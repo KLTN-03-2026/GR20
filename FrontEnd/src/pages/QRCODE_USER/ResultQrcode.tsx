@@ -261,7 +261,7 @@ export default function ResultQrcodePage() {
           <span className='material-symbols-outlined text-6xl text-slate-400 mb-4'>qr_code_scanner</span>
           <p className='text-on-surface-variant mb-4'>Không có dữ liệu QR</p>
           <div className='flex gap-4 justify-center'>
-            <button onClick={() => navigate('/qr-management')} className='px-6 py-2 bg-primary text-white rounded-full'>
+            <button onClick={() => navigate('/security/')} className='px-6 py-2 bg-primary text-white rounded-full'>
               Về trang chủ
             </button>
             <button

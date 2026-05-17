@@ -62,7 +62,7 @@ export const menuConfig: MenuItem[] = [
   {
     id: 'admin-qr-resident',
     name: 'Quản lý mã QR',
-    path: '/resident/qrcode',
+    path: '/qrcode',
     icon: 'qr_code_2',
     keywords: ['qr', 'mã qr', 'quản lý qr', 'qr cư dân', 'qr khách', 'lịch sử quét'],
     roles: ['Người Dùng']
@@ -96,7 +96,15 @@ export const menuConfig: MenuItem[] = [
     name: 'Tra cứu căn hộ',
     path: '/Apartment',
     icon: 'apartment',
-    keywords: ['căn hộ', 'tra cứu căn hộ', 'apartment', 'thông tin căn hộ', 'thêm cư dân', 'Thêm mới căn hộ', 'Sửa căn hộ'],
+    keywords: [
+      'căn hộ',
+      'tra cứu căn hộ',
+      'apartment',
+      'thông tin căn hộ',
+      'thêm cư dân',
+      'Thêm mới căn hộ',
+      'Sửa căn hộ'
+    ],
     roles: ['Bảo vệ', 'ADMIN']
   },
   {
@@ -112,7 +120,14 @@ export const menuConfig: MenuItem[] = [
     name: 'Tra cứu tiện ích',
     path: '/admin/amenities',
     icon: 'pool',
-    keywords: ['tiện ích', 'tra cứu tiện ích', 'amenity', 'thông tin tiện ích', 'tiện ích tòa nhà', 'Thêm mới tiện ích'],
+    keywords: [
+      'tiện ích',
+      'tra cứu tiện ích',
+      'amenity',
+      'thông tin tiện ích',
+      'tiện ích tòa nhà',
+      'Thêm mới tiện ích'
+    ],
     roles: ['ADMIN']
   },
   {
@@ -139,7 +154,7 @@ export const menuConfig: MenuItem[] = [
     keywords: ['tiện ích', 'tra cứu tiện ích', 'amenity', 'thông tin tiện ích', 'tiện ích tòa nhà'],
     roles: ['Người Dùng']
   },
-{
+  {
     id: 'building-management',
     name: 'Quản lý tòa nhà',
     path: '/admin/buildings',

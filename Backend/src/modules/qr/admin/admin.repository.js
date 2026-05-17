@@ -1156,7 +1156,7 @@ const getGuestQrHistory = async (guestQrId, options = {}) => {
 
   const whereClause = `WHERE ${conditions.join(" AND ")}`;
 
-  // 👉 SỬA: Dùng snapshot từ access_logs thay vì JOIN visitors
+  // 👉 ĐÃ SỬA: Thêm visitor_id_card và building_name
   const dataQuery = `
     SELECT 
       al.id,
@@ -1167,17 +1167,21 @@ const getGuestQrHistory = async (guestQrId, options = {}) => {
       al.scanned_by,
       al.snapshot_visitor_name AS visitor_name,
       al.snapshot_visitor_phone AS visitor_phone,
+      v.id_card AS visitor_id_card,
       gq.qr_code,
       gq.valid_from,
       gq.valid_to,
       gq.max_entries,
       gq.used_entries,
       a.apartment_code,
+      b.name AS building_name,
       u.full_name AS host_name,
       guard.full_name AS scanned_by_name
     FROM access_logs al
     LEFT JOIN guest_qr_codes gq ON gq.id = al.qr_code_id
     LEFT JOIN apartments a ON a.id = gq.apartment_id
+    LEFT JOIN buildings b ON b.id = a.building_id
+    LEFT JOIN visitors v ON v.id = gq.visitor_id
     LEFT JOIN users u ON u.id = gq.host_user_id
     LEFT JOIN users guard ON guard.id = al.scanned_by
     ${whereClause}
@@ -1204,6 +1208,7 @@ const getGuestQrHistory = async (guestQrId, options = {}) => {
     pageSize: parseInt(limit),
   };
 };
+
 const getAllGuestQrs = async (options = {}) => {
   const {
     page = 1,

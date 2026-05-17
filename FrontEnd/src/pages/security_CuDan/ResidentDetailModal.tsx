@@ -12,20 +12,47 @@ export default function ResidentDetailPage() {
     enabled: !!id
   })
 
-  // Vì getResidentDetail trả về SuccessResponseApi<ResidentDetail>
-  // Nên residentResponse?.data là ResidentDetail
   const resident = residentResponse?.data.data
 
   // console.log(resident.contracts)
+
+  const getTodayAccessCount = () => {
+    if (!resident?.accessHistory?.recentLogs) return 0
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    return resident.accessHistory.recentLogs.filter((log) => {
+      const logDate = new Date(log.scanTime)
+      logDate.setHours(0, 0, 0, 0)
+      return logDate.getTime() === today.getTime()
+    }).length
+  }
+
+  const getLastAccessTime = () => {
+    if (!resident?.accessHistory?.recentLogs || resident.accessHistory.recentLogs.length === 0) {
+      return null
+    }
+    // Sort by scanTime descending and get the first one
+    const sorted = [...resident.accessHistory.recentLogs].sort(
+      (a, b) => new Date(b.scanTime).getTime() - new Date(a.scanTime).getTime()
+    )
+    return sorted[0].scanTime
+  }
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Chưa cập nhật'
     return new Date(dateString).toLocaleDateString('vi-VN')
   }
 
+  // const formatDateTime = (dateString: string | null | undefined) => {
+  //   if (!dateString) return 'Chưa có'
+  //   return new Date(dateString).toLocaleString('vi-VN')
+  // }
   const formatDateTime = (dateString: string) => {
-    if (!dateString) return 'Chưa có'
-    return new Date(dateString).toLocaleString('vi-VN')
+    const date = new Date(dateString)
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000) // Cộng thêm 7 tiếng
+    return `${vnDate.getHours().toString().padStart(2, '0')}:${vnDate.getMinutes().toString().padStart(2, '0')}:${vnDate.getSeconds().toString().padStart(2, '0')} - ${vnDate.getDate()}/${vnDate.getMonth() + 1}/${vnDate.getFullYear()}`
   }
 
   const getGenderLabel = (gender: string) => {
@@ -308,7 +335,7 @@ export default function ResidentDetailPage() {
           </div>
 
           {/* Access History: Glass Insight Style */}
-          <div className='md:col-span-1 bg-white/60 backdrop-blur-xl rounded-3xl p-8 border border-white shadow-2xl relative overflow-hidden'>
+          {/* <div className='md:col-span-1 bg-white/60 backdrop-blur-xl rounded-3xl p-8 border border-white shadow-2xl relative overflow-hidden'>
             <div className='absolute top-0 right-0 p-4 opacity-5'>
               <span className='material-symbols-outlined text-8xl' style={{ fontVariationSettings: "'FILL' 1" }}>
                 security
@@ -343,13 +370,46 @@ export default function ResidentDetailPage() {
                 </div>
               ))}
             </div>
+          </div> */}
+          {/* Access History: Glass Insight Style */}
+          <div className='md:col-span-1 bg-white/60 backdrop-blur-xl rounded-3xl p-8 border border-white shadow-2xl relative overflow-hidden'>
+            <div className='absolute top-0 right-0 p-4 opacity-5'>
+              <span className='material-symbols-outlined text-8xl' style={{ fontVariationSettings: "'FILL' 1" }}>
+                security
+              </span>
+            </div>
+            <h3 className='text-xs font-bold uppercase tracking-[0.15em] text-on-surface-variant mb-6'>
+              Lịch sử ra vào
+            </h3>
+            <div className='flex items-center gap-4 mb-8'>
+              <div className='w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary'>
+                <span className='text-2xl font-black'>{getTodayAccessCount()}</span>
+              </div>
+              <div>
+                <p className='text-xs font-bold text-on-surface-variant uppercase tracking-widest'>
+                  Số lần vào hôm nay
+                </p>
+                <p className='text-[10px] text-slate-500'>Lần cuối: {formatDateTime(getLastAccessTime() || '')}</p>
+              </div>
+            </div>
+            <div className='space-y-4'>
+              {resident.accessHistory?.recentLogs?.slice(0, 3).map((log, idx) => (
+                <div key={idx} className='flex items-center gap-3 p-3 bg-surface-container-low rounded-xl'>
+                  <span className='material-symbols-outlined text-green-600'>check_circle</span>
+                  <div className='flex-1'>
+                    <p className='text-xs font-bold text-on-surface'>ĐÃ CẤP QUYỀN</p>
+                    <p className='text-[10px] text-slate-500'>{formatDateTime(log.scanTime)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Footer Meta */}
         <div className='mt-12 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-400'>
           <div className='flex gap-8'>
-            <span>Cập nhật lần cuối: {formatDateTime(new Date())}</span>
+            <span>Cập nhật lần cuối: {formatDateTime(new Date().toISOString())}</span>
             <span>Mã hệ thống: HL-{resident.personalInfo?.id}</span>
           </div>
           <div className='flex items-center gap-2'>

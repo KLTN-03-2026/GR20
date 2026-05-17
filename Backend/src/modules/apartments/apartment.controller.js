@@ -24,6 +24,7 @@ const sendError = (res, err) => {
 // CREATE
 const createApartment = async (req, res) => {
   try {
+    console.log('📝 CREATE BODY:', JSON.stringify(req.body));
     const data = await service.createApartment(req.body);
 
     res.status(201).json({
@@ -117,6 +118,7 @@ const getApartmentById = async (req, res) => {
 // UPDATE
 const updateApartment = async (req, res) => {
   try {
+     console.log('📝 UPDATE BODY:', JSON.stringify(req.body));
     const data = await service.updateApartment(req.params.id, req.body);
 
     res.json({
@@ -127,6 +129,7 @@ const updateApartment = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
+    console.log('❌ UPDATE ERROR:', err.message);
     sendError(res, err);
   }
 };

@@ -56,12 +56,12 @@ export default function SidebarStaff() {
             <span className='text-sm font-manrope'>Quản lý yêu cầu cư dân</span>
           </NavLink>
 
-          <NavLink to='/staff/residents' className={getNavClass}>
+          {/* <NavLink to='/staff/residents' className={getNavClass}>
             <span className='material-symbols-outlined'>groups</span>
             <span className='text-sm font-manrope'>Danh sách cư dân</span>
-          </NavLink>
+          </NavLink> */}
 
-          <NavLink to='/staff/community-chat' className={getNavClass}>
+          <NavLink to='/chat' className={getNavClass}>
             <span className='material-symbols-outlined'>forum</span>
             <span className='text-sm font-manrope'>Chat cộng đồng</span>
           </NavLink>
@@ -69,39 +69,6 @@ export default function SidebarStaff() {
       </div>
 
       {/* Menu cuối */}
-      <div className='mt-auto space-y-1 pt-[100px] border-t border-gray-200'>
-        <NavLink
-          to='/profile'
-          className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-            }`
-          }
-        >
-          <span className='material-symbols-outlined'>account_circle</span>
-          <span className='text-sm'>Thông tin cá nhân</span>
-        </NavLink>
-
-        <NavLink
-          to='/staff/settings'
-          className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-            }`
-          }
-        >
-          <span className='material-symbols-outlined'>settings</span>
-          <span className='text-sm'>Cài đặt</span>
-        </NavLink>
-
-        <button
-          onClick={handleLogout}
-          className='w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
-        >
-          <span className='material-symbols-outlined'>logout</span>
-          <span className='text-sm'>Đăng xuất</span>
-        </button>
-      </div>
     </aside>
   )
 }

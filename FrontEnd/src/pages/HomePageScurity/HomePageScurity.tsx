@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { DashboardApi } from 'src/apis/TongQuanProtection/TongQuanProtection.api'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 
 export default function HomePageSecurity() {
@@ -83,7 +83,7 @@ export default function HomePageSecurity() {
 
   return (
     <div className='bg-surface text-on-surface min-h-screen'>
-      <main className='flex-1 px-6 lg:px-40 py-10 max-w-[1600px] mx-auto w-full'>
+      <main className='flex-1 px-6 lg:px-10 py-10 max-w-[1600px] mx-auto w-full'>
         {/* Header Section */}
         <div className='flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12'>
           <div className='flex flex-col gap-3'>

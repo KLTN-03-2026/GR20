@@ -315,13 +315,18 @@ export function HistoryGuestQRModal({ guestQR, onClose }: HistoryGuestQRModalPro
 
   // Format datetime
   const formatDateTime = (dateString: string) => {
+    if (!dateString) return { date: '---', time: '---' }
     const date = new Date(dateString)
-    const hours = date.getHours()
-    const ampm = hours >= 12 ? 'CH' : 'SA'
-    const displayHours = hours % 12 || 12
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000) // Cộng thêm 7 tiếng
+    const hours = vnDate.getHours().toString().padStart(2, '0')
+    const minutes = vnDate.getMinutes().toString().padStart(2, '0')
+    const seconds = vnDate.getSeconds().toString().padStart(2, '0')
+    const day = vnDate.getDate().toString().padStart(2, '0')
+    const month = (vnDate.getMonth() + 1).toString().padStart(2, '0')
+    const year = vnDate.getFullYear()
     return {
-      date: `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`,
-      time: `${displayHours}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')} ${ampm}`
+      date: `${day}/${month}/${year}`,
+      time: `${hours}:${minutes}:${seconds}`
     }
   }
 

@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react'
 import http from 'src/utils/http'
 import ApartmentForm from './ApartmentForm'
 import DeleteConfirmModal from './DeleteConfirmModal'
-import AIAssistantWidget from 'src/components/AIAssistantWidget'
 
 export default function Apartment() {
   const navigate = useNavigate()
@@ -381,8 +380,6 @@ export default function Apartment() {
           </div>
         </div>
       </div>
-
-      {/* <AIAssistantWidget occupancyRate={stats.occupancyRate} expiringContracts={stats.expiringContracts} /> */}
 
       <ApartmentForm
         apartmentId={editingApartmentId}

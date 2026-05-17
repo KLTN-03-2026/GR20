@@ -53,15 +53,18 @@ export default function GuestQRDetail() {
     return `${day}/${month}/${year}`
   }
 
+  // Thay thế hàm formatDateTime hiện tại bằng hàm này
   const formatDateTime = (dateString: string) => {
     if (!dateString) return '---'
     const date = new Date(dateString)
-    const day = date.getDate().toString().padStart(2, '0')
-    const month = (date.getMonth() + 1).toString().padStart(2, '0')
-    const year = date.getFullYear()
-    const hours = date.getHours().toString().padStart(2, '0')
-    const minutes = date.getMinutes().toString().padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000) // Cộng thêm 7 tiếng (UTC+7)
+    const hours = vnDate.getHours().toString().padStart(2, '0')
+    const minutes = vnDate.getMinutes().toString().padStart(2, '0')
+    const seconds = vnDate.getSeconds().toString().padStart(2, '0')
+    const day = vnDate.getDate().toString().padStart(2, '0')
+    const month = (vnDate.getMonth() + 1).toString().padStart(2, '0')
+    const year = vnDate.getFullYear()
+    return `${hours}:${minutes}:${seconds} - ${day}/${month}/${year}`
   }
 
   const getResultBadge = (result: string) => {
@@ -451,11 +454,7 @@ function HistoryModal({
   const pageSize = 10
 
   // Gọi API lịch sử với phân trang
-  const {
-    data: historyData,
-    isLoading,
-    refetch
-  } = useQuery({
+  const { data: historyData, isLoading } = useQuery({
     queryKey: ['guest-history', qrId, currentPage, resultFilter, fromDate, toDate, searchInput],
     queryFn: () =>
       QRCodeApi.getHistoryQrKhachId(qrId, {
@@ -488,13 +487,6 @@ function HistoryModal({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
-  }
-
-  const getUsageText = (item: any) => {
-    if (item.used_entries !== undefined && item.max_entries !== undefined) {
-      return `${item.used_entries}/${item.max_entries}`
-    }
-    return '---'
   }
 
   if (isLoading && currentPage === 1 && historyList.length === 0) {

@@ -34,10 +34,6 @@ interface SuccessResponse<T> {
 }
 
 export const notificationAdminApi = {
-  getBuildings: (page = 0, size = 10, status = 'ACTIVE') =>
-    http.get<any>('/api/buildings', {
-      params: { page, size, status }
-    }),
   getHistory: () => http.get<SuccessResponse<INotificationAdmin[]>>('/api/admin/notifications'),
 
   sendNotification: (body: CreateNotificationBody) =>

@@ -116,6 +116,18 @@ const getApartmentById = async (id) => {
 const updateApartment = async (id, apartment) => {
   const existing = await getApartmentById(id);
   if (!existing) throw new AppError(404, "Apartment not found");
+
+  // Kiểm tra trùng apartmentCode
+  if (apartment.apartment_code) {
+    const duplicate = await pool.query(
+      `SELECT id FROM apartments WHERE apartment_code = $1 AND id != $2`,
+      [apartment.apartment_code, id]
+    );
+    if (duplicate.rows.length > 0) {
+      throw new AppError(409, `Mã căn hộ "${apartment.apartment_code}" đã tồn tại`);
+    }
+  }
+  
   const fields = [];
   const values = [];
   let index = 1;

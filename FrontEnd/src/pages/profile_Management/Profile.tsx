@@ -197,15 +197,16 @@ export default function Profile() {
     return `${day} tháng ${month}, ${year}`
   }
 
-  // Hàm lấy avatar URL an toàn
+  // // Hàm lấy avatar URL an toàn
+
   const getAvatarUrl = () => {
     if (!dataProfile?.avatarUrl) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(dataProfile?.fullName || 'User')}&background=005ab7&color=fff`
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        dataProfile?.fullName || 'User'
+      )}&background=005ab7&color=fff`
     }
 
-    // Lấy tên file từ đường dẫn
-    const filename = dataProfile.avatarUrl.split('/').pop()
-    return `http://localhost:8000/test-file/${filename}`
+    return `http://localhost:8000${dataProfile.avatarUrl}`
   }
 
   if (!dataProfile) {

@@ -53,18 +53,28 @@ export default function HeaderMainUser() {
     navigate('/login', { replace: true })
   }
 
+  // const getAvatarUrl = () => {
+  //   if (!user?.avatarUrl) {
+  //     return `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || user?.name || 'User')}&background=005ab7&color=fff`
+  //   }
+
+  //   // Kiểm tra nếu avatarUrl đã là URL đầy đủ
+  //   if (user.avatarUrl.startsWith('http')) {
+  //     return user.avatarUrl
+  //   }
+
+  //   const filename = user.avatarUrl.split('/').pop()
+  //   return `http://localhost:8000/test-file/${filename}`
+  // }
+
   const getAvatarUrl = () => {
     if (!user?.avatarUrl) {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || user?.name || 'User')}&background=005ab7&color=fff`
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        user?.fullName || 'User'
+      )}&background=005ab7&color=fff`
     }
 
-    // Kiểm tra nếu avatarUrl đã là URL đầy đủ
-    if (user.avatarUrl.startsWith('http')) {
-      return user.avatarUrl
-    }
-
-    const filename = user.avatarUrl.split('/').pop()
-    return `http://localhost:8000/test-file/${filename}`
+    return `http://localhost:8000${user.avatarUrl}`
   }
 
   // Hiển thị icon theo role
@@ -126,13 +136,17 @@ export default function HeaderMainUser() {
 
           {/* Settings */}
           <button
-            onClick={goSettings}
+            onClick={() => navigate('/notifications')} // Đổi tên hàm xử lý thành goNotifications hoặc giữ nguyên goSettings nếu muốn
             className='w-10 h-10 flex items-center justify-center rounded-full 
-              hover:bg-blue-50 hover:scale-110 active:scale-95
-              transition-all duration-200 relative group'
+    hover:bg-blue-50 hover:scale-110 active:scale-95
+    transition-all duration-200 relative group'
           >
             <span className='material-symbols-outlined text-slate-600 group-hover:text-blue-600 transition-colors'>
-              settings
+              notifications
+            </span>
+            {/* Optional: Thêm badge hiển thị số lượng thông báo chưa đọc */}
+            <span className='absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold'>
+              3
             </span>
           </button>
 

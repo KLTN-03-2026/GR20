@@ -57,7 +57,7 @@ const createApartmentSchema = z.object({
     .int("bathrooms must be an integer")
     .min(0, "bathrooms cannot be negative"),
 
-  balconyDirection: directionSchema.optional(),
+  balconyDirection: directionSchema.optional().nullable(),
 
   status: apartmentStatusSchema.optional(),
 });
@@ -79,7 +79,7 @@ const updateApartmentSchema = z
 
     bathrooms: z.coerce.number().int().min(0).optional(),
 
-    balconyDirection: directionSchema.optional(),
+    balconyDirection: directionSchema.optional().nullable(),
 
     status: apartmentStatusSchema.optional(),
   })

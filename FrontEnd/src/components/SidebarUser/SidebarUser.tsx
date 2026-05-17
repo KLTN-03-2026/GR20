@@ -38,7 +38,7 @@ export default function SidebarResident() {
         </Link>
         {/* Menu chính */}
         <nav className='flex-1 space-y-1'>
-          <NavLink to='/homeresident' className={getNavClass}>
+          <NavLink to='/resident' className={getNavClass}>
             <span className='material-symbols-outlined'>dashboard</span>
             <span className='text-sm font-manrope'>Tổng quan</span>
           </NavLink>
@@ -78,14 +78,9 @@ export default function SidebarResident() {
             <span className='text-sm font-manrope'>Thanh toán</span>
           </NavLink>
 
-          <NavLink to='/resident/qrcode' className={getNavClass}>
+          <NavLink to='/qrcode' className={getNavClass}>
             <span className='material-symbols-outlined'>qr_code</span>
             <span className='text-sm font-manrope'>Quản lý QR</span>
-          </NavLink>
-
-          <NavLink to='/resident/guest-qr' className={getNavClass}>
-            <span className='material-symbols-outlined'>qr_code_scanner</span>
-            <span className='text-sm font-manrope'>Tạo QR cho khách</span>
           </NavLink>
 
           <NavLink to='/my-amenities' className={getNavClass}>
@@ -101,53 +96,6 @@ export default function SidebarResident() {
       </div>
 
       {/* Menu cuối */}
-      <div className='mt-auto space-y-1 pt-[50px] border-t border-gray-200'>
-        <NavLink
-          to='/notifications'
-          className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-            }`
-          }
-        >
-          <span className='material-symbols-outlined'>notifications</span>
-          <span className='text-sm'>Thông báo</span>
-        </NavLink>
-
-        <NavLink
-          to='/resident/profile'
-          className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-            }`
-          }
-        >
-          <span className='material-symbols-outlined'>account_circle</span>
-          <span className='text-sm'>Thông tin cá nhân</span>
-        </NavLink>
-
-        <NavLink
-          to='/resident/settings'
-          className={({ isActive }) =>
-            `flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-blue-900 transition-colors hover:bg-secondary-container/20 ${
-              isActive ? 'text-blue-900 bg-secondary-container/20' : ''
-            }`
-          }
-        >
-          <span className='material-symbols-outlined'>settings</span>
-          <span className='text-sm'>Cài đặt</span>
-        </NavLink>
-
-        <button
-          onClick={() => {
-            /* xử lý đăng xuất */
-          }}
-          className='w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors'
-        >
-          <span className='material-symbols-outlined'>logout</span>
-          <span className='text-sm'>Đăng xuất</span>
-        </button>
-      </div>
     </aside>
   )
 }

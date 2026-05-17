@@ -9,15 +9,20 @@ export default function RoleRedirect() {
 
   switch (userRole) {
     case ROLES.ADMIN:
-      return <Navigate to='/admin/' />
+      return <Navigate to='/admin' />
+
     case ROLES.MANAGER:
-      return <Navigate to='/manager/' />
+      return <Navigate to='/manager' />
+
     case ROLES.STAFF:
-      return <Navigate to='/staff/' />
+      return <Navigate to='/staff' />
+
     case ROLES.SECURITY:
-      return <Navigate to='/security/' />
+      return <Navigate to='/security' />
+
     case ROLES.RESIDENT:
-      return <Navigate to='resident/' />
+      return <Navigate to='/resident' />
+
     default:
       return <Navigate to='/login' />
   }

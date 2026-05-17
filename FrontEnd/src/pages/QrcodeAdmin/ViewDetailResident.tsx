@@ -60,16 +60,26 @@ export default function ViewDetailResident() {
   const data = residentDetail?.data?.data
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '---'
     const date = new Date(dateString)
-    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000) // Cộng thêm 7 tiếng
+    const day = vnDate.getDate().toString().padStart(2, '0')
+    const month = (vnDate.getMonth() + 1).toString().padStart(2, '0')
+    const year = vnDate.getFullYear()
+    return `${day}/${month}/${year}`
   }
 
   const formatDateTime = (dateString: string) => {
+    if (!dateString) return 'Chưa có hoạt động'
     const date = new Date(dateString)
-    const hours = date.getHours()
-    const ampm = hours >= 12 ? 'CH' : 'SA'
-    const displayHours = hours % 12 || 12
-    return `${displayHours}:${String(date.getMinutes()).padStart(2, '0')} ${ampm} - ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+    const hours = vnDate.getHours().toString().padStart(2, '0')
+    const minutes = vnDate.getMinutes().toString().padStart(2, '0')
+    const seconds = vnDate.getSeconds().toString().padStart(2, '0')
+    const day = vnDate.getDate().toString().padStart(2, '0')
+    const month = (vnDate.getMonth() + 1).toString().padStart(2, '0')
+    const year = vnDate.getFullYear()
+    return `${hours}:${minutes}:${seconds} - ${day}/${month}/${year}`
   }
 
   const getGenderIcon = (gender: string) => {
@@ -493,7 +503,7 @@ export default function ViewDetailResident() {
                       </tr>
                     </thead>
                     <tbody>
-                      {historyList.map((item: any, index: number) => {
+                      {/* {historyList.map((item: any, index: number) => {
                         const date = new Date(item.scan_time)
                         const hours = date.getHours()
                         const ampm = hours >= 12 ? 'CH' : 'SA'
@@ -509,6 +519,68 @@ export default function ViewDetailResident() {
                             <td className='px-4 py-3'>
                               <div className='font-medium'>{dateStr}</div>
                               <div className='text-xs'>{timeStr}</div>
+                            </td>
+                            <td className='px-4 py-3'>
+                              <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
+                                {directionIcon.icon}
+                              </span>{' '}
+                              {directionIcon.text}
+                            </td>
+                            <td className='px-4 py-3'>{item.gate || '---'}</td>
+                            <td className='px-4 py-3'>
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold ${resultBadge.bgColor} ${resultBadge.textColor}`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${resultBadge.dotColor}`}></span>
+                                {resultBadge.text}
+                              </span>
+                            </td>
+                            <td className='px-4 py-3'>{item.scanned_by_name || '---'}</td>
+                          </tr>
+                        )
+                      })} */}
+                      {historyList.map((item: any, index: number) => {
+                        const dateTime = formatDateTime(item.scan_time)
+                        const resultBadge = getResultBadge(item.result)
+                        const directionIcon = getDirectionIcon(item.direction)
+                        const rowNumber = (historyCurrentPage - 1) * historyPageSize + index + 1
+                        return (
+                          <tr key={item.id} className='border-b hover:bg-gray-50'>
+                            <td className='px-4 py-3'>{rowNumber}</td>
+                            <td className='px-4 py-3'>
+                              <div className='font-medium'>{dateTime.split(' - ')[1]}</div> {/* Ngày */}
+                              <div className='text-xs'>{dateTime.split(' - ')[0]}</div> {/* Giờ */}
+                            </td>
+                            <td className='px-4 py-3'>
+                              <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>
+                                {directionIcon.icon}
+                              </span>{' '}
+                              {directionIcon.text}
+                            </td>
+                            <td className='px-4 py-3'>{item.gate || '---'}</td>
+                            <td className='px-4 py-3'>
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold ${resultBadge.bgColor} ${resultBadge.textColor}`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${resultBadge.dotColor}`}></span>
+                                {resultBadge.text}
+                              </span>
+                            </td>
+                            <td className='px-4 py-3'>{item.scanned_by_name || '---'}</td>
+                          </tr>
+                        )
+                      })}
+                      {historyList.map((item: any, index: number) => {
+                        const dateTime = formatDateTime(item.scan_time)
+                        const resultBadge = getResultBadge(item.result)
+                        const directionIcon = getDirectionIcon(item.direction)
+                        const rowNumber = (historyCurrentPage - 1) * historyPageSize + index + 1
+                        return (
+                          <tr key={item.id} className='border-b hover:bg-gray-50'>
+                            <td className='px-4 py-3'>{rowNumber}</td>
+                            <td className='px-4 py-3'>
+                              <div className='font-medium'>{dateTime.split(' - ')[1]}</div> {/* Ngày */}
+                              <div className='text-xs'>{dateTime.split(' - ')[0]}</div> {/* Giờ */}
                             </td>
                             <td className='px-4 py-3'>
                               <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>

@@ -361,6 +361,8 @@ const createGuestQr = async (data) => {
     qr_image: qrImage,
   };
 };
+
+
 const getGuestQrById = async (id) => {
   return await repo.getGuestQrById(id);
 };

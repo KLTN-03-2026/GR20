@@ -44,30 +44,44 @@ export default function ViewQrcodeMe() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '---'
     const date = new Date(dateString)
-    return `${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000) // Cộng thêm 7 tiếng
+    const day = vnDate.getDate().toString().padStart(2, '0')
+    const month = (vnDate.getMonth() + 1).toString().padStart(2, '0')
+    const year = vnDate.getFullYear()
+    return `${day}/${month}/${year}`
   }
 
   const formatTime = (dateString: string) => {
     if (!dateString) return '---'
     const date = new Date(dateString)
-    return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')} ${date.getHours() >= 12 ? 'Chiều' : 'Sáng'}`
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+    const hours = vnDate.getHours().toString().padStart(2, '0')
+    const minutes = vnDate.getMinutes().toString().padStart(2, '0')
+    const seconds = vnDate.getSeconds().toString().padStart(2, '0')
+    return `${hours}:${minutes}:${seconds}`
   }
 
   const formatDateTime = (dateString: string) => {
     if (!dateString) return '---'
     const date = new Date(dateString)
-    const day = date.getDate().toString().padStart(2, '0')
-    const month = (date.getMonth() + 1).toString().padStart(2, '0')
-    const year = date.getFullYear()
-    const hours = date.getHours().toString().padStart(2, '0')
-    const minutes = date.getMinutes().toString().padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+    const hours = vnDate.getHours().toString().padStart(2, '0')
+    const minutes = vnDate.getMinutes().toString().padStart(2, '0')
+    const seconds = vnDate.getSeconds().toString().padStart(2, '0')
+    const day = vnDate.getDate().toString().padStart(2, '0')
+    const month = (vnDate.getMonth() + 1).toString().padStart(2, '0')
+    const year = vnDate.getFullYear()
+    return `${hours}:${minutes}:${seconds} - ${day}/${month}/${year}`
   }
 
   const formatCreatedAt = (dateString: string) => {
     if (!dateString) return '---'
     const date = new Date(dateString)
-    return `${date.getDate()} Tháng ${date.getMonth() + 1}, ${date.getFullYear()}`
+    const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000)
+    const day = vnDate.getDate()
+    const month = vnDate.getMonth() + 1
+    const year = vnDate.getFullYear()
+    return `${day} Tháng ${month}, ${year}`
   }
 
   const handleDownloadQR = () => {
@@ -580,8 +594,8 @@ function HistoryModal({ isOpen, onClose, formatDateTime, getResultBadge, getDire
                       >
                         <td className='px-4 py-3 text-sm'>{rowNumber}</td>
                         <td className='px-4 py-3 text-sm'>
-                          <div className='font-medium'>{dateTime.split(' ')[0]}</div>
-                          <div className='text-xs text-on-surface-variant'>{dateTime.split(' ')[1]}</div>
+                          <div className='font-medium'>{dateTime.split(' - ')[1]}</div>
+                          <div className='text-xs text-on-surface-variant'>{dateTime.split(' - ')[0]}</div>
                         </td>
                         <td className='px-4 py-3'>
                           <span className={`material-symbols-outlined text-sm ${directionIcon.color}`}>

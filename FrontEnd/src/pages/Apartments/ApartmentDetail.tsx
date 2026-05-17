@@ -1,11 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
-import { apartmentApi } from 'src/apis/apartment_api/apartment_api';
-import { useState } from 'react';
-import ApartmentForm from './ApartmentForm';
-import AddResidentModal from './AddResidentModal';
-import http from 'src/utils/http';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query'
+import { useParams, useNavigate } from 'react-router-dom'
+import { apartmentApi } from 'src/apis/apartment_api/apartment_api'
+import { useState } from 'react'
+import ApartmentForm from './ApartmentForm'
+import AddResidentModal from './AddResidentModal'
+import http from 'src/utils/http'
+import { useQueryClient } from '@tanstack/react-query'
 // Types
 interface Owner {
   id: number
@@ -196,8 +196,9 @@ export default function ApartmentDetail() {
                   className='w-full h-full object-cover'
                   crossOrigin='anonymous'
                   src={
-                    import.meta.env.VITE_DOMAIN_API + apartment.imageUrl ||
-                    'https://via.placeholder.com/800x450?text=No+Image'
+                    apartment.imageUrl
+                      ? `http://localhost:8000${apartment.imageUrl}`
+                      : 'https://via.placeholder.com/800x450?text=No+Image'
                   }
                 />
 
@@ -355,13 +356,15 @@ export default function ApartmentDetail() {
               </div>
 
               {/* Owner Card */}
-              {apartment.status === 'AVAILABLE' ? (
+              {apartment.status === 'AVAILABLE' || apartment.status === 'MAINTENANCE' ? (
                 <div className='bg-white rounded-2xl p-6 border border-slate-100 shadow-sm'>
                   <h3 className='text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4'>Chủ sở hữu</h3>
                   <div className='text-center py-4'>
                     <span className='material-symbols-outlined text-3xl text-slate-200 mb-2'>person_off</span>
                     <p className='text-sm text-slate-400 italic'>Chưa có thông tin</p>
-                    <p className='text-xs text-slate-300 mt-1'>Căn hộ đang còn trống</p>
+                    <p className='text-xs text-slate-300 mt-1'>
+                      Căn hộ đang {apartment.status === 'AVAILABLE' ? 'còn trống' : 'bảo trì'}
+                    </p>
                   </div>
                 </div>
               ) : apartment.owner ? (
@@ -463,4 +466,3 @@ export default function ApartmentDetail() {
     </div>
   )
 }
- 
