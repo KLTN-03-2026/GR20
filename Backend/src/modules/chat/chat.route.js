@@ -19,7 +19,7 @@ router.post(
   validate(initChatSchema),
   chatController.initChatProfile,
 );
-// API 2: Lấy danh bạ (MỚI THÊM)
+// API 2: Lấy danh bạ
 // URL: GET /api/chat/directory hoặc /api/chat/directory?search=Nhat
 router.get(
   "/directory",

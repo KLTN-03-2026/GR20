@@ -61,7 +61,7 @@ export default function SidebarStaff() {
             <span className='text-sm font-manrope'>Danh sách cư dân</span>
           </NavLink>
 
-          <NavLink to='/staff/community-chat' className={getNavClass}>
+          <NavLink to='/chat' className={getNavClass}>
             <span className='material-symbols-outlined'>forum</span>
             <span className='text-sm font-manrope'>Chat cộng đồng</span>
           </NavLink>
