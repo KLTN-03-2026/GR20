@@ -13,11 +13,12 @@ export interface Resident {
 }
 
 export interface Resident1 {
-  apartmentNumber: string
-  buildingName: string
+  apartmentNumber: string | null
+  buildingName: string | null
   fullName: string
   id: string
-  relationship: string
+  profileId?: string | null
+  relationship: string | null
   status: string
   userId: string
   isUnassigned?: boolean
@@ -75,6 +76,7 @@ export interface ResidentDetail {
 //HIEU
 export interface Resident12 {
   id: string
+  profileId?: string | null
   userId: string
   fullName: string
   phone?: string
@@ -87,19 +89,21 @@ export interface Resident12 {
 }
 
 export interface ResidentDetail12 {
-  id: string
+  id: string | null
   userId: string
   fullName: string
   email: string
   phone: string
-  avatarUrl: string
-  apartmentId: string
-  apartmentNumber: string
-  buildingName: string
-  relationship: 'OWNER' | 'TENANT' | 'FAMILY'
-  moveInDate: string
-  status: 'ACTIVE' | 'INACTIVE' | 'MOVED_OUT'
-  createdAt: string
+  avatarUrl?: string
+  apartmentId?: string | null
+  apartmentNumber?: string | null
+  buildingName?: string | null
+  relationship?: 'OWNER' | 'TENANT' | 'FAMILY' | string | null
+  moveInDate?: string | null
+  status: 'ACTIVE' | 'INACTIVE' | 'MOVED_OUT' | 'UNASSIGNED' | string
+  isUnassigned?: boolean
+  hasProfile?: boolean
+  createdAt?: string | null
 }
 
 export interface UserApartment {

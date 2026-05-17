@@ -27,17 +27,27 @@ const toResponse = (row) => {
     relationship: row.relationship || null,
     moveInDate: row.move_in_date || null,
     moveOutDate: row.move_out_date || null,
-    status: row.status || 'UNASSIGNED',
-    isUnassigned: !row.apartment_id || row.status === 'UNASSIGNED',
+    status:
+      !row.apartment_id || row.status === "UNASSIGNED"
+        ? "UNASSIGNED"
+        : row.status || "ACTIVE",
+    isUnassigned: !row.apartment_id || row.status === "UNASSIGNED",
     hasProfile: !!row.profile_id,  // Thêm flag để biết đã có profile chưa
     createdAt: row.profile_created_at || null,
   };
 };
 
 const toListResponse = (row) => {
-  const isUnassigned = row.is_unassigned === true;
+  const isUnassigned =
+    row.is_unassigned === true ||
+    row.is_unassigned === "t" ||
+    row.status === "UNASSIGNED";
+  const profileId =
+    row.profile_id != null ? String(row.profile_id) : null;
+
   return {
-    id: isUnassigned ? String(row.user_id) : String(row.profile_id ?? row.id),
+    id: profileId ?? `u-${row.user_id}`,
+    profileId,
     userId: String(row.user_id),
     fullName: row.full_name,
     phone: row.phone,

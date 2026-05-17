@@ -12,7 +12,7 @@ export default function Getresidentlist() {
   const [selectedBuilding, setSelectedBuilding] = useState<string>('')
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [page, setPage] = useState<number>(0)
-  const pageSize = 10
+  const pageSize = 25
   const [selectedResident, setSelectedResident] = useState<Resident12 | null>(null)
   const [addToApartmentResident, setAddToApartmentResident] = useState<Resident12 | null>(null)
   const navigate = useNavigate()
@@ -35,7 +35,7 @@ export default function Getresidentlist() {
       return residentApi.getAllResidents(params)
     }
   })
-  const residents = residentsData?.data.data || []
+  const residents: Resident12[] = (residentsData?.data.data || []) as Resident12[]
   const totalElements = residentsData?.data.totalElements || 0
   const totalPages = residentsData?.data.totalPages || 0
 
@@ -51,10 +51,17 @@ export default function Getresidentlist() {
     }
   })
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (resident: Resident12) => {
+    const profileId = resident.profileId || (!resident.isUnassigned ? resident.id : null)
+    if (!profileId) return
     if (window.confirm('Bạn có chắc chắn muốn xóa cư dân này?')) {
-      deleteMutation.mutate(id)
+      deleteMutation.mutate(profileId)
     }
+  }
+
+  const openResidentDetail = (resident: Resident12) => {
+    const detailId = resident.profileId || `u-${resident.userId}`
+    navigate(`/ResidentDetail/${detailId}`)
   }
 
   // Helper để hiển thị màu sắc cho status
@@ -271,7 +278,7 @@ export default function Getresidentlist() {
                           </button>
                           <button
                             type='button'
-                            onClick={() => navigate(`/ResidentDetail/${resident.id}`)}
+                            onClick={() => openResidentDetail(resident)}
                             className='p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors'
                             title='Xem chi tiết'
                           >

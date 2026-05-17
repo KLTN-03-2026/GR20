@@ -26,6 +26,9 @@ export default function ResidentDetail() {
   })
 
   const resident = residentData?.data.data
+  const isUnassigned =
+    resident?.isUnassigned === true || resident?.status === 'UNASSIGNED'
+  const canEdit = !!resident?.id && !isUnassigned
 
   // Cập nhật cư dân
   const updateMutation = useMutation({
@@ -89,7 +92,7 @@ export default function ResidentDetail() {
   const handleEdit = () => {
     if (resident) {
       setEditForm({
-        relationship: resident.relationship,
+        relationship: resident.relationship || 'FAMILY',
         status: resident.status,
         moveInDate: resident.moveInDate?.split('T')[0] || ''
       })
@@ -124,6 +127,7 @@ export default function ResidentDetail() {
   }
 
   const handleBack = () => {
+    queryClient.invalidateQueries({ queryKey: ['residents'] })
     navigate('/Getresidentlist')
   }
 
@@ -136,6 +140,8 @@ export default function ResidentDetail() {
         return 'text-gray-600 bg-gray-50'
       case 'MOVED_OUT':
         return 'text-red-600 bg-red-50'
+      case 'UNASSIGNED':
+        return 'text-amber-700 bg-amber-50'
       default:
         return 'text-gray-600 bg-gray-50'
     }
@@ -149,12 +155,15 @@ export default function ResidentDetail() {
         return 'Không hoạt động'
       case 'MOVED_OUT':
         return 'Đã chuyển đi'
+      case 'UNASSIGNED':
+        return 'Chưa gán căn'
       default:
         return status
     }
   }
 
-  const getRelationshipColor = (relationship: string) => {
+  const getRelationshipColor = (relationship?: string | null) => {
+    if (!relationship) return 'text-gray-600 bg-gray-50'
     switch (relationship) {
       case 'OWNER':
         return 'text-blue-600 bg-blue-50'
@@ -167,7 +176,8 @@ export default function ResidentDetail() {
     }
   }
 
-  const getRelationshipText = (relationship: string) => {
+  const getRelationshipText = (relationship?: string | null) => {
+    if (!relationship) return '—'
     switch (relationship) {
       case 'OWNER':
         return 'Chủ hộ'
@@ -180,7 +190,7 @@ export default function ResidentDetail() {
     }
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return 'Chưa cập nhật'
     const date = new Date(dateString)
     return date.toLocaleDateString('vi-VN')
@@ -234,16 +244,15 @@ export default function ResidentDetail() {
           <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">THÔNG TIN HỒ SƠ</h1>
         </div>
         <div className="flex gap-3">
-          {!isEditing ? (
-            <>
-              <button
-                onClick={handleEdit}
-                className="bg-surface-container-lowest text-on-surface-variant py-3 px-8 rounded-full text-sm font-semibold transition-all hover:bg-surface-container shadow-sm"
-              >
-                Chỉnh sửa
-              </button>
-            </>
-          ) : (
+          {canEdit && !isEditing && (
+            <button
+              onClick={handleEdit}
+              className="bg-surface-container-lowest text-on-surface-variant py-3 px-8 rounded-full text-sm font-semibold transition-all hover:bg-surface-container shadow-sm"
+            >
+              Chỉnh sửa
+            </button>
+          )}
+          {canEdit && isEditing && (
             <>
               <button
                 onClick={handleCancel}
@@ -262,6 +271,13 @@ export default function ResidentDetail() {
           )}
         </div>
       </div>
+
+      {isUnassigned && (
+        <div className="mb-8 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Tài khoản chưa được gán căn hộ. Quay lại danh sách và dùng nút{' '}
+          <strong>Gán vào căn hộ</strong> để hoàn tất hồ sơ cư trú.
+        </div>
+      )}
 
       {/* Bento Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
@@ -286,7 +302,9 @@ export default function ResidentDetail() {
                 )}
               </div>
               <h2 className="text-2xl font-bold text-on-surface mb-1">{resident.fullName}</h2>
-              <span className="text-on-surface-variant font-medium text-sm">ID: #{resident.id}</span>
+              <span className="text-on-surface-variant font-medium text-sm">
+                {resident.id ? `Hồ sơ #${resident.id}` : `Tài khoản U${resident.userId}`}
+              </span>
               
               {!isEditing ? (
                 <div className={`mt-6 inline-flex items-center px-4 py-1.5 rounded-full ${getStatusColor(resident.status)} font-bold text-[10px] uppercase tracking-wider`}>
@@ -344,9 +362,11 @@ export default function ResidentDetail() {
               <span className="text-xs font-bold uppercase tracking-widest text-blue-700">AI Insights</span>
             </div>
             <p className="text-sm leading-relaxed text-gray-700 italic">
-              {resident.status === 'MOVED_OUT' 
-                ? "Cư dân này đã hoàn tất thủ tục bàn giao căn hộ. Không có công nợ tồn đọng hoặc lịch sử hư hỏng cơ sở vật chất nghiêm trọng."
-                : "Cư dân đang cư trú ổn định. Lịch sử thanh toán đầy đủ và đúng hạn. Đánh giá mức độ hài lòng: Tốt"}
+              {isUnassigned
+                ? 'Tài khoản đã tạo nhưng chưa gán căn hộ. Cần gán căn để theo dõi cư trú và thanh toán phí.'
+                : resident.status === 'MOVED_OUT'
+                  ? 'Cư dân này đã hoàn tất thủ tục bàn giao căn hộ. Không có công nợ tồn đọng hoặc lịch sử hư hỏng cơ sở vật chất nghiêm trọng.'
+                  : 'Cư dân đang cư trú ổn định. Lịch sử thanh toán đầy đủ và đúng hạn. Đánh giá mức độ hài lòng: Tốt'}
             </p>
           </div>
         </div>
@@ -362,11 +382,17 @@ export default function ResidentDetail() {
               <div className="space-y-1">
                 <label className="text-[10px] uppercase font-bold text-outline-variant tracking-widest block mb-2">Căn hộ</label>
                 <div className="flex items-center gap-3">
-                  <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg font-bold text-lg">
-                    {resident.apartmentNumber}
+                  <div
+                    className={`px-4 py-2 rounded-lg font-bold text-lg ${
+                      isUnassigned
+                        ? 'bg-amber-50 text-amber-800'
+                        : 'bg-blue-50 text-blue-700'
+                    }`}
+                  >
+                    {isUnassigned ? 'Chưa gán căn' : resident.apartmentNumber}
                   </div>
                   <div className="text-sm font-medium text-on-surface-variant">
-                    {resident.buildingName}
+                    {isUnassigned ? '—' : resident.buildingName || '—'}
                   </div>
                 </div>
               </div>
