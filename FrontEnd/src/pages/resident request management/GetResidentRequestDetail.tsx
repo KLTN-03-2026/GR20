@@ -156,11 +156,7 @@ export default function GetResidentRequestDetail() {
                 <div className="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-xl">
                   <span className="material-symbols-outlined text-[20px]">calendar_today</span>
                   <span className="text-sm font-medium">{formatDate(request.reportedAt)}</span>
-                </div>
-                <div className="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-xl">
-                  <span className="material-symbols-outlined text-[20px]">schedule</span>
-                  <span className="text-sm font-medium">{formatTime(request.reportedAt)}</span>
-                </div>
+                </div>         
               </div>
             </div>
           </div>

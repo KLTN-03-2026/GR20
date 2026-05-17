@@ -37,14 +37,23 @@ export default function MaintenanceRequestDetail() {
   // Format date
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const match = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
+  
+  if (match) {
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+  }
+  
+  // Fallback
+  return dateString;
+    // const date = new Date(dateString);
+    // return date.toLocaleDateString('vi-VN', {
+    //   year: 'numeric',
+    //   month: '2-digit',
+    //   day: '2-digit',
+    //   hour: '2-digit',
+    //   minute: '2-digit'
+    // });
   };
 
   // Priority badge
@@ -203,14 +212,6 @@ export default function MaintenanceRequestDetail() {
                       <span className="text-sm text-slate-600">Mức độ ưu tiên:</span>
                       <span>{getPriorityBadge(request.priority)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-slate-600">Căn hộ:</span>
-                      <span className="text-sm font-medium text-slate-900">{request.apartment_id}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-slate-600">Người báo cáo:</span>
-                      <span className="text-sm font-medium text-slate-900">ID: {request.created_at}</span>
-                    </div>
                   </div>
                 </div>
 
@@ -223,11 +224,7 @@ export default function MaintenanceRequestDetail() {
                     <div className="flex justify-between">
                       <span className="text-sm text-slate-600">Ngày báo cáo:</span>
                       <span className="text-sm font-medium text-slate-900">{formatDate(request.reported_at)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-slate-600">Ngày tạo:</span>
-                      <span className="text-sm font-medium text-slate-900">{formatDate(request.created_at)}</span>
-                    </div>
+                    </div>                   
                   </div>
                 </div>
               </div>
