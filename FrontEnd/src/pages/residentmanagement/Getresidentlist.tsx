@@ -181,7 +181,6 @@ export default function Getresidentlist() {
               >
                 <option value=''>Tất cả trạng thái</option>
                 <option value='ACTIVE'>Đang cư trú</option>
-                <option value='INACTIVE'>Không hoạt động</option>
                 <option value='MOVED_OUT'>Đã chuyển đi</option>
                 <option value='UNASSIGNED'>Chưa gán căn</option>
               </select>

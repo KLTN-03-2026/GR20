@@ -110,15 +110,19 @@ export default function GetResidentRequestDetail() {
               <span className="material-symbols-outlined text-xl group-hover:-translate-x-1 transition-transform">arrow_back</span>
               <span>Quay lại danh sách</span>
             </button>
-          
-              <span className="bg-secondary-fixed text-on-secondary-fixed-variant px-3 py-1 rounded-full text-xs font-bold tracking-wider font-label uppercase">
-                #{request.id}
-              </span>
-              <span className="text-on-surface-variant font-medium">Yêu cầu bảo trì</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight text-on-surface leading-tight">
+            <div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                build_circle
+              </span>
+              <span className="text-sm font-label uppercase tracking-widest text-primary/70">Yêu cầu bảo trì</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-on-surface leading-tight">
               {request.title}
-            </h2>
+            </h1>
+</div>
+            
           </div>                
         </div>
         {/* Content Canvas: Bento Grid */}
@@ -156,11 +160,7 @@ export default function GetResidentRequestDetail() {
                 <div className="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-xl">
                   <span className="material-symbols-outlined text-[20px]">calendar_today</span>
                   <span className="text-sm font-medium">{formatDate(request.reportedAt)}</span>
-                </div>
-                <div className="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-xl">
-                  <span className="material-symbols-outlined text-[20px]">schedule</span>
-                  <span className="text-sm font-medium">{formatTime(request.reportedAt)}</span>
-                </div>
+                </div>         
               </div>
             </div>
           </div>
