@@ -1,24 +1,5 @@
-const { ZodError } = require("zod");
-const { AppError } = require("../../common/app-error");
+const { sendControllerError } = require("../../common/send-controller-error");
 const service = require("./buildings.service");
-
-const sendError = (res, err) => {
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      message: "Validation failed",
-      errors: err.flatten().fieldErrors,
-      formErrors: err.flatten().formErrors,
-    });
-  }
-  if (err instanceof AppError) {
-    const body = { message: err.message };
-    if (err.details !== undefined) {
-      body.details = err.details;
-    }
-    return res.status(err.statusCode).json(body);
-  }
-  return res.status(500).json({ message: err.message });
-};
 
 const createBuilding = async (req, res) => {
   try {
@@ -33,13 +14,13 @@ const createBuilding = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    sendError(res, err);
+    sendControllerError(res, err);
   }
 };
 
 const getAllBuildings = async (req, res) => {
   try {
-    const result = await service.getAllBuildings(req.query);
+    const result = await service.getAllBuildings(req.query, req.user);
 
     res.json({
       operationType: "Success",
@@ -49,7 +30,7 @@ const getAllBuildings = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    sendError(res, err);
+    sendControllerError(res, err);
   }
 };
 
@@ -66,9 +47,7 @@ const getBuildingById = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res.status(404).json({
-      message: err.message,
-    });
+    sendControllerError(res, err);
   }
 };
 
@@ -85,7 +64,7 @@ const updateBuilding = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    sendError(res, err);
+    sendControllerError(res, err);
   }
 };
 
@@ -102,7 +81,7 @@ const deleteBuilding = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    sendError(res, err);
+    sendControllerError(res, err);
   }
 };
 

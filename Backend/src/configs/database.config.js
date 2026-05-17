@@ -17,9 +17,10 @@ const db = drizzle(pool);
 async function connectDB() {
   try {
     const res = await pool.query("SELECT NOW()");
-    console.log("✅ Kết nối DB thành công:", res.rows[0].now);
+    console.log("✅ Kết nối PostgreSQL thành công");
   } catch (err) {
-    console.error("❌ Lỗi kết nối DB:", err.message);
+    console.error("❌ Kết nối DB thất bại:", err.message);
+    process.exit(1); // dừng luôn nếu DB lỗi
   }
 }
 

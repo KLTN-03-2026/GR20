@@ -1,6 +1,5 @@
 const { z } = require("zod");
 
-// 1. Kiểm tra dữ liệu khi Thêm mới
 const createEmployeeSchema = z.object({
   username: z
     .string({ required_error: "Tên đăng nhập là bắt buộc" })
@@ -12,12 +11,22 @@ const createEmployeeSchema = z.object({
     .string({ required_error: "Email là bắt buộc" })
     .email("Email không đúng định dạng"),
   fullName: z.string({ required_error: "Họ và tên là bắt buộc" }),
+  roleId: z
+    .number({ required_error: "Vui lòng chọn vai trò" })
+    .refine((val) => val === 3 || val === 4, {
+      message: "Vai trò chỉ được là Vận hành (3) hoặc Bảo vệ (4)",
+    }),
 });
 
-// 2. Kiểm tra dữ liệu khi Sửa thông tin (Dùng .optional() vì người dùng có thể chỉ muốn sửa 1 trong 2)
 const updateEmployeeSchema = z.object({
   email: z.string().email("Email không đúng định dạng").optional(),
   fullName: z.string().min(2, "Họ tên quá ngắn").optional(),
+  roleId: z
+    .number()
+    .refine((val) => val === 3 || val === 4, {
+      message: "Vai trò không hợp lệ",
+    })
+    .optional(),
 });
 
 module.exports = {

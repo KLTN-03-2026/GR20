@@ -1,0 +1,34 @@
+const express = require("express");
+const router = express.Router();
+const controller = require("./floors.controller");
+const { optionalVerifyToken } = require("../../middlewares/auth.middleware");
+
+// import apartments route
+const apartmentRouter = require("../apartments/apartment.route");
+
+// 🆕 GET FLOORS BY BUILDING - Đặt TRƯỚC /:id
+router.get(
+  "/building/:buildingId",
+  optionalVerifyToken,
+  controller.getFloorsByBuilding,
+);
+
+// CREATE
+router.post("/", controller.createFloor);
+
+// GET ALL (có pagination: ?page=0&size=10)
+router.get("/", controller.getAllFloors);
+
+// GET BY ID
+router.get("/:id", controller.getFloorById);
+
+// UPDATE
+router.put("/:id", controller.updateFloor);
+
+// TOGGLE STATUS (ACTIVE / INACTIVE)
+router.patch("/:id/delete", controller.softDeleteFloor);
+
+// /floors/:floorId/apartments
+router.use("/:floorId/apartments", apartmentRouter);
+
+module.exports = router;

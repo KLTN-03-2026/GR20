@@ -1,0 +1,296 @@
+{
+  "description": "Chuỗi API mẫu A→Z: tòa → tầng → căn → tài khoản cư dân → gán vào căn → hợp đồng thuê → đồng hồ/giá/chỉ số → hóa đơn. Base URL: /api. Thay {{...}} bằng id trả về từ bước trước. Header: Authorization: Bearer <access_token> cho route có authenticate.",
+  "variables": {
+    "baseUrl": "http://localhost:PORT/api",
+    "access_token": "từ bước login",
+    "buildingId": null,
+    "floorId": null,
+    "apartmentId": null,
+    "ownerUserId": null,
+    "tenantUserId": null,
+    "electricMeterId": null,
+    "waterMeterId": null
+  },
+  "steps": [
+    {
+      "step": 1,
+      "title": "Đăng nhập quản trị (lấy token)",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "username": "admin_username",
+        "password": "admin_password"
+      },
+      "note": "Lấy access_token trong response (data.access_token hoặc theo shape thực tế của dự án)."
+    },
+    {
+      "step": 2,
+      "title": "Tạo tòa nhà",
+      "method": "POST",
+      "path": "/api/buildings",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "name": "Chung cư Demo",
+        "code": "DEMO-CC1",
+        "address": "123 Đường Mẫu, TP.HCM",
+        "totalFloors": 10,
+        "totalApartments": 40,
+        "yearBuilt": 2020,
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "step": 3,
+      "title": "Tạo tầng (snake_case theo floor.request)",
+      "method": "POST",
+      "path": "/api/floors",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "building_id": "{{buildingId}}",
+        "floor_number": 5,
+        "name": "Tầng 5"
+      }
+    },
+    {
+      "step": 4,
+      "title": "Tạo căn hộ (camelCase theo apartment.request)",
+      "method": "POST",
+      "path": "/api/apartments",
+      "auth": true,
+      "headers": { "Content-Type": "application/json", "Authorization": "Bearer {{access_token}}" },
+      "body": {
+        "buildingId": "{{buildingId}}",
+        "floorId": "{{floorId}}",
+        "apartmentCode": "A-501",
+        "area": 65,
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "balconyDirection": "SOUTH",
+        "status": "AVAILABLE"
+      }
+    },
+    {
+      "step": 5,
+      "title": "Tạo tài khoản cư dân (chưa gắn căn) — tuỳ chọn nếu đã có user thì bỏ qua",
+      "method": "POST",
+      "path": "/api/residents/accounts",
+      "auth": true,
+      "headers": { "Content-Type": "application/json", "Authorization": "Bearer {{access_token}}" },
+      "body": {
+        "fullName": "Nguyễn Chủ Hộ",
+        "phone": "0901000001",
+        "email": "owner-demo@example.com",
+        "password": "MatKhau123!"
+      },
+      "note": "Response data.id = ownerUserId (users.id)."
+    },
+    {
+      "step": 6,
+      "title": "Thêm chủ hộ vào căn (bắt buộc trước TENANT/FAMILY)",
+      "method": "POST",
+      "path": "/api/apartments/{{apartmentId}}/residents",
+      "auth": true,
+      "headers": { "Content-Type": "application/json", "Authorization": "Bearer {{access_token}}" },
+      "body": {
+        "fullName": "Nguyễn Chủ Hộ",
+        "phone": "0901000001",
+        "email": "owner-demo@example.com",
+        "relationship": "OWNER",
+        "moveInDate": "2026-05-01"
+      },
+      "note": "Nếu user đã tồn tại (trùng SĐT) sẽ gắn user đó. Mật khẩu mặc định user mới trong repo addResident là 123456 (xem apartment.repository)."
+    },
+    {
+      "step": 7,
+      "title": "Tạo tài khoản khách thuê (hoặc dùng POST residents + fullName/phone để tạo user + profile một lần)",
+      "method": "POST",
+      "path": "/api/residents/accounts",
+      "auth": true,
+      "headers": { "Content-Type": "application/json", "Authorization": "Bearer {{access_token}}" },
+      "body": {
+        "fullName": "Trần Khách Thuê",
+        "phone": "0902000002",
+        "email": "tenant-demo@example.com",
+        "password": "MatKhau456!"
+      },
+      "note": "data.id = tenantUserId."
+    },
+    {
+      "step": 8,
+      "title": "Gán khách thuê (TENANT) vào căn",
+      "method": "POST",
+      "path": "/api/apartments/{{apartmentId}}/residents",
+      "auth": true,
+      "headers": { "Content-Type": "application/json", "Authorization": "Bearer {{access_token}}" },
+      "body": {
+        "fullName": "Trần Khách Thuê",
+        "phone": "0902000002",
+        "email": "tenant-demo@example.com",
+        "relationship": "TENANT",
+        "moveInDate": "2026-05-01"
+      },
+      "alternative": {
+        "description": "Nếu user đã có sẵn (bước 7), có thể POST /api/residents với userId",
+        "method": "POST",
+        "path": "/api/residents",
+        "body": {
+          "apartmentId": "{{apartmentId}}",
+          "userId": "{{tenantUserId}}",
+          "relationship": "TENANT",
+          "moveInDate": "2026-05-01"
+        }
+      }
+    },
+    {
+      "step": 9,
+      "title": "Tạo hợp đồng thuê (RENT) — residentId = users.id của người thuê (TENANT)",
+      "method": "POST",
+      "path": "/api/contracts",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "residentId": "{{tenantUserId}}",
+        "apartmentId": "{{apartmentId}}",
+        "contractType": "RENT",
+        "status": "PENDING",
+        "startDate": "2026-05-01",
+        "endDate": "2027-05-01",
+        "monthlyRent": 8000000,
+        "deposit": 16000000,
+        "note": "Hợp đồng khách thuê"
+      },
+      "note": "Schema yêu cầu endDate > startDate, tối thiểu 3 tháng, startDate không trong quá khứ (điều chỉnh theo ngày chạy test). Sau đó PUT ACTIVE (bước 10) để hóa đơn tính tiền thuê."
+    },
+    {
+      "step": 10,
+      "title": "Duyệt hợp đồng → ACTIVE (để tính tiền thuê trên hóa đơn)",
+      "method": "PUT",
+      "path": "/api/contracts/{{contractId}}",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "status": "ACTIVE",
+        "monthlyRent": 8000000
+      }
+    },
+    {
+      "step": 11,
+      "title": "Tạo đồng hồ điện cho căn",
+      "method": "POST",
+      "path": "/api/utility-meters",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "apartmentId": "{{apartmentId}}",
+        "meterType": "ELECTRIC",
+        "meterCode": "EL-{{apartmentId}}-01",
+        "installedDate": "2026-01-01",
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "step": 12,
+      "title": "Tạo đồng hồ nước cho căn",
+      "method": "POST",
+      "path": "/api/utility-meters",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "apartmentId": "{{apartmentId}}",
+        "meterType": "WATER",
+        "meterCode": "NW-{{apartmentId}}-01",
+        "installedDate": "2026-01-01",
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "step": 13,
+      "title": "Thêm đơn giá điện",
+      "method": "POST",
+      "path": "/api/utility-pricing",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "meterType": "ELECTRIC",
+        "pricePerUnit": 3500,
+        "unit": "kWh",
+        "effectiveFrom": "2026-01-01",
+        "isActive": true
+      }
+    },
+    {
+      "step": 14,
+      "title": "Thêm đơn giá nước",
+      "method": "POST",
+      "path": "/api/utility-pricing",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "meterType": "WATER",
+        "pricePerUnit": 20000,
+        "unit": "m3",
+        "effectiveFrom": "2026-01-01",
+        "isActive": true
+      }
+    },
+    {
+      "step": 15,
+      "title": "Ghi chỉ số điện (kỳ tháng 5/2026 — readingDate nằm trong tháng)",
+      "method": "POST",
+      "path": "/api/meter-readings",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "meterId": "{{electricMeterId}}",
+        "readingDate": "2026-05-10",
+        "previousReading": 100,
+        "currentReading": 250
+      }
+    },
+    {
+      "step": 16,
+      "title": "Ghi chỉ số nước",
+      "method": "POST",
+      "path": "/api/meter-readings",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "meterId": "{{waterMeterId}}",
+        "readingDate": "2026-05-10",
+        "previousReading": 10,
+        "currentReading": 18
+      }
+    },
+    {
+      "step": 17,
+      "title": "Tạo hóa đơn tự động (tiền thuê + điện + nước)",
+      "method": "POST",
+      "path": "/api/invoices",
+      "auth": false,
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "apartmentId": "{{apartmentId}}",
+        "billingMonth": 5,
+        "billingYear": 2026,
+        "dueDate": "2026-05-25",
+        "status": "PENDING"
+      }
+    }
+  ],
+  "authByRoute": {
+    "/api/residents": "authenticate",
+    "/api/residents/accounts": "authenticate",
+    "/api/apartments": "authenticate (router.use)",
+    "/api/buildings": "POST không middleware trong buildings.route — kiểm tra môi trường thực tế",
+    "/api/floors": "POST không middleware trong snippet floors.route",
+    "/api/contracts": "không authenticate trên contract.route",
+    "/api/invoices": "không authenticate trên invoice.route",
+    "/api/utility-meters": "không authenticate",
+    "/api/utility-pricing": "không authenticate",
+    "/api/meter-readings": "không authenticate"
+  }
+}

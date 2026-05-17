@@ -50,7 +50,7 @@ cd HOMELINK-AI
 ```bash
 cd Backend
 npm install
-npm start
+npm run dev
 ```
 
 ### Chạy FrontEnd

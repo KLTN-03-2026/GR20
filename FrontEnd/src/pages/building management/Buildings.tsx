@@ -1,23 +1,80 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { buildingApi } from 'src/apis/building_api/buildings.api'
+import type { Buildings } from 'src/types/buildings.type'
+import { logResourceConsoleError } from 'src/utils/payment-console-log'
+import { buildingHasLinkedData } from './building-admin-ui'
 import ItemBuilding from './ItemBuilding'
 
 export default function Buildings() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const buildingsListBase = location.pathname.startsWith('/admin/buildings') ? '/admin/buildings' : '/buildings'
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [listOperationError, setListOperationError] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['buildings'],
-    queryFn: () => {
-      return buildingApi.getAllBuildings()
+  const getApiErrorMessage = (error: any, fallbackMessage: string) => {
+    const apiErr = error?.response?.data
+    const firstFieldError = apiErr?.errors ? Object.values(apiErr.errors).flat()?.[0] : null
+    const rawMessage = firstFieldError || apiErr?.formErrors?.[0] || apiErr?.details || apiErr?.message || fallbackMessage
+    if (typeof rawMessage !== 'string') return fallbackMessage
+
+    const translatedMessages: Array<[string, string]> = [
+      ['Validation failed', 'Dữ liệu không hợp lệ'],
+      ['A building with this code already exists', 'Mã tòa nhà đã tồn tại'],
+      ['Building not found', 'Không tìm thấy tòa nhà'],
+      ['Code is required', 'Mã tòa nhà là bắt buộc'],
+      ['Name is required', 'Tên tòa nhà là bắt buộc'],
+      ['Address is required', 'Địa chỉ là bắt buộc'],
+      ['At least one field is required for update', 'Cần ít nhất một trường để cập nhật'],
+      [
+        'Cannot close building while it still has floors or active apartments. Remove them first.',
+        'Không thể đóng tòa nhà khi còn tầng hoặc căn hộ đang dùng. Hãy gỡ hết tầng và căn trước.'
+      ]
+    ]
+
+    const matched = translatedMessages.find(([en]) => rawMessage.includes(en))
+    return matched?.[1] || rawMessage
+  }
+
+  const logApiSuccess = (action: string, response: any) => {
+    console.log(`[Building][${action}] success`, {
+      status: response?.status,
+      endpoint: response?.config?.url,
+      method: response?.config?.method,
+      data: response?.data
+    })
+  }
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error: buildingsError
+  } = useQuery({
+    queryKey: ['buildings', page, search, statusFilter],
+    queryFn: async () => {
+      const response = await buildingApi.getAllBuildings({
+        page,
+        size: 10,
+        search: search || undefined,
+        status: statusFilter === 'ALL' ? undefined : statusFilter
+      })
+      logApiSuccess('GetAll', response)
+      return response
     }
   })
 
   const dataBuildings = data?.data.data
-  const page = data?.data.page ?? 0
+  const currentPage = data?.data.page ?? 0
   const totalElements = data?.data.totalElements ?? 0
   const totalPages = data?.data.totalPages ?? 1
   const editingBuilding = useMemo(
@@ -30,31 +87,47 @@ export default function Buildings() {
       editingBuilding && editingId
         ? buildingApi.updateBuilding(editingId, payload)
         : buildingApi.createBuilding(payload),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      logApiSuccess(editingBuilding ? 'Update' : 'Create', response)
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
       setIsCreateOpen(false)
       setFormError(null)
       setEditingId(null)
+      setListOperationError(null)
     },
     onError: (error: any) => {
-      const msg = error?.response?.data?.message || 'Không lưu được tòa nhà'
+      logResourceConsoleError('Building', 'CreateOrUpdate', error)
+      const msg = getApiErrorMessage(error, 'Không lưu được tòa nhà')
       setFormError(msg)
     }
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => buildingApi.deleteBuilding(id),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      logApiSuccess('Delete', response)
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
+      setListOperationError(null)
+    },
+    onError: (error: any) => {
+      logResourceConsoleError('Building', 'Delete', error)
+      setListOperationError(getApiErrorMessage(error, 'Đóng tòa nhà thất bại'))
     }
   })
 
   const reopenMutation = useMutation({
     mutationFn: (id: string) => buildingApi.updateBuilding(id, { status: 'ACTIVE' }),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      logApiSuccess('Reopen', response)
       queryClient.invalidateQueries({ queryKey: ['buildings'] })
+      setListOperationError(null)
+    },
+    onError: (error: any) => {
+      logResourceConsoleError('Building', 'Reopen', error)
+      setListOperationError(getApiErrorMessage(error, 'Mở lại tòa nhà thất bại'))
     }
   })
+
 
   const handleSubmitCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -72,10 +145,17 @@ export default function Buildings() {
     })
   }
 
-  const handleDelete = (building: { id: string; name: string }) => {
+  const handleDelete = (building: Buildings) => {
     if (deleteMutation.isPending) return
-    const ok = window.confirm(`Bạn chắc chắn muốn đóng tòa nhà "${building.name}"?`)
+    if (buildingHasLinkedData(building)) {
+      setListOperationError(
+        'Tòa nhà vẫn còn tầng hoặc căn hộ đang dùng. Hãy xóa hết tầng và căn (hoặc chuyển căn sang bảo trì nếu quy trình cho phép) rồi thử đóng tòa lại.'
+      )
+      return
+    }
+    const ok = window.confirm(`Đóng tòa nhà "${building.name}"? Tòa sẽ chuyển sang trạng thái đã đóng.`)
     if (!ok) return
+    setListOperationError(null)
     deleteMutation.mutate(building.id)
   }
 
@@ -83,299 +163,315 @@ export default function Buildings() {
     if (reopenMutation.isPending) return
     const ok = window.confirm(`Bạn muốn mở lại tòa nhà "${building.name}"?`)
     if (!ok) return
+    setListOperationError(null)
     reopenMutation.mutate(building.id)
   }
 
-  const totalApartments =
-    dataBuildings &&
-    dataBuildings.reduce((sum, building) => {
-      // Chỉ cộng nếu totalApartments không phải null và là số
-      if (building.totalApartments && typeof building.totalApartments === 'number') {
-        return sum + building.totalApartments
-      }
-      return sum
-    }, 0)
+  if (isError) {
+    logResourceConsoleError('Building', 'GetAll', buildingsError)
+  }
 
-  const menuItems = ['Dashboard', 'Buildings', 'Tenants', 'Maintenance', 'Reports']
+  const summary = useMemo(
+    () => ({
+      total: dataBuildings?.length || 0,
+      active: dataBuildings?.filter((b) => b.status === 'ACTIVE').length || 0,
+      maintenance: dataBuildings?.filter((b) => b.status === 'MAINTENANCE').length || 0,
+      closed: dataBuildings?.filter((b) => b.status === 'CLOSED').length || 0
+    }),
+    [dataBuildings]
+  )
 
   return (
-    <div className='min-h-screen bg-slate-50 text-slate-900'>
-      <aside className='fixed left-0 top-0 h-full w-56 border-r border-slate-200 bg-white px-5 py-6'>
-        <div className='mb-8 text-sm font-semibold tracking-wide text-blue-700'>Building Management</div>
-        <nav className='space-y-1'>
-          {menuItems.map((item) => (
-            <button
-              key={item}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${
-                item === 'Buildings'
-                  ? 'bg-blue-50 font-semibold text-blue-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+    <div className='min-h-screen bg-slate-50 p-6 font-sans text-slate-900 sm:p-8'>
+      <div className='mx-auto max-w-6xl'>
+        <div className='mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
+          <div>
+            <span className='rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100'>
+              Quản trị
+            </span>
+            <h1 className='mt-3 text-3xl font-bold tracking-tight text-slate-900'>Quản lý tòa nhà</h1>
+            <p className='mt-1 max-w-2xl text-sm text-slate-600'>
+              Tạo và chỉnh sửa tòa nhà, mở chi tiết để quản lý ảnh, tầng và nhân sự. Chỉ đóng được tòa khi không còn bản ghi tầng và không còn căn hộ đang hoạt động (căn bảo trì không chặn đóng tòa).
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setFormError(null)
+              setListOperationError(null)
+              setIsCreateOpen(true)
+              setEditingId(null)
+            }}
+            className='inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700'
+          >
+            + Thêm tòa nhà
+          </button>
+        </div>
+
+        <div className='mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4'>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Trên trang này</div>
+            <div className='mt-1 text-2xl font-bold text-slate-900'>{summary.total}</div>
+          </div>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Đang hoạt động</div>
+            <div className='mt-1 text-2xl font-bold text-emerald-600'>{summary.active}</div>
+          </div>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Bảo trì</div>
+            <div className='mt-1 text-2xl font-bold text-amber-600'>{summary.maintenance}</div>
+          </div>
+          <div className='rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+            <div className='text-xs font-medium text-slate-500'>Đã đóng</div>
+            <div className='mt-1 text-2xl font-bold text-slate-600'>{summary.closed}</div>
+          </div>
+        </div>
+
+        {listOperationError && (
+          <div className='mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm'>
+            {listOperationError}
+          </div>
+        )}
+
+        <div className='mb-6 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm'>
+          <form
+            className='grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto_auto_auto]'
+            onSubmit={(event) => {
+              event.preventDefault()
+              setPage(0)
+              setSearch(searchInput.trim())
+            }}
+          >
+            <input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder='Tìm theo tên, mã hoặc địa chỉ tòa nhà'
+              className='rounded-lg border border-gray-200 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+            />
+            <select
+              value={statusFilter}
+              onChange={(event) => {
+                setPage(0)
+                setStatusFilter(event.target.value)
+              }}
+              className='rounded-lg border border-gray-200 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
             >
-              <span className='material-symbols-outlined text-[18px]'>dashboard</span>
-              {item}
+              <option value='ALL'>Tất cả trạng thái</option>
+              <option value='ACTIVE'>Đang hoạt động</option>
+              <option value='MAINTENANCE'>Bảo trì</option>
+              <option value='CLOSED'>Đã đóng</option>
+            </select>
+            <button className='rounded-lg bg-[#0052CC] px-4 py-2.5 font-semibold text-white transition hover:bg-blue-700'>
+              Tìm kiếm
             </button>
-          ))}
-        </nav>
-      </aside>
+            <button
+              type='button'
+              onClick={() => {
+                setPage(0)
+                setSearch('')
+                setSearchInput('')
+                setStatusFilter('ALL')
+              }}
+              className='rounded-lg bg-gray-100 px-4 py-2.5 font-semibold text-gray-700 transition hover:bg-gray-200'
+            >
+              Làm mới
+            </button>
+          </form>
+        </div>
 
-      <main className='pl-56'>
-        <header className='sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-8 py-4 backdrop-blur'>
-          <div className='mx-auto flex max-w-7xl items-center justify-between gap-3'>
-            <div className='w-full max-w-xl'>
-              <div className='rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500'>
-                Search buildings...
-              </div>
-            </div>
-            <div className='flex items-center gap-2'>
-              <button className='rounded-lg p-2 text-slate-600 hover:bg-slate-100'>
-                <span className='material-symbols-outlined text-[20px]'>notifications</span>
-              </button>
-              <button className='rounded-lg p-2 text-slate-600 hover:bg-slate-100'>
-                <span className='material-symbols-outlined text-[20px]'>settings</span>
-              </button>
-            </div>
+        <div className='mb-4 flex items-center justify-between text-sm text-gray-500'>
+          <div>
+            Hiển thị <span className='font-bold text-gray-700'>{dataBuildings?.length || 0}</span> kết quả, tổng cộng{' '}
+            <span className='font-bold text-gray-700'>{totalElements}</span> bản ghi.
           </div>
-        </header>
+        </div>
 
-        <section className='px-8 pb-10 pt-8'>
-          <div className='mx-auto max-w-7xl'>
-            <div className='mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end'>
-              <div>
-                <span className='mb-2 block text-[10px] font-bold uppercase tracking-[0.1em] text-blue-700'>
-                  Building Portfolio
-                </span>
-                <h2 className='text-4xl font-extrabold leading-none tracking-tight'>Ban Quản Lý</h2>
-                <p className='mt-3 max-w-lg text-slate-500'>
-                  Giám sát và điều phối hoạt động trên các tài sản bất động sản giá trị cao của bạn với các công cụ quản
-                  lý thời gian thực.
-                </p>
-              </div>
-              <button
-                type='button'
-                onClick={() => {
-                  setFormError(null)
-                  setIsCreateOpen(true)
-                  setEditingId(null)
-                }}
-                className='rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700'
-              >
-                + Register New Building
-              </button>
-            </div>
-
-            <div className='mb-8 grid grid-cols-12 gap-4'>
-              <div className='col-span-12 min-h-[180px] rounded-xl bg-white p-6 shadow-sm md:col-span-7'>
-                <div className='mb-8 flex items-start justify-between'>
-                  <div className='rounded-xl bg-blue-50 p-3'>
-                    <span className='material-symbols-outlined text-blue-600'>apartment</span>
-                  </div>
-                  <span className='text-[10px] font-bold uppercase tracking-widest text-slate-400'>Active Units</span>
-                </div>
-                <div className='text-4xl font-bold'>{totalApartments ?? 0}</div>
-                <div className='mt-2 text-sm text-slate-500'>Residential units across all active buildings</div>
-              </div>
-
-              <div className='relative col-span-12 min-h-[180px] overflow-hidden rounded-xl bg-blue-600 p-6 text-white shadow-sm md:col-span-5'>
-                <span className='mb-4 block text-[10px] font-bold uppercase tracking-widest text-white/75'>
-                  System Health
-                </span>
-                <div className='mb-2 text-4xl font-bold'>92% Occupancy</div>
-                <p className='max-w-[220px] text-sm text-white/80'>Strong performance trending 4% higher than last quarter.</p>
-                <span className='material-symbols-outlined absolute -bottom-6 right-0 text-[120px] text-white/15'>
-                  query_stats
-                </span>
-              </div>
-            </div>
-
-            <div className='overflow-hidden rounded-2xl bg-white shadow-sm'>
-              <div className='overflow-x-auto'>
-                <table className='w-full border-collapse text-left'>
-                  <thead>
-                    <tr className='bg-slate-50'>
-                      {['Building Name', 'Code', 'Address', 'Floors', 'Units', 'Status', 'Actions'].map((h) => (
-                        <th
-                          key={h}
-                          className={`px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 ${
-                            ['Floors', 'Units'].includes(h) ? 'text-center' : h === 'Actions' ? 'text-right' : ''
-                          }`}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className='divide-y divide-slate-100'>
-                    {isLoading && (
-                      <tr>
-                        <td className='px-6 py-6 text-sm text-slate-500' colSpan={7}>
-                          Đang tải dữ liệu tòa nhà...
-                        </td>
-                      </tr>
-                    )}
-                    {isError && (
-                      <tr>
-                        <td className='px-6 py-6 text-sm text-red-500' colSpan={7}>
-                          Không tải được danh sách tòa nhà.
-                        </td>
-                      </tr>
-                    )}
-                    {!isLoading && !isError && dataBuildings?.length === 0 && (
-                      <tr>
-                        <td className='px-6 py-6 text-sm text-slate-500' colSpan={7}>
-                          Chưa có dữ liệu tòa nhà.
-                        </td>
-                      </tr>
-                    )}
-                    {!isLoading &&
-                      !isError &&
-                      dataBuildings?.map((building) => (
-                        <ItemBuilding
-                          key={building.id}
-                          building={building}
-                          onDelete={handleDelete}
-                          onReopen={handleReopen}
-                          onEdit={(b) => {
-                            setEditingId(b.id)
-                            setIsCreateOpen(true)
-                            setFormError(null)
-                          }}
-                        />
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className='flex items-center justify-between bg-slate-50/70 px-6 py-4'>
-                <span className='text-xs font-medium text-slate-500'>Showing {dataBuildings?.length ?? 0} of {totalElements} buildings</span>
-                <div className='flex items-center gap-2'>
-                  <button className='rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500'>Previous</button>
-                  <button className='rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white'>{page + 1}</button>
-                  <button className='rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500'>Next</button>
-                  <span className='pl-2 text-xs text-slate-400'>/ {totalPages} pages</span>
-                </div>
-              </div>
-            </div>
-
-            <div className='mt-8 flex items-start gap-4 rounded-2xl border border-white/50 bg-white/60 p-6 shadow-xl backdrop-blur-md'>
-              <div className='rounded-full bg-blue-50 p-2'>
-                <span className='material-symbols-outlined text-xl text-blue-600'>auto_awesome</span>
-              </div>
-              <div>
-                <h4 className='mb-1 text-xs font-bold uppercase tracking-widest text-blue-800'>Homelink AI Insight</h4>
-                <p className='text-sm leading-relaxed text-slate-500'>
-                  Building <span className='font-bold text-slate-800'>ALPHA_01</span> shows higher maintenance requests than average.
-                  We suggest scheduling a facility inspection for floors 12-25 to reduce potential failures.
-                </p>
-              </div>
-            </div>
+        <div className='overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm'>
+          <div className='overflow-x-auto'>
+            <table className='w-full border-collapse text-left'>
+              <thead>
+                <tr className='border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400'>
+                  <th className='px-6 py-4'>Tòa nhà</th>
+                  <th className='px-6 py-4'>Mã</th>
+                  <th className='px-6 py-4'>Địa chỉ</th>
+                  <th className='px-6 py-4 text-center'>Số tầng (kế hoạch)</th>
+                  <th className='px-6 py-4 text-center'>Số căn (kế hoạch)</th>
+                  <th className='px-6 py-4'>Trạng thái</th>
+                  <th className='px-6 py-4 text-right'>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className='text-sm text-slate-700'>
+                {isLoading && (
+                  <tr>
+                    <td className='px-6 py-8 text-center text-gray-500' colSpan={7}>
+                      Đang tải dữ liệu tòa nhà...
+                    </td>
+                  </tr>
+                )}
+                {isError && (
+                  <tr>
+                    <td className='px-6 py-8 text-center text-red-500' colSpan={7}>
+                      {getApiErrorMessage(buildingsError, 'Không tải được danh sách tòa nhà.')}
+                    </td>
+                  </tr>
+                )}
+                {!isLoading && !isError && (dataBuildings?.length || 0) === 0 && (
+                  <tr>
+                    <td className='px-6 py-8 text-center text-gray-500' colSpan={7}>
+                      Chưa có dữ liệu tòa nhà.
+                    </td>
+                  </tr>
+                )}
+                {!isLoading &&
+                  !isError &&
+                  dataBuildings?.map((building) => (
+                    <ItemBuilding
+                      key={building.id}
+                      building={building}
+                      onDelete={handleDelete}
+                      onReopen={handleReopen}
+                      onEdit={(b) => {
+                        setEditingId(b.id)
+                        setIsCreateOpen(true)
+                        setFormError(null)
+                      }}
+                      onManageImages={(b) => {
+                        navigate(`${buildingsListBase}/${b.id}`)
+                      }}
+                    />
+                  ))}
+              </tbody>
+            </table>
           </div>
-        </section>
+        </div>
+
+        <div className='mt-4 flex items-center justify-end gap-2 text-sm'>
+          <button
+            type='button'
+            className='rounded bg-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50'
+            disabled={currentPage <= 0}
+            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+          >
+            Trang trước
+          </button>
+          <span>
+            Trang {totalPages === 0 ? 0 : currentPage + 1}/{totalPages}
+          </span>
+          <button
+            type='button'
+            className='rounded bg-slate-200 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50'
+            disabled={totalPages === 0 || currentPage + 1 >= totalPages}
+            onClick={() => setPage((prev) => prev + 1)}
+          >
+            Trang sau
+          </button>
+        </div>
 
         {isCreateOpen && (
-          <div className='fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40'>
-            <div className='w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl'>
-              <div className='mb-4 flex items-center justify-between'>
-                <h3 className='text-lg font-semibold'>
-                  {editingBuilding ? 'Edit Building' : 'Register New Building'}
-                </h3>
+          <div className='fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm'>
+            <div className='w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl'>
+              <div className='flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-6 py-4'>
+                <h2 className='text-xl font-bold text-gray-800'>
+                  {editingBuilding ? 'Cập nhật tòa nhà' : 'Thêm tòa nhà'}
+                </h2>
                 <button
-                  type='button'
                   onClick={() => !createMutation.isPending && setIsCreateOpen(false)}
-                  className='rounded-full p-1 text-slate-500 hover:bg-slate-100'
+                  className='text-gray-400 transition hover:text-gray-600'
                 >
-                  <span className='material-symbols-outlined text-[20px]'>close</span>
+                  Đóng
                 </button>
               </div>
-              {formError && <div className='mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-600'>{formError}</div>}
-              <form onSubmit={handleSubmitCreate} className='space-y-4'>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <label className='mb-1 block text-xs font-semibold text-slate-600'>Name</label>
-                    <input
-                      name='name'
-                      required
-                      defaultValue={editingBuilding?.name}
-                      className='w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                    />
+              <div className='p-6'>
+                {formError && <div className='mb-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-600'>{formError}</div>}
+                <form onSubmit={handleSubmitCreate} className='space-y-4'>
+                  <div className='grid grid-cols-2 gap-4'>
+                    <div>
+                      <label className='mb-1 block text-sm font-bold text-gray-700'>Tên tòa nhà</label>
+                      <input
+                        name='name'
+                        required
+                        defaultValue={editingBuilding?.name}
+                        className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+                      />
+                    </div>
+                    <div>
+                      <label className='mb-1 block text-sm font-bold text-gray-700'>Mã</label>
+                      <input
+                        name='code'
+                        required
+                        defaultValue={editingBuilding?.code}
+                        className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label className='mb-1 block text-xs font-semibold text-slate-600'>Code</label>
+                    <label className='mb-1 block text-sm font-bold text-gray-700'>Địa chỉ</label>
                     <input
-                      name='code'
+                      name='address'
                       required
-                      defaultValue={editingBuilding?.code}
-                      className='w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className='mb-1 block text-xs font-semibold text-slate-600'>Address</label>
-                  <input
-                    name='address'
-                    required
                       defaultValue={editingBuilding?.address}
-                    className='w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                  />
-                </div>
-                <div className='grid grid-cols-3 gap-4'>
-                  <div>
-                    <label className='mb-1 block text-xs font-semibold text-slate-600'>Floors</label>
-                    <input
-                      name='totalFloors'
-                      type='number'
-                      min={1}
-                      required
-                      defaultValue={editingBuilding?.totalFloors}
-                      className='w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                      className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
                     />
                   </div>
-                  <div>
-                    <label className='mb-1 block text-xs font-semibold text-slate-600'>Units</label>
-                    <input
-                      name='totalApartments'
-                      type='number'
-                      min={0}
-                      required
-                      defaultValue={editingBuilding?.totalApartments}
-                      className='w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                    />
+                  <div className='grid grid-cols-3 gap-4'>
+                    <div>
+                      <label className='mb-1 block text-sm font-bold text-gray-700'>Số tầng</label>
+                      <input
+                        name='totalFloors'
+                        type='number'
+                        min={1}
+                        required
+                        defaultValue={editingBuilding?.totalFloors}
+                        className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+                      />
+                    </div>
+                    <div>
+                      <label className='mb-1 block text-sm font-bold text-gray-700'>Số căn</label>
+                      <input
+                        name='totalApartments'
+                        type='number'
+                        min={0}
+                        required
+                        defaultValue={editingBuilding?.totalApartments}
+                        className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+                      />
+                    </div>
+                    <div>
+                      <label className='mb-1 block text-sm font-bold text-gray-700'>Năm xây</label>
+                      <input
+                        name='yearBuilt'
+                        type='number'
+                        min={1800}
+                        max={new Date().getFullYear() + 1}
+                        required
+                        defaultValue={editingBuilding?.yearBuilt}
+                        className='w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 outline-none transition focus:border-[#0052CC] focus:ring-2 focus:ring-[#0052CC]/20'
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className='mb-1 block text-xs font-semibold text-slate-600'>Year Built</label>
-                    <input
-                      name='yearBuilt'
-                      type='number'
-                      min={1800}
-                      max={new Date().getFullYear() + 1}
-                      required
-                      defaultValue={editingBuilding?.yearBuilt}
-                      className='w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                    />
+
+                  <div className='flex justify-end gap-3 border-t border-gray-100 pt-4'>
+                    <button
+                      type='button'
+                      disabled={createMutation.isPending}
+                      onClick={() => setIsCreateOpen(false)}
+                      className='rounded-lg bg-gray-100 px-5 py-2.5 font-bold text-gray-600 transition hover:bg-gray-200 disabled:opacity-60'
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type='submit'
+                      disabled={createMutation.isPending}
+                      className='rounded-lg bg-[#0052CC] px-5 py-2.5 font-bold text-white shadow-md transition hover:bg-blue-700 disabled:opacity-60'
+                    >
+                      {createMutation.isPending ? 'Đang lưu...' : editingBuilding ? 'Cập nhật' : 'Tạo mới'}
+                    </button>
                   </div>
-                </div>
-                <div className='mt-2 flex justify-end gap-2'>
-                  <button
-                    type='button'
-                    disabled={createMutation.isPending}
-                    onClick={() => setIsCreateOpen(false)}
-                    className='rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-60'
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type='submit'
-                    disabled={createMutation.isPending}
-                    className='rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60'
-                  >
-                    {createMutation.isPending ? 'Đang lưu...' : 'Tạo tòa nhà'}
-                  </button>
-                </div>
-              </form>
+                </form>
+              </div>
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }

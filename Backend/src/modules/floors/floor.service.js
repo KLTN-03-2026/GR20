@@ -1,0 +1,85 @@
+const repo = require("./floor.repository");
+const mapper = require("./floor.mapper");
+const { AppError } = require("../../common/app-error");
+const { buildingIdsFromUser } = require("../../common/building-scope");
+const { parseCreateFloor, parseUpdateFloor } = require("./floor.request");
+
+// ================= CREATE =================
+const createFloor = async (reqBody) => {
+  const parsed = parseCreateFloor(reqBody);
+  const entity = mapper.toEntity(parsed);
+
+  const result = await repo.createFloor(entity);
+
+  return {
+    id: result.id,
+  };
+};
+
+// ================= GET ALL =================
+const getAllFloors = async (query, user) => {
+  const { page = 0, size = 10 } = query;
+  const buildingIds = buildingIdsFromUser(user);
+
+  const result = await repo.getAllFloors({
+    page: Number(page),
+    size: Number(size),
+    buildingIds,
+  });
+
+  return {
+    data: result.rows.map(mapper.toResponse),
+    size: result.rows.length,
+    totalElements: result.total,
+    totalPages: Math.ceil(result.total / size) || 0,
+    page: Number(page),
+    pageSize: Number(size),
+  };
+};
+
+// ================= GET BY ID =================
+const getFloorById = async (id) => {
+  const data = await repo.getFloorById(id);
+
+  if (!data) {
+    throw new AppError(404, "Floor not found");
+  }
+
+  return mapper.toResponse(data);
+};
+
+// ================= UPDATE =================
+const updateFloor = async (id, reqBody) => {
+  const parsed = parseUpdateFloor(reqBody);
+  const entity = mapper.toEntity(parsed);
+
+  const updated = await repo.updateFloor(id, entity);
+
+  if (!updated) {
+    throw new AppError(404, "Floor not found");
+  }
+
+  return mapper.toResponse(updated);
+};
+
+// ================= DELETE (SOFT) =================
+const softDeleteFloor = async (id) => {
+  const deleted = await repo.softDeleteFloor(id);
+
+  if (!deleted) {
+    throw new AppError(404, "Floor not found");
+  }
+
+  return {
+    id: deleted.id,
+    isDeleted: deleted.is_deleted,
+  };
+};
+
+module.exports = {
+  createFloor,
+  getAllFloors,
+  getFloorById,
+  updateFloor,
+  softDeleteFloor,
+};

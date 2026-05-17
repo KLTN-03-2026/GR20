@@ -1,79 +1,83 @@
 import type { Buildings } from 'src/types/buildings.type'
+import {
+  buildingHasLinkedData,
+  buildingStatusBadgeClass,
+  buildingStatusLabel
+} from './building-admin-ui'
+import {
+  ROW_ACTION_BASE,
+  ROW_ACTION_DELETE,
+  ROW_ACTION_EDIT,
+  ROW_ACTION_RESTORE
+} from 'src/utils/row-action-buttons'
 
 interface Props {
   building: Buildings
   onEdit?: (building: Buildings) => void
   onDelete?: (building: Buildings) => void
   onReopen?: (building: Buildings) => void
+  onManageImages?: (building: Buildings) => void
 }
 
-export default function ItemBuilding({ building, onEdit, onDelete, onReopen }: Props) {
+export default function ItemBuilding({ building, onEdit, onDelete, onReopen, onManageImages }: Props) {
+  const linked = buildingHasLinkedData(building)
+  const statusKey = (building.status || '').toUpperCase()
+  const statusText = buildingStatusLabel[statusKey] || building.status
+
   return (
-    <tr className='hover:bg-gray-50/50 transition-colors group'>
-      {/* Name */}
-      <td className='px-6 py-5'>
-        <div className='flex items-center gap-3'>
-          <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              building.status === 'ACTIVE' ? 'bg-blue-50' : 'bg-gray-100'
-            }`}
-          >
-            <span
-              className={`material-symbols-outlined ${building.status === 'ACTIVE' ? 'text-blue-600' : 'text-gray-400'}`}
-            >
-              domain
-            </span>
-          </div>
-          <span className='font-semibold'>{building.name}</span>
-        </div>
+    <tr className='group border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/80'>
+      <td className='px-6 py-4'>
+        <div className='font-semibold text-slate-900'>{building.name}</div>
+        {linked && building.status !== 'CLOSED' && (
+          <p className='mt-1 max-w-xs text-xs text-amber-800'>
+            Có {Number(building.linkedFloorCount ?? 0)} tầng, {Number(building.linkedApartmentCount ?? 0)} căn — không thể đóng tòa cho đến khi gỡ hết.
+          </p>
+        )}
       </td>
-      {/* Code */}
-      <td className='px-6 py-5 font-mono text-xs text-gray-500'>{building.code}</td>
-      {/* Address */}
-      <td className='px-6 py-5 text-sm text-gray-500'>{building.address}</td>
-      {/* Floors */}
-      <td className='px-6 py-5 text-sm text-center font-medium'>
-        {building.totalFloors ?? <span className='text-gray-300'>—</span>}
+      <td className='px-6 py-4 font-mono text-xs text-slate-600'>{building.code}</td>
+      <td className='px-6 py-4 text-sm text-slate-600'>{building.address}</td>
+      <td className='px-6 py-4 text-center text-sm font-medium tabular-nums text-slate-800'>
+        {building.totalFloors ?? <span className='text-slate-300'>—</span>}
       </td>
-      {/* Units */}
-      <td className='px-6 py-5 text-sm text-center font-medium'>
-        {building.totalApartments ?? <span className='text-gray-300'>—</span>}
+      <td className='px-6 py-4 text-center text-sm font-medium tabular-nums text-slate-800'>
+        {building.totalApartments ?? <span className='text-slate-300'>—</span>}
       </td>
-      {/* Status */}
-      <td className='px-6 py-5'>
+      <td className='px-6 py-4'>
         <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-            building.status === 'ACTIVE' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${buildingStatusBadgeClass(building.status)}`}
         >
-          {building.status}
+          {statusText}
         </span>
       </td>
-      {/* Actions */}
-      <td className='px-6 py-5 text-right'>
-        <div className='flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+      <td className='px-6 py-4 text-right'>
+        <div className='flex flex-wrap items-center justify-end gap-2'>
+          <button type='button' className={ROW_ACTION_EDIT} onClick={() => onManageImages && onManageImages(building)}>
+            Chi tiết
+          </button>
           <button
             type='button'
+            className={`${ROW_ACTION_BASE} border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 focus:ring-amber-300`}
             onClick={() => onEdit && onEdit(building)}
-            className='p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all'
           >
-            <span className='material-symbols-outlined text-[20px]'>edit</span>
+            Sửa
           </button>
           {building.status === 'CLOSED' ? (
-            <button
-              type='button'
-              onClick={() => onReopen && onReopen(building)}
-              className='p-2 text-gray-400 hover:text-green-700 hover:bg-green-50 rounded-lg transition-all'
-            >
-              <span className='material-symbols-outlined text-[20px]'>restart_alt</span>
+            <button type='button' className={ROW_ACTION_RESTORE} onClick={() => onReopen && onReopen(building)}>
+              Mở lại
             </button>
           ) : (
             <button
               type='button'
-              onClick={() => onDelete && onDelete(building)}
-              className='p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all'
+              className={ROW_ACTION_DELETE}
+              disabled={linked || !onDelete}
+              title={
+                linked
+                  ? 'Gỡ hết tầng và căn hộ (không còn trạng thái hoạt động) trước khi đóng tòa nhà.'
+                  : 'Đóng tòa nhà (trạng thái đã đóng)'
+              }
+              onClick={() => !linked && onDelete && onDelete(building)}
             >
-              <span className='material-symbols-outlined text-[20px]'>delete</span>
+              Đóng tòa
             </button>
           )}
         </div>

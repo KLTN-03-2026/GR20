@@ -2,6 +2,123 @@ import type { RegisterOptions } from 'react-hook-form'
 import * as yup from 'yup'
 type Rule = { [key in 'email' | 'password' | 'confirmPassword']?: RegisterOptions }
 
+export const loginSchema = yup.object({
+  username: yup
+    .string()
+    .required('Tên đăng nhập không được để trống')
+    .min(6, '6 - 100 kí tự')
+    .max(100, '6 - 100 kí tự'),
+  password: yup.string().required('mật khẩu không được để trống').min(6, '6 - 100 kí tự').max(100, '6 - 100 kí tự')
+})
+
+export const updateQrSchema = yup.object({
+  visitorName: yup
+    .string()
+    .required('Tên khách không được để trống')
+    .min(2, 'Tên khách phải có ít nhất 2 ký tự')
+    .max(100, 'Tên khách tối đa 100 ký tự'),
+
+  visitorPhone: yup
+    .string()
+    .required('Số điện thoại không được để trống')
+    .matches(/^[0-9]+$/, 'Số điện thoại chỉ được chứa số')
+    .min(10, 'Số điện thoại phải có ít nhất 10 số')
+    .max(11, 'Số điện thoại tối đa 11 số'),
+
+  visitorIdCard: yup
+    .string()
+    .optional()
+    .matches(/^[0-9]*$/, 'CMND/CCCD chỉ được chứa số')
+    .min(9, 'CMND/CCCD phải có ít nhất 9 số')
+    .max(12, 'CMND/CCCD tối đa 12 số'),
+
+  validFrom: yup.string().required('Vui lòng chọn ngày bắt đầu'),
+  // .test('valid-from', 'Ngày bắt đầu không hợp lệ', function (value) {
+  //   if (!value) return false
+  //   const fromDate = new Date(value)
+  //   const now = new Date()
+  //   return fromDate >= now
+  // }),
+
+  validTo: yup.string().required('Vui lòng chọn ngày kết thúc'),
+  // .test('valid-to', 'Ngày kết thúc phải sau ngày bắt đầu', function (value) {
+  //   const { validFrom } = this.parent
+  //   if (!value || !validFrom) return false
+  //   const fromDate = new Date(validFrom)
+  //   const toDate = new Date(value)
+  //   return toDate > fromDate
+  // })
+  // .test('max-duration', 'Thời gian hiệu lực không quá 30 ngày', function (value) {
+  //   const { validFrom } = this.parent
+  //   if (!value || !validFrom) return false
+  //   const fromDate = new Date(validFrom)
+  //   const toDate = new Date(value)
+  //   const daysDiff = (toDate.getTime() - fromDate.getTime()) / (1000 * 3600 * 24)
+  //   return daysDiff <= 30
+  // }),
+
+  maxEntries: yup
+    .number()
+    .required('Số lượt truy cập không được để trống')
+    .min(1, 'Số lượt truy cập ít nhất là 1')
+    .max(100, 'Số lượt truy cập tối đa là 100')
+    .typeError('Số lượt truy cập phải là số'),
+
+  status: yup
+    .string()
+    .oneOf(['ACTIVE', 'EXPIRED', 'REVOKED'], 'Trạng thái không hợp lệ')
+    .required('Vui lòng chọn trạng thái')
+})
+
+// Type cho Update QR Form Data
+
+// Schema cho Create QR Code (tương tự nhưng không có status)
+export const createQrSchema = yup.object({
+  visitorName: yup
+    .string()
+    .required('Tên khách không được để trống')
+    .min(2, 'Tên khách phải có ít nhất 2 ký tự')
+    .max(100, 'Tên khách tối đa 100 ký tự'),
+
+  visitorPhone: yup
+    .string()
+    .required('Số điện thoại không được để trống')
+    .matches(/^[0-9]+$/, 'Số điện thoại chỉ được chứa số')
+    .min(10, 'Số điện thoại phải có ít nhất 10 số')
+    .max(11, 'Số điện thoại tối đa 11 số'),
+
+  visitorIdCard: yup
+    .string()
+    .optional()
+    .matches(/^[0-9]*$/, 'CMND/CCCD chỉ được chứa số')
+    .min(9, 'CMND/CCCD phải có ít nhất 9 số')
+    .max(12, 'CMND/CCCD tối đa 12 số'),
+
+  validFrom: yup.string().required('Vui lòng chọn ngày bắt đầu'),
+
+  validTo: yup
+    .string()
+    .required('Vui lòng chọn ngày kết thúc')
+    .test('valid-to', 'Ngày kết thúc phải sau ngày bắt đầu', function (value) {
+      const { validFrom } = this.parent
+      if (!value || !validFrom) return false
+      return new Date(value) > new Date(validFrom)
+    }),
+
+  maxEntries: yup
+    .number()
+    .required('Số lượt truy cập không được để trống')
+    .min(1, 'Số lượt truy cập ít nhất là 1')
+    .max(100, 'Số lượt truy cập tối đa là 100')
+    .typeError('Số lượt truy cập phải là số')
+})
+
+export type CreateQrFormData = yup.InferType<typeof createQrSchema>
+export type UpdateQrFormData = yup.InferType<typeof updateQrSchema>
+// export type CreateQrFormData = yup.InferType<typeof createQrSchema>
+
+export type LoginFormData = yup.InferType<typeof loginSchema>
+
 export const rules: Rule = {
   email: {
     required: {
@@ -136,5 +253,29 @@ export const userSchema = yup.object({
 })
 
 export type UserSchemaType = yup.InferType<typeof userSchema>
+
+/** Form đổi mật khẩu (khớp `UserApi.changePassword`) */
+export const changePasswordSchema = yup.object({
+  currentPassword: yup.string().required('Vui lòng nhập mật khẩu hiện tại').min(6).max(160),
+  newPassword: yup.string().required('Vui lòng nhập mật khẩu mới').min(6).max(160),
+  confirmPassword: yup
+    .string()
+    .required('Vui lòng xác nhận mật khẩu')
+    .oneOf([yup.ref('newPassword')], 'Mật khẩu xác nhận không khớp')
+})
+
+export type ChangePasswordFormData = yup.InferType<typeof changePasswordSchema>
+
+/** Form cập nhật hồ sơ trong `Profile.tsx` — gửi `UserApi.updateProfile`. */
+export const updateProfileSchema = yup.object({
+  fullName: yup.string().trim().required('Họ và tên là bắt buộc').max(160),
+  email: yup.string().trim().required('Email là bắt buộc').email('Email không hợp lệ').max(160),
+  phone: yup.string().trim().required('Số điện thoại là bắt buộc').max(20),
+  gender: yup.string().oneOf(['MALE', 'FEMALE', 'OTHER'], 'Giới tính không hợp lệ').required(),
+  dateOfBirth: yup.string().required('Ngày sinh là bắt buộc'),
+  avatarUrl: yup.string().max(500).default('')
+})
+
+export type UpdateProfileFormData = yup.InferType<typeof updateProfileSchema>
 
 export type Schema = yup.InferType<typeof schema>
